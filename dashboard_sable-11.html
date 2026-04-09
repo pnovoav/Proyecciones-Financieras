@@ -1,0 +1,2036 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sable · Proyecciones Financieras 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════
+   DESIGN TOKENS
+══════════════════════════════════════════ */
+:root{
+  --ink:#0a0e1a;
+  --ink1:#111827;
+  --ink2:#1f2937;
+  --ink3:#374151;
+  --surface:#ffffff;
+  --surface2:#f9fafb;
+  --surface3:#f3f4f6;
+  --border:rgba(0,0,0,.07);
+  --border2:rgba(0,0,0,.12);
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.04);
+  --shadow-lg:0 4px 24px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.06);
+  --blue:#1d4ed8;
+  --blue2:#2563eb;
+  --blue3:#3b82f6;
+  --blue-tint:#eff6ff;
+  --blue-mid:rgba(37,99,235,.12);
+  --green:#059669;
+  --green2:#10b981;
+  --green-tint:#ecfdf5;
+  --red:#dc2626;
+  --red2:#ef4444;
+  --red-tint:#fef2f2;
+  --amber:#d97706;
+  --amber-tint:#fffbeb;
+  --text:#111827;
+  --text2:#374151;
+  --text3:#6b7280;
+  --text4:#9ca3af;
+  --mono:'DM Mono',monospace;
+  --sans:'Outfit',sans-serif;
+  --serif:'Instrument Serif',serif;
+  --radius:10px;
+  --radius-sm:6px;
+  --sidebar:268px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px;-webkit-font-smoothing:antialiased}
+body{background:#f1f3f7;color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+
+/* ── Subtle dot grid ── */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(circle,rgba(0,0,0,.07) 1px,transparent 1px);
+  background-size:24px 24px;
+}
+
+.app{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ══════════════════════════════════════════
+   TOPBAR
+══════════════════════════════════════════ */
+.topbar{
+  height:58px;background:var(--ink);
+  display:flex;align-items:center;padding:0 24px;gap:20px;
+  box-shadow:0 2px 20px rgba(0,0,0,.25);
+  position:sticky;top:0;z-index:100;
+}
+.topbar-logo{height:36px;object-fit:contain;filter:brightness(0) invert(1);opacity:.9}
+.topbar-sep{width:1px;height:24px;background:rgba(255,255,255,.15)}
+.topbar-title{
+  font-family:var(--sans);font-size:22px;color:rgba(255,255,255,.95);
+  font-weight:700;letter-spacing:-.3px;
+}
+.topbar-sub{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.badge-live{
+  font-family:var(--mono);font-size:10px;padding:3px 10px;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  color:rgba(255,255,255,.6);border-radius:20px;
+}
+
+/* ══════════════════════════════════════════
+   NAV TABS
+══════════════════════════════════════════ */
+.tab-bar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 24px;display:flex;gap:0;
+  box-shadow:0 1px 0 var(--border);
+}
+.tab{
+  padding:13px 20px;font-size:11px;font-weight:600;letter-spacing:.8px;
+  text-transform:uppercase;cursor:pointer;border:none;background:transparent;
+  color:var(--text4);border-bottom:2px solid transparent;transition:all .2s;
+  font-family:var(--sans);
+}
+.tab:hover{color:var(--text2)}
+.tab.on{color:var(--blue2);border-bottom-color:var(--blue2)}
+
+/* ══════════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════════ */
+.body{display:flex;flex:1;overflow:hidden;max-height:calc(100vh - 58px - 44px)}
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  background:var(--surface);border-right:1px solid var(--border);
+  overflow-y:auto;padding:20px 16px;
+  box-shadow:2px 0 8px rgba(0,0,0,.04);
+}
+.main{flex:1;overflow-y:auto;padding:20px 20px 32px}
+
+/* ══════════════════════════════════════════
+   SIDEBAR CONTROLS
+══════════════════════════════════════════ */
+.ctrl-section{
+  margin-bottom:20px;
+}
+.ctrl-section-title{
+  font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
+  color:var(--text4);padding-bottom:8px;border-bottom:1px solid var(--border);
+  margin-bottom:12px;
+}
+.ctrl-row{margin-bottom:10px}
+.ctrl-label{
+  font-size:11px;color:var(--text3);margin-bottom:4px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.ctrl-label strong{font-family:var(--mono);font-size:12px;color:var(--text);font-weight:500}
+.input-group{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
+.unit{font-size:10px;color:var(--text4);font-family:var(--mono);white-space:nowrap}
+
+input[type=number],select{
+  width:100%;padding:6px 10px;
+  background:var(--surface2);border:1px solid var(--border2);
+  color:var(--text);font-family:var(--mono);font-size:12px;
+  border-radius:var(--radius-sm);outline:none;transition:.15s;
+}
+input[type=number]:focus,select:focus{
+  border-color:var(--blue3);background:#fff;
+  box-shadow:0 0 0 3px rgba(37,99,235,.1);
+}
+select{cursor:pointer}
+
+.btn{
+  width:100%;padding:9px;background:var(--blue2);color:#fff;
+  font-family:var(--sans);font-size:11px;font-weight:700;
+  letter-spacing:.6px;text-transform:uppercase;
+  border:none;border-radius:var(--radius-sm);cursor:pointer;
+  transition:background .15s,transform .1s;margin-top:6px;
+}
+.btn:hover{background:var(--blue)}
+.btn:active{transform:scale(.98)}
+.btn-outline{
+  background:transparent;color:var(--text3);
+  border:1px solid var(--border2);margin-top:4px;
+}
+.btn-outline:hover{border-color:var(--blue3);color:var(--blue2);background:var(--blue-tint)}
+
+.debt-card{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;
+  position:relative;
+}
+.debt-card-title{
+  font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--text4);margin-bottom:10px;
+}
+.debt-remove{
+  position:absolute;top:8px;right:8px;background:none;border:none;
+  color:var(--text4);cursor:pointer;font-size:16px;line-height:1;
+  width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+  border-radius:4px;transition:.15s;
+}
+.debt-remove:hover{background:var(--red-tint);color:var(--red)}
+.ir2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.il{font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+
+/* ══════════════════════════════════════════
+   PAGES
+══════════════════════════════════════════ */
+.pg{display:none}.pg.on{display:block}
+
+/* ══════════════════════════════════════════
+   GRID & CARDS
+══════════════════════════════════════════ */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.g21{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+.gmb{margin-bottom:14px}
+
+.card{
+  background:var(--surface);border-radius:var(--radius);
+  border:1px solid var(--border);
+  box-shadow:var(--shadow);padding:18px;
+}
+.card-title{
+  font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--text4);margin-bottom:14px;display:flex;align-items:center;gap:6px;
+}
+.card-title::before{
+  content:'';width:3px;height:12px;border-radius:2px;
+  background:var(--blue2);flex-shrink:0;
+}
+
+/* ══════════════════════════════════════════
+   KPI CARDS
+══════════════════════════════════════════ */
+.kpi{
+  background:var(--surface);border-radius:var(--radius);
+  border:1px solid var(--border);box-shadow:var(--shadow);
+  padding:20px 22px;position:relative;overflow:hidden;
+}
+.kpi::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--kpi-c,var(--blue2)),transparent);
+  opacity:.7;
+}
+.kpi.g{--kpi-c:#059669}.kpi.a{--kpi-c:#d97706}.kpi.r{--kpi-c:#dc2626}
+.kpi-lbl{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;font-weight:700}
+.kpi-val{
+  font-family:var(--mono);font-size:28px;font-weight:500;
+  color:var(--text);letter-spacing:-1.5px;line-height:1;
+}
+.kpi-val.big{font-size:32px}
+.kpi-delta{font-family:var(--mono);font-size:11px;margin-top:8px;display:flex;align-items:center;gap:5px;min-height:16px}
+.kpi-delta.up{color:var(--green)}.kpi-delta.dn{color:var(--red)}.kpi-delta.fl{color:transparent}
+.kpi-delta::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+/* ══════════════════════════════════════════
+   TABLES
+══════════════════════════════════════════ */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+thead th{
+  padding:8px 12px;text-align:right;font-size:9px;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--text4);border-bottom:1px solid var(--border2);
+  background:var(--surface2);font-weight:400;white-space:nowrap;
+}
+thead th:first-child{text-align:left}
+tbody td{padding:6px 12px;text-align:right;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap}
+tbody td:first-child{text-align:left;color:var(--text2)}
+tbody tr:hover{background:var(--surface2)}
+tr.tot td{background:var(--surface2);font-weight:600;color:var(--text);border-top:1px solid var(--border2)!important}
+tr.sub td{color:var(--text4);font-size:10px}
+.neg{color:var(--red)!important}.pos{color:var(--green)!important}
+.di{font-size:9px;padding:1px 4px;border-radius:3px;margin-left:2px}
+.di.up{background:var(--green-tint);color:var(--green)}.di.dn{background:var(--red-tint);color:var(--red)}
+
+/* ── Actuals in EERR ── */
+.act-h{background:#eff6ff!important;color:var(--blue2)!important}
+.ac{background:#f8fbff!important}.ac-bold{background:#eff6ff!important;font-weight:600;color:var(--text)!important}
+.act-badge{
+  font-size:8px;padding:1px 6px;border-radius:10px;
+  background:var(--blue2);color:#fff;margin-left:5px;
+  font-family:var(--sans);font-weight:700;letter-spacing:.3px;vertical-align:middle;
+}
+
+/* ── EERR special rows ── */
+.eerr-wrap{overflow-x:auto}
+.eerr-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+.eerr-tbl th{
+  padding:8px 12px;text-align:right;font-size:9px;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--text4);border-bottom:2px solid var(--border2);
+  background:var(--surface2);font-weight:400;white-space:nowrap;
+  position:sticky;top:0;z-index:2;
+}
+.eerr-tbl th:first-child{text-align:left;min-width:130px;position:sticky;left:0;z-index:3;background:var(--surface2)}
+.eerr-tbl td:first-child{text-align:left;position:sticky;left:0;z-index:1;background:var(--surface);border-right:1px solid var(--border)}
+.eerr-sec td:first-child{position:sticky;left:0;z-index:1;background:#f8f9fb}
+.eerr-tot td:first-child{position:sticky;left:0;z-index:1;background:var(--surface2)}
+.hi-ebitda td:first-child{position:sticky;left:0;z-index:1;background:rgba(5,150,105,.04)!important}
+.hi-ni td:first-child{position:sticky;left:0;z-index:1;background:rgba(16,185,129,.025)!important}
+.eerr-tbl th.yr-h{background:var(--green-tint);color:var(--green);font-weight:700}
+.eerr-tbl td{padding:5px 12px;text-align:right;border-bottom:1px solid rgba(0,0,0,.04);white-space:nowrap;color:var(--text2)}
+.eerr-tbl td:first-child{text-align:left}
+.eerr-sec td{background:#f8f9fb;color:var(--text4);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:3px 12px;border-top:1px solid var(--border)}
+.eerr-tot td{font-weight:700;color:var(--text);background:rgba(0,0,0,.02);border-top:1px solid var(--border2)!important}
+.hi-ebitda td{background:rgba(5,150,105,.04)!important}
+.hi-ebitda td:first-child{border-left:3px solid var(--green)}
+.hi-ni td{background:rgba(16,185,129,.025)!important}
+.hi-ni td:first-child{border-left:3px solid #34d399}
+.eerr-tbl td.yr{background:var(--green-tint);font-weight:600;color:var(--green)}
+.eerr-tbl td.yr.neg{color:var(--red)!important;background:var(--red-tint)!important}
+.mrg-cell{display:inline-flex;align-items:center;gap:5px;width:100%;justify-content:flex-end}
+.mrg-bar{height:4px;border-radius:2px;min-width:2px}
+.mrg-val{min-width:38px;text-align:right;font-weight:600}
+
+/* ── Bridge pills ── */
+.bridge-prod-sel{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:0}
+
+/* ── LOGIN ── */
+#login-screen{position:fixed;inset:0;z-index:9999;background:#f1f3f7;
+  display:flex;align-items:center;justify-content:center;
+  background-image:radial-gradient(circle,rgba(0,0,0,.07) 1px,transparent 1px);
+  background-size:24px 24px;}
+.login-box{background:#fff;border-radius:16px;border:1px solid rgba(0,0,0,.08);
+  box-shadow:0 8px 40px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
+  padding:40px 44px;width:360px;}
+.login-logo{display:block;height:56px;object-fit:contain;margin:0 auto 24px;}
+.login-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:700;
+  color:#111827;text-align:center;margin-bottom:4px;letter-spacing:-.3px}
+.login-sub{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:2px;
+  text-align:center;margin-bottom:32px}
+.login-field{margin-bottom:16px}
+.login-field label{display:block;font-size:10px;color:#6b7280;text-transform:uppercase;
+  letter-spacing:1.2px;margin-bottom:6px;font-family:'DM Mono',monospace}
+.login-field input{width:100%;padding:10px 14px;background:#f9fafb;border:1px solid #e5e7eb;
+  color:#111827;font-family:'DM Mono',monospace;font-size:13px;
+  border-radius:8px;outline:none;transition:.15s;}
+.login-field input:focus{border-color:#2563eb;background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.login-btn{width:100%;padding:11px;margin-top:8px;background:#1d4ed8;color:#fff;
+  border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;
+  font-weight:700;cursor:pointer;transition:background .15s;}
+.login-btn:hover{background:#1e40af}
+.login-btn:disabled{background:#93c5fd;cursor:not-allowed}
+.login-err{margin-top:12px;padding:8px 12px;border-radius:6px;background:#fef2f2;
+  border:1px solid rgba(220,38,38,.2);color:#dc2626;font-size:11px;text-align:center;
+  display:none;font-family:'DM Mono',monospace;}
+.save-btn{position:fixed;bottom:20px;right:24px;z-index:500;
+  background:#1d4ed8;color:#fff;border:none;border-radius:10px;
+  padding:9px 18px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;
+  cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,.3);transition:all .15s;opacity:0.9;}
+.save-btn:hover{opacity:1;transform:translateY(-1px)}
+.save-btn.saving{background:#d97706}
+.save-btn.saved{background:#059669}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <img class="topbar-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAABLKADAAQAAAABAAAAyAAAAADOaDBdAAARx0lEQVR4Ae2cCdQd4xnHkyCJrRr7GqEqkSJRSlBatEVE7UttVWrpiSV25YRUgloOzmljLU5DrVHrqZ3QquUgggi1JCKSSNS+RCJJ/3+93/Hl5t73nbl37r1z7/d7zvnnfvM+z7zLb2aeeeedoVMnDAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCBQZwKdQ+316zk85E7i66qgNaWVpFWl70g9pCWl9tZFG19IH0gfS5OlGdJb0nwJgwAEWoTAuMlDKx7JohXvufCOK6iot9RT2kTqL/WS1pIqsbna6U3pNekF6XlpojROahY7UB3dT5pTpsOLqXy8dGIZf72KD1VDe0rl+lmPfixSaH+mfqdLE6Sp0quFbf1kasuqtqslH4N5RTW77FlpaFF5Hjf7qVPnSB5Dnm/unhz5GJ8tPSFVZNUmrOXU6k7SvtK2UjcpK/Pg1i1o53aVevZ1s3ST5CSWV3PiHpWgczso5ilpdILYWoX8VBW7H3k0J9F7pEukxzPs4FKqa9dAfWvL1wwJy+fZwMA48ua6VR2qOGF1qXA0fbTfbdI70l+lHaUsk5WqK2s+QCdJz0menRwu5dGuS9EpM3Tyb5T58Tuv5tnObtJj0iOSZ0ZZ2NeqxCpnPrebwbyU0kz2aTWdTZuwllFjvrg8Xd9dWlxqpPVV41dIYyX3Jy82RB3ZOkVnllCsH0+wMIFt5H5J8swb64AE0iSsbcXH60cH5ZBTf/XJM74Lc9A3v1y4qIJ+7KJ99qlgv462i/k+IHXvaANnvJ06JU1Yni08LPmNX57tBHXubsmPEY2y+9Rw5wob/4v2q9ejdYVdzMVuPg9H5KIndCItgaQ5p2S9SRbdffF7/SCNfaLgN6Vp0rvS59J/pdnSlwW1dXyetv2Zg++YS0t+7Fxe8km5itRLSmODFHyn1IiFyCPU7gZpOlsU64XgWyTPtvJkk9UZH8OsbwRtb7V87FeU0iTrvRXf6Ler6gKWkkCSnFO2yiQ7X152728ds/TnSMlTdZ/cTlJVLa5p/zbrqT9Wlrxu4ZN0ZylmfglwsnR+LDBDv5NrjNVgxWwh7R9o95fybSX9MxBTb9d2avCNGjfqm5STVl9puOQXOyFbQ87ekj97wcoTGCbX/eXddff8p5oWYwnLJ8UhkQZGy+9FZiepWpgToPWMdL00QPKddQ8pZOfJeZmUVeIMtWWfX9eG7HU5L5VulkIJy3XcLvkCzouF3qZl1cf3VZH1iuRzyrN6L0WEzGuXJKwQoU6dnpT7qXBI83i7RLq6UcQ/Tf69pFolq1LNG/6e0rWlnEVlI4q2a7XpBLplpPLtC34/Gnv2F7Ll5Lw4FFBnXyPeBg/SGD+LjLNHxI+7U6cVWglCLGHFTlQ/AjbKDlHDMyKNHyP/apGYat3rqIILIpX4EWdiuxjHeyYRMs9aNw4FtLjPM+NHI2P0WinWgQjEElbsUWDzBrM6Se1/IL0nTS+Syz6XvCZSS7stUrkT0xklYjxLjFnsMTO2f7P7Y+ffy80+QPqfjkAsYX0cqc4L4X4j54XxRtgoNeoZ1Opl5EerMVKt7HhVvGGk8nIftPrj22GRfdeS/9xITCu7fxwYnG9ILwb8uFqQQCxhvZBgzH6r5U8Y/iYdJ+0h/Ujy5wn1ML+h9J14bpFc9pU0R6qFrahKz4tUPFT+0KLwH+SfGqnjVPn7RWKqdc+LVGC29bbT1WBo/SX2uFjv/ua1vUYcu5qxWDRSs9/anC/FFoldz34F6ecb+0L/et3Gj2pvSV5v8sU5RfKjmhdU/U2WE07b3x/q72ax+9XRED+/vh2RYDADFRO7Mfit2fcT1FUqpLMK55dytCsz/5D52NXDuqmRdSSfS6cFGnSC/X3Aj+tbAh99+2fz/xW64NpGd4r+OExK+0ZmCe3zg4L8HU/IfEF5NjRT8lTfkKdIvlBcNrnw9+v6dVJzMmykHaHG+0c6sHfE3+Yepz8uljw7LWe+iD0bO7NcQKC8j3zXSOZWKnH54vdxCtmdcnqBOzYjD9VRzuf2u0pLS07Ky0sx21UBk2JB+L8h8Ef9O1iqxbFLg7i7gq+Vrk+zU3FskoTlfXxxPiOt5I0amGcBHtAaBYWa8IXnmZ+T2BPSw9LjUr3Ma2aXRxrz3d+JKKl5LWx7qW9ghzPku0KKPUIWVzFRBe7zgGJHiu2tU8TWItSJtu2toR+RX61FIy1aZz+Ny8qD+bhVlbCSZl0nBw/66hyMuof64DuxZ22+iB+TfFHeKHk9rdbmx7OQjZfTd7W0dkCCHR5IEFMcMksFhxQXNtm2Z2GeXV8mkaya7OC1664nGlVZ0oTlRvyo9lvp59I1kteh8mK91JF9JT+6PCINkmphJ6nSAZGKd4j4y7nHyuHvtULmRzf3Ia09pB2c2JvVFlHHN5buk/zhrc+/XSSsgxFIk7Da0PjkP1TqKR0ljZGqzpyqIyvbRhXdLQ3LqsJCPb30e36kzrPknxKJCbnPkNM3hpC5D0nWeYrr8FpkK9iyGsRvpDukUdJiEtZBCFSSsNrQ+IPNkZIThNee1pYGSl6/uUF6Tkq73qJdMrMzVdMlmdX2///fVqi6CXK6zWpt2wQVXJcgpjjkaRWMLy5s8u0D1X+/je3W5OPoKN2v+jgtmhGpWarH60jWve3qdEJcU/IbIGtJafHCrxfZvyutIK0kfUdaVVpO8l20klmEdlvAjtXWXZIfE6uxU7XzDyMV7BHxJ3W/okAn2iGBHfzY6Ys1beLaXfv8WporzZdsc6SdpNCj7iT5Z0v1Mp+XvgkmmT31Upwfd0P9l7vDmo+zj3c1k5Ms4Ll954mqLKuEVa4T8+SYWM4ZKHdScxJzQvue5OTlxGatL20qLSUlsZEKWi9JYJkYJ9Fzy/jaik/RHxPaNjL4PU51+LFnmUBdf5bvfmlGIKbY5dnI6cWF2vZxCl3wnvVVchxLNJW4yMe/r7Sl9DvJx6GcbSaH11YfLBfQgcuP0dhHS41OWF3VB68/VmW1TliVdu5L7TipsPMLJSpxIvNs4VfSz0r42xf10cZPJN+FKzEv5IfsCTm9rpS1edbzr0ClnpHeKG0XiEnq8qw2b/aeOmQ9Kl0uPSX55lXODpKDhLUwnUkqmr5wcXOWxLLushqWk0MpNfIk/0h9ukbyXbXUjEHFC9jmC2wl3zhcoZtEwpN+IBqpZiG3E+GVC5UuWOCZzz4LFtVkq3tNak1eqV/q7BgJ31l+38WxBQmEZukLRjbBVixh+XHjnTKarPIjczDGcwr9C3WlkpmkH0muCFUq3wnS1EhMNe4jtPOUSAU3Rfyt4n5dA5kWGIwvzHUDflwtQCCWsBbRGL1WVEpLqHxIThg4sWZtftwK2ctyXhQKyMjnxfWYxfoa279Z/F9FOuonAayFCcQSVuxC6C02u+SAT89IH/yWJI0drWB/rhGyHULODH1jVFfs0XBfxWyfYZt5rMo3z5UjHfP/oQNrYQKxhHV9grH/XTH1unhLdcdvy/z2MGQvhZxFvl7avqSorHjzNBW8W1xYw22/Jfs4Uv8N8vuzkVa1szSw7pHBeZE+K5ufVUUNrsdvgFvGYgnrAY10ZmS0ruNe6R/S1pHYLN1Okk9LgyOVesHW/UtqoxUY4vK8/OcmrSyjOJ9020Xq8gsSJ+9aWD2Tc3H/PbNysvJNImTT5JwUCkjpm5UyPq/hses3r/0u2a/YYrSn2IMkJ4aY7agA621psjRW8keQr0leY/IJ9bk0W0pqXifzhehHvrWl/pLf2vlvf1iYxIYrKOkj4cmK3ThQqXnsGvDX0vWcKr9KOizQyMHyXSs9HoipxPUL7fSm1KWSnVPs48TcVeoh9ZUGSFtIq0kxu08BWc6KNlV9N0mdC9JPXaytvRPV2qQMWhyhOg6VnPgbbZ4h+zhdWmlHYgnL9T4jnSed4o0EtqZirK2KYn3HcsLyo81n0pdS2wXg7W7SYpIPmB9tLC+i+nujSs0X2WUJd15VcR5nyI6U851QQI19h6t+3xRWD7QzSr5eAX8lrlsr2anO+3hmnKWtqMr2ybLClHVdqPhJKfcpFb6ZCq28mK/zmiYsD/RUyRfJ/t6o0JxdrXp9vzVHbW0j+TeJ3RUJekj+qyMx9XAfqEYeDTTkm4XX4IYEYlrNNUUDerDFBuUbfCva1GoG1TbDSVLHAQry9LIZ7G110o8USWdDRyk29CjoMe/lf3JgY9SH6yL9OFb+9SIxreROc2NqpXF3uLGkSViGM1Ty9PJJb+TULlC/+khvJOzfyor7UyTWX1F/FImpp/tgNTYp0mCrzThKDfcDFQ6Qkh7rUnVQ1kQE0iYsD81rWl4I3U26UZovNdpmqAPDpfWlk6U00+lbFB+y2+W8JxTQAJ8Xp/ePtLua/MMiMc3q9jro2ZJnkU836yDod3oCSRbdy9V6hxyWE8RAaUOpt7SRVOt1Ki/SPyuNK/yO1m+aJKXwb+wq/btV4e9SP04Me5dy5KDs3+rDRdLxgb6cKZ8ZOemGbJWQMwe+D9WH8QWN1a9vMi6rxvyCp5rzv5q2k+zr9d4ktlSSoBzFrF5NX7I4YFPUgSvbdcKgnbg2kNaQ1pX8pq/tzZ/bdIx/O0tdpTbz9lxpdkH+TzH8ZvETabo0QXqxIN9lqzWf/MdI5WaJTgpfV9tIDfc/QXVPDNRvtmYZs5EK8FjzYj4HPpVmStMkP/J9IWVp76uywVIlTxlZ9qNcXUkfc/25y9HlKslhua9hDAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIACBKgn8D8l3NGHdT3eFAAAAAElFTkSuQmCC" alt="Sable">
+  <div class="topbar-sep"></div>
+  <div>
+    <div class="topbar-title">Proyecciones Financieras</div>
+    <div class="topbar-sub">Grupo Sable · 2026</div>
+  </div>
+  <div class="topbar-right">
+    <div class="badge-live" id="badge">Calibrado</div>
+  </div>
+</header>
+
+<!-- TAB BAR -->
+<nav class="tab-bar">
+  <button class="tab on"  onclick="showTab('dash',this)">Dashboard</button>
+  <button class="tab" onclick="showTab('ing',this)">Ingresos</button>
+  <button class="tab" onclick="showTab('eerr',this)">EERR</button>
+  <button class="tab" onclick="showTab('fc',this)">Flujo de Caja</button>
+  <button class="tab" onclick="showTab('deuda',this)">Deuda</button>
+</nav>
+
+<div class="body">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+
+  <!-- UPLOAD PANEL -->
+  <div class="ctrl-section" id="upload-section">
+    <div class="ctrl-section-title">Modelo Excel</div>
+    <div id="upload-status" style="font-size:10px;color:var(--text4);margin-bottom:8px;font-family:var(--mono)">Sin modelo cargado</div>
+    <div class="ctrl-row" id="cutoff-row" style="display:none">
+      <div class="ctrl-label">Actuals desde</div>
+      <select id="desde-month" onchange="onCutoffChange()" style="width:100%"></select>
+    </div>
+    <div class="ctrl-row" id="hasta-row" style="display:none">
+      <div class="ctrl-label">Actuals hasta</div>
+      <select id="cutoff-month" onchange="onCutoffChange()" style="width:100%"></select>
+    </div>
+    <div class="ctrl-row" id="horizon-row" style="display:none">
+      <div class="ctrl-label">Proyectar hasta</div>
+      <select id="horizon-month" onchange="onHorizonChange()" style="width:100%">
+        <option value="2026-12">Dic-26</option>
+        <option value="2027-03">Mar-27</option>
+        <option value="2027-06">Jun-27</option>
+        <option value="2027-09">Sep-27</option>
+        <option value="2027-12" selected>Dic-27</option>
+        <option value="2028-06">Jun-28</option>
+        <option value="2028-12">Dic-28</option>
+      </select>
+    </div>
+    <button class="btn btn-outline" onclick="document.getElementById('xlsx-input').click()" style="margin-top:6px">
+      ↑ Cargar modelo .xlsx
+    </button>
+    <input type="file" id="xlsx-input" accept=".xlsx" style="display:none" onchange="handleXlsx(this)">
+  </div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-section-title">Política de dividendos</div>
+    <div class="ctrl-row">
+      <div class="ctrl-label">Ratio pago <strong id="div-lbl">50%</strong></div>
+      <div class="input-group">
+        <input type="number" id="div" value="50" min="0" max="100" step="5" oninput="document.getElementById('div-lbl').textContent=this.value+'%';compute();renderAll()">
+        <span class="unit">%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-section-title">Crecimiento MRR anual</div>
+    <div id="mrr-ctrls"></div>
+  </div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-section-title">Nueva deuda</div>
+    <div id="dc"></div>
+    <button class="btn btn-outline" onclick="addD()">＋ Agregar tramo</button>
+  </div>
+
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+<!-- ════ DASHBOARD ════ -->
+<div id="pg-dash" class="pg on">
+  <div class="g4" id="kpis"></div>
+  <div class="g2">
+    <div class="card"><div class="card-title">Revenue mensual por producto</div><div id="ch-rev" style="height:195px"></div></div>
+    <div class="card"><div class="card-title">Cascada P&L anual 2026</div><div id="ch-wf" style="height:195px"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-title">EBITDA mensual · margen %</div><div id="ch-ebit" style="height:185px"></div></div>
+    <div class="card"><div class="card-title">MRR recurrente por ERP (M CLP)</div><div id="ch-arr" style="height:185px"></div></div>
+  </div>
+  <div class="card gmb"><div class="card-title">Saldo caja EOP (M CLP)</div><div id="ch-cash" style="height:155px"></div></div>
+</div>
+
+<!-- ════ INGRESOS ════ -->
+<div id="pg-ing" class="pg">
+  <div class="card gmb"><div class="card-title">Revenue mensual por producto (M CLP)</div><div id="ch-rprod" style="height:200px"></div></div>
+  <div class="card gmb">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div class="card-title" style="margin-bottom:0">MRR Bridge — Stock ARR (UF)</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div><div class="il">Producto</div>
+          <select id="bp-prod" onchange="chartBridge()" style="width:110px">
+            <option value="time">Time</option><option value="flex">Flexline</option>
+            <option value="mgrplus">Manager+</option><option value="einv">E-Invoicing</option>
+            <option value="rcl">Random CL</option>
+          </select></div>
+        <div><div class="il">Desde</div><select id="bp-desde" onchange="chartBridge()"><option value="2026-01">Ene-26</option><option value="2026-02">Feb-26</option><option value="2026-03"selected>Mar-26</option><option value="2026-04">Abr-26</option><option value="2026-05">May-26</option><option value="2026-06">Jun-26</option><option value="2026-07">Jul-26</option><option value="2026-08">Ago-26</option><option value="2026-09">Sep-26</option><option value="2026-10">Oct-26</option><option value="2026-11">Nov-26</option></select></div>
+        <div><div class="il">Hasta</div><select id="bp-hasta" onchange="chartBridge()"><option value="2026-02">Feb-26</option><option value="2026-03">Mar-26</option><option value="2026-04">Abr-26</option><option value="2026-05">May-26</option><option value="2026-06">Jun-26</option><option value="2026-07">Jul-26</option><option value="2026-08">Ago-26</option><option value="2026-09">Sep-26</option><option value="2026-10">Oct-26</option><option value="2026-11">Nov-26</option><option value="2026-12"selected>Dic-26</option></select></div>
+      </div>
+    </div>
+    <div id="ch-bridge" style="height:260px"></div>
+  </div>
+  <div class="card gmb"><div class="card-title">Tabla de retención mensual</div><div class="tw"><table id="t-ret"></table></div></div>
+  <div class="card"><div class="card-title">MRR por producto (UF y M CLP)</div><div class="tw"><table id="t-mrr"></table></div></div>
+</div>
+
+<!-- ════ EERR ════ -->
+<div id="pg-eerr" class="pg">
+  <div class="g5" id="eerr-kpis"></div>
+  <div class="g2">
+    <div class="card"><div class="card-title">Revenue y EBITDA — Reales + Proyección</div><div id="ch-margins" style="height:220px"></div></div>
+    <div class="card"><div class="card-title">Estructura de costos mensual (%)</div><div id="ch-costos" style="height:220px"></div></div>
+  </div>
+  <div class="card"><div class="card-title">Estado de Resultados (M CLP)</div><div class="eerr-wrap" id="t-eerr"></div></div>
+</div>
+
+<!-- ════ FLUJO DE CAJA ════ -->
+<div id="pg-fc" class="pg">
+  <div class="g4" id="cf-kpis"></div>
+  <div class="card gmb"><div class="card-title">Flujo de caja mensual · CFop + CFin + Saldo</div><div id="ch-cf" style="height:230px"></div></div>
+  <div class="g2">
+    <div class="card"><div class="card-title">Saldo caja EOP · Base vs Escenario</div><div id="ch-cf2" style="height:190px"></div></div>
+    <div class="card"><div class="card-title">Composición CF Financiero</div><div id="ch-cfin" style="height:190px"></div></div>
+  </div>
+  <div class="card"><div class="card-title">Flujo de caja detallado (M CLP)</div><div class="tw"><table id="t-fc"></table></div></div>
+</div>
+
+<!-- ════ DEUDA ════ -->
+<div id="pg-deuda" class="pg">
+  <div class="g4" id="deuda-kpis"></div>
+  <div class="g2">
+    <div class="card"><div class="card-title">Saldo insoluto por tramo (M CLP)</div><div id="ch-saldo" style="height:200px"></div></div>
+    <div class="card"><div class="card-title">Composición cuota — capital vs interés</div><div id="ch-cuota" style="height:200px"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-title">DSCR · Cobertura de deuda (x)</div><div id="ch-dscr" style="height:185px"></div></div>
+    <div class="card"><div class="card-title">Deuda financiera / EBITDA (x)</div><div id="ch-leverage" style="height:185px"></div></div>
+  </div>
+  <div class="card"><div class="card-title">Tabla de amortización (M CLP)</div><div class="tw"><table id="t-amort"></table></div></div>
+</div>
+
+</main>
+</div><!-- /body -->
+</div><!-- /app -->
+
+<script>
+let P={};
+const VAL={};
+let MO=P.proj_months||[],AMO=P.bridge_months||[];
+const PRODS={time:'Time',flex:'Flexline',mgrplus:'Manager+',einv:'E-Invoicing',rcl:'RCL'};
+const PCOL={time:'#2563eb',flex:'#059669',mgrplus:'#7c3aed',einv:'#f59e0b',rcl:'#0891b2',rpe:'#06b6d4',rex:'#6366f1'};
+
+// MRR inputs
+const MRR_D={time:25,flex:10,mgrplus:20,rcl:10};
+function buildMrrCtrls(){
+  const el=document.getElementById('mrr-ctrls');
+  if(!el) return;
+  el.innerHTML=Object.entries(PRODS).filter(([k])=>k in MRR_D).map(([k,lbl])=>
+    `<div class="ctrl-row"><div class="ctrl-label">${lbl} <strong id="ml-${k}">${MRR_D[k]}%</strong></div>
+    <div class="input-group"><input type="number" id="mr-${k}" value="${MRR_D[k]}" min="-20" max="60" step="1"
+    oninput="document.getElementById('ml-${k}').textContent=this.value+'%';compute();renderAll()">
+    <span class="unit">%</span></div></div>`
+  ).join('');
+}
+
+// ── Engine ──
+function addM(ym,n=1){let y=+ym.slice(0,4),m=+ym.slice(5);m+=n;while(m>12){m-=12;y++;}while(m<1){m+=12;y--;}return y+'-'+(m<10?'0':'')+m;}
+
+// ── Debt schedule (global — usado en project() y getDeudaScheds()) ──
+function dSch(am,ar,st,tn,tipo='frances'){
+  const s={},mr=ar/12;if(!am||!tn)return s;
+  const pmt=tipo==='bullet'?am*mr:mr>0?am*mr/(1-Math.pow(1+mr,-tn)):am/tn;
+  let bal=am;
+  for(let i=0;i<tn;i++){
+    const m=addM(st,i);
+    if(!MO.includes(m)){if(m>MO[MO.length-1])break;continue;}
+    const it=bal*mr;
+    const pr=tipo==='bullet'?(i===tn-1?bal:0):pmt-it;
+    bal=Math.max(0,bal-pr);
+    s[m]={int:-it,am:-pr,inf:i===0?am:0,bal:bal};
+  }
+  return s;
+}
+
+function project(ov={}){
+  const uf=m=>P.uf[m]||P.uf[MO[0]],ipc=m=>P.ipc[m]||0.0025;
+  const dp=ov.div_pct??P.div_pct,nd=ov.debt_new??[],mrrR={...P.mrr_rates,...(ov.mrr_rates||{})};
+  const mrr={};
+  for(const p of['time','flex','mgrplus','einv','rcl']){mrr[p]={};let c=P.mrr_eop0[p];const r=mrrR[p]/12;for(const m of MO){c*=(1+r);mrr[p][m]=c;}}
+  const rev={};
+  for(const[p,fac,cp,lk]of[['time',P.rev_factor.time,P.cons_pct.time,'time'],['flex',P.rev_factor.flex,P.cons_pct.flex,'flex'],['mgrplus',P.rev_factor.mgrplus,P.cons_pct.mgrplus,null],['rcl',P.rev_factor.rcl,P.cons_pct.rcl,null]]){
+    rev[p]={};const lu=lk?(P.lic_uf[lk]||0):0;
+    for(const m of MO){const e=mrr[p][m]*uf(m)/1e6;rev[p][m]=e*(fac+cp)+lu*uf(m)/1e6;}}
+  rev.einv={};{let c=P.mrr_eop0.einv;const r=mrrR.einv/12,cp=P.cons_pct.einv,fac=P.rev_factor.einv;
+    for(const m of MO){c*=(1+r);rev.einv[m]=c*uf(m)/1e6*(fac+cp);}}
+  for(const[p,mr,b0]of[['rex',P.rate_monthly.rex,P.rate_bases.rex],['bnovus',P.rate_monthly.bnovus,P.rate_bases.bnovus],['geo',P.rate_monthly.geo,P.rate_bases.geo],['gaxu',P.rate_monthly.gaxu,P.rate_bases.gaxu],['otros',P.rate_monthly.otros,P.rate_bases.otros]]){
+    rev[p]={};for(let i=0;i<MO.length;i++)rev[p][MO[i]]=b0*Math.pow(1+mr,i+1);}
+  rev.rpe={};{let c=P.rate_bases.rpe,mr=P.rate_monthly.rpe;for(const m of MO){c=c*(1+mr)*(1+ipc(m));rev.rpe[m]=c;}}
+  const mP=['time','flex','mgrplus','einv','rex','bnovus','geo','gaxu','otros'],sP=['rcl','rpe'];
+  const revM={},revS={},revT={};
+  for(const m of MO){revM[m]=mP.reduce((s,p)=>s+(rev[p]?.[m]||0),0);revS[m]=sP.reduce((s,p)=>s+(rev[p]?.[m]||0),0);revT[m]=revM[m]+revS[m];}
+  const lp={};for(const p of Object.keys(P.cogs_var)){const v=Object.values(P.cogs_ppto[p]||{});lp[p]=v.length?v[v.length-1]:0;}
+  const cogsT={};
+  for(const m of MO){let t=0;for(const[p,vp]of Object.entries(P.cogs_var)){t+=(P.cogs_ppto[p]?.[m]??lp[p]??0)+vp*(rev[p]?.[m]||0);}t+=P.cogs_ovhd*revM[m];cogsT[m]=t;}
+  const lsp=Object.values(P.sga_ppto).slice(-1)[0]||0,eff=P.sga_eff;
+  let svT=P.sga_var0.time,svF=P.sga_var0.flex,svE=P.sga_var0.einv,sv61=P.sga_var0.r761,sv66=P.sga_var0.r766,svE2=P.sga_var0.einv2,svS=P.sga_var0.sist;
+  let pvT=rev.time[MO[0]],pvF=rev.flex[MO[0]],pvE=rev.einv[MO[0]],pvM=rev.mgrplus[MO[0]];
+  const sgaT={},sgaM={},sgaS={};
+  for(let i=0;i<MO.length;i++){const m=MO[i];
+    const gt=i>0?(rev.time[m]/pvT-1):0,gf=i>0?(rev.flex[m]/pvF-1):0,ge=i>0?(rev.einv[m]/pvE-1):0,gmp=i>0?(rev.mgrplus[m]/pvM-1):0;
+    svT*=(1+gt*(1-eff));svF*=(1+gf*(1-eff));svE*=(1+ge*(1-eff));sv61*=(1+gmp*(1-eff));sv66*=(1+gmp);svE2*=(1+ipc(m));svS*=(1+ipc(m));
+    const fx=P.sga_ppto[m]??lsp,ds=m.endsWith('-12')?P.sga_dec_sist:0;
+    sgaM[m]=fx+svT+svF+svE+sv61+sv66+P.sga_rates.rex*rev.rex[m]+P.sga_rates.bnovus*rev.bnovus[m]+P.sga_rates.geo*rev.geo[m]+P.sga_rates.ovhd*revM[m]+svE2;
+    sgaS[m]=svS+ds;sgaT[m]=sgaM[m]+sgaS[m];
+    pvT=rev.time[m];pvF=rev.flex[m];pvE=rev.einv[m];pvM=rev.mgrplus[m];}
+  const ebitda={};for(const m of MO)ebitda[m]=revT[m]+cogsT[m]+sgaT[m];
+  const ns=nd.map(d=>dSch((d.amount||0)/1e6,d.rate||0,d.start||'2099-01',d.tenor||12,d.tipo||'frances'));
+  const ndI=m=>ns.reduce((s,sc)=>s+(sc[m]?.int||0),0);
+  const ndA=m=>ns.reduce((s,sc)=>s+(sc[m]?.am||0),0);
+  const ndIn=m=>ns.reduce((s,sc)=>s+(sc[m]?.inf||0),0);
+  const aEBT={'2026':P.annEBT_seed};
+  for(const m of MO){const yr=m.slice(0,4);aEBT[yr]=(aEBT[yr]||0)+ebitda[m]+ndI(m);}
+  const ni={};for(const m of MO){const yr=m.slice(0,4);const tx=m.endsWith('-12')?-(P.tax_rate*aEBT[yr]):0;ni[m]=ebitda[m]+ndI(m)+tx;}
+  let pAR=P.ar_start,pAP=P.ap_start,cash=P.cash_start;
+  const cfop={},cfin={},cashEOP={},dWC={};
+  for(const m of MO){
+    const ar=P.ar_days*revT[m]/30,ap=P.ap_days*Math.abs(cogsT[m])/30;
+    dWC[m]=-(ar-pAR)+(ap-pAP);cfop[m]=ni[m]+dWC[m];pAR=ar;pAP=ap;
+    cfin[m]=(P.debt_amort[m]||0)+ndA(m)+ndIn(m)+(m.endsWith('-12')?0:-(dp*Math.max(0,ni[m])));
+    cash+=cfop[m]+cfin[m];cashEOP[m]=cash;}
+  return{revT,revM,revS,cogsT,sgaT,sgaM,sgaS,ebitda,ni,cfop,cfin,cashEOP,rev,mrr,ndI,ndA,ndIn,dWC};}
+
+// ── State ──
+let B=null,S=null,dCnt=0;
+function compute(){
+  if(!P.proj_months) return;
+  const dp=+document.getElementById('div').value/100;
+  const mrrR={};Object.keys(MRR_D).forEach(p=>mrrR[p]=+document.getElementById('mr-'+p).value/100);
+  const nd=[];document.querySelectorAll('.dc').forEach(c=>{
+    const moneda=c.querySelector('.dmon')?.value||'clp';
+    const tc=+c.querySelector('.dtc')?.value||950;
+    const rawAm=+c.querySelector('.da')?.value||0;
+    const am=(moneda==='usd'?rawAm*tc:rawAm)*1e6;  // → CLP
+    const r=+c.querySelector('.dr2')?.value/100||0;
+    const st=c.querySelector('.ds').value,tn=+c.querySelector('.dt').value;
+    const tipo=c.querySelector('.dtp')?.value||'frances';if(am>0)nd.push({amount:am,rate:r,start:st,tenor:tn,tipo});});
+  B=project();S=project({div_pct:dp,mrr_rates:mrrR,debt_new:nd});
+  // Calibration badge only when VAL has data
+  if(VAL&&Object.keys(VAL).length>0){
+    let e=0;MO.forEach(m=>{if(VAL[m])e=Math.max(e,Math.abs(B.cashEOP[m]-(VAL[m].cash||0)));});
+    const ref=Math.abs((VAL[MO[MO.length-1]]||{}).cash||1);
+    document.getElementById('badge').textContent='Base '+(e/ref*100).toFixed(3)+'%';
+  } else {
+    document.getElementById('badge').textContent='Modelo cargado';
+  }}
+
+// ── Formatters ──
+const f1=(v,d=1)=>v.toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+const f0=v=>v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+const MNAMES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const fmtM=m=>{const[y,mo]=m.split('-');return MNAMES[+mo-1]+'-'+y.slice(2);};
+let lb=MO.map(fmtM);
+let alb=AMO.map(fmtM);
+
+const LO={paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+  margin:{t:8,b:30,l:48,r:8},font:{color:'#8a94a6',family:"'DM Mono',monospace",size:10},
+  legend:{font:{size:9},bgcolor:'transparent',orientation:'h',y:-0.3,x:0},
+  xaxis:{gridcolor:'#e2e6ec',color:'#8a94a6',tickfont:{size:9},linecolor:'#e2e6ec'},
+  yaxis:{gridcolor:'#e2e6ec',color:'#8a94a6',tickfont:{size:9},linecolor:'#e2e6ec'}};
+const cfg={displayModeBar:false,responsive:true};
+
+// ── Tab ──
+function showTab(id,btn){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
+  btn.classList.add('on');
+  setTimeout(()=>renderTab(id),30);}
+
+function renderAll(){
+  if(!P.proj_months||!B||!S){ showEmptyState(); return; }
+  if(!MO.length){
+    hideEmptyState();
+    document.querySelector('.main').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">Sin meses proyectados — selecciona un horizonte mayor al cutoff</div>';
+    return;
+  }
+  hideEmptyState();
+  renderKPIs();
+  const act=id=>document.getElementById('pg-'+id).classList.contains('on');
+  renderTab('dash');
+  if(act('ing')) renderTab('ing');
+  if(act('eerr')) renderTab('eerr');
+  if(act('fc')) renderTab('fc');
+  if(act('deuda')) renderTab('deuda');}
+
+function renderTab(id){
+  if(id==='dash')      {renderKPIs();chartRevProd();chartWaterfall();chartEBIT();chartARR();chartCash();}
+  else if(id==='ing')  {chartRevByProd();chartBridge();tableMRR();}
+  else if(id==='eerr') {renderEERRKPIs();chartMargins();chartCostos();tableEERR();}
+  else if(id==='fc')   {renderCFKPIs();chartCF();chartCF2();chartCFin();tableFC();}
+  else if(id==='deuda'){renderDeudaKPIs();chartSaldo();chartCuota();chartDSCR();chartLeverage();tableAmort();}}
+
+// ── KPIs ──
+function renderKPIs(){
+  const act=P.actuals_jan_feb||{rev:0,ebitda:0,ni:0};
+  const items=[
+    {l:'Revenue anual',  bv:act.rev   +MO.reduce((t,m)=>t+B.revT[m],0),   sv:act.rev   +MO.reduce((t,m)=>t+S.revT[m],0),   c:'blu'},
+    {l:'EBITDA anual',   bv:act.ebitda+MO.reduce((t,m)=>t+B.ebitda[m],0), sv:act.ebitda+MO.reduce((t,m)=>t+S.ebitda[m],0), c:'grn'},
+    {l:'NI anual',       bv:act.ni    +MO.reduce((t,m)=>t+B.ni[m],0),     sv:act.ni    +MO.reduce((t,m)=>t+S.ni[m],0),     c:'grn'},
+    {l:'Caja '+fmtM(MO[MO.length-1]||'2026-12'), bv:B.cashEOP[MO[MO.length-1]]||0, sv:S.cashEOP[MO[MO.length-1]]||0},
+  ];
+  document.getElementById('kpis').innerHTML=items.map(k=>{
+    const d=k.sv-k.bv,p=k.bv?d/Math.abs(k.bv)*100:0;
+    const cls=d>0.1?'up':d<-0.1?'dn':'fl',sg=d>0.1?'+':'';
+    return`<div class="kpi ${k.c}"><div class="kl">${k.l}</div><div class="kv">${f0(k.sv)}</div>
+      <div class="kd ${cls}">${sg}${f1(d,0)} M &nbsp;${sg}${p.toFixed(1)}%</div></div>`;}).join('');}
+
+// ── Dashboard charts ──
+function chartRevProd(){
+  const traces=['time','flex','mgrplus','einv','rcl','rpe','rex'].map(p=>({
+    x:lb,y:MO.map(m=>S.rev[p]?.[m]||0),name:PRODS[p]||p,type:'bar',marker:{color:PCOL[p]||'#aaa'}}));
+  Plotly.react('ch-rev',traces,{...LO,barmode:'stack'},cfg);}
+
+function chartEBIT(){
+  const ACT=P.actuals_monthly||{};
+  const ACT_MO=Object.keys(ACT).filter(m=>!MO.includes(m)).sort();
+  const ALL_MO=[...ACT_MO,...MO];
+  const allLb=ALL_MO.map(fmtM);
+  const eArr=ALL_MO.map(m=>ACT_MO.includes(m)?(ACT[m]?.ebitda||0):S.ebitda[m]);
+  const rArr=ALL_MO.map(m=>ACT_MO.includes(m)?(ACT[m]?.rev||0):S.revT[m]);
+  const mrgArr=ALL_MO.map((m,i)=>rArr[i]?eArr[i]/rArr[i]*100:0);
+  const shapes=ACT_MO.length?[{type:'rect',x0:-.5,x1:ACT_MO.length-.5,
+    y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',
+    line:{color:'transparent'}}]:[];
+  const barColors=ALL_MO.map(m=>ACT_MO.includes(m)?'#2563eb':'rgba(37,99,235,.22)');
+  setTimeout(()=>Plotly.react('ch-ebit',[
+    {x:allLb,y:eArr,type:'bar',name:'EBITDA',marker:{color:barColors}},
+    {x:allLb,y:mrgArr,name:'Margen %',type:'scatter',mode:'lines+markers',
+     yaxis:'y2',line:{color:'#059669',width:2.5},
+     marker:{size:5,color:mrgArr.map(v=>v>=30?'#059669':v>=20?'#d97706':'#ef4444'),
+     line:{width:1,color:'#fff'}}}],
+    {...LO,shapes,
+     yaxis2:{overlaying:'y',side:'right',gridcolor:'transparent',
+       tickfont:{size:9},ticksuffix:'%',color:'#059669',range:[0,45]},
+     margin:{...LO.margin,r:48},legend:{...LO.legend,y:-0.28}},cfg),30);}
+
+function chartCash(){
+  Plotly.react('ch-cash',[
+    {x:lb,y:MO.map(m=>B.cashEOP[m]),name:'Base',line:{color:'#d0d5dd',width:2},mode:'lines+markers',marker:{size:3}},
+    {x:lb,y:MO.map(m=>S.cashEOP[m]),name:'Escenario',line:{color:'#2563eb',width:2},mode:'lines+markers',fill:'tonexty',fillcolor:'rgba(37,99,235,.06)',marker:{size:3,color:'#2563eb'}}],
+    {...LO},cfg);}
+
+function chartARR(){
+  // MRR recurrente por ERP en M CLP — incluye actuals Ene-Feb + proyectado
+  const ACT=P.actuals_monthly||{};
+  const ACT_MO=Object.keys(ACT).filter(m=>!MO.includes(m)).sort();
+  const ALL_MO=[...ACT_MO,...MO];
+  const allLb=ALL_MO.map(fmtM);
+  const uf=m=>P.uf[m]||P.uf[MO[0]];
+  // Get MRR EoP in M CLP per product
+  const getMrr=(prod,m)=>{
+    if(MO.includes(m)) return (S.mrr[prod]?.[m]||0)*uf(m)/1e6;
+    return (P.bridge[prod]?.[m]?.eop||0)*uf(m)/1e6;};
+  const prodsDef=[
+    {k:'time',    lbl:'Time',      col:'#2563eb'},
+    {k:'flex',    lbl:'Flexline',  col:'#059669'},
+    {k:'mgrplus', lbl:'Manager+',  col:'#7c3aed'},
+    {k:'rcl',     lbl:'Random CL', col:'#0891b2'},
+    {k:'einv',    lbl:'E-Invoicing',col:'#f59e0b'},
+  ];
+  // RPE as separate line (no MRR EoP, use revenue)
+  const rpeLine={
+    x:allLb,
+    y:ALL_MO.map(m=>MO.includes(m)?(S.rev.rpe?.[m]||0):(P.bridge.rcl?.[m]?.eop||0)*0),
+    name:'Random PE',type:'scatter',mode:'lines+markers',
+    line:{color:'#06b6d4',width:2,dash:'dot'},marker:{size:3},yaxis:'y'
+  };
+  const traces=prodsDef.map(p=>({
+    x:allLb,
+    y:ALL_MO.map(m=>getMrr(p.k,m)),
+    name:p.lbl,type:'bar',marker:{color:p.col,opacity:0.85}
+  }));
+  // Highlight actuals with shapes
+  const shapes=ACT_MO.length?[{type:'rect',x0:-.5,x1:ACT_MO.length-.5,
+    y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',
+    line:{color:'#2563eb',width:1,dash:'dot'}}]:[];
+  setTimeout(()=>Plotly.react('ch-arr',traces,{
+    ...LO,barmode:'stack',shapes,
+    annotations:ACT_MO.length?[{x:allLb[ACT_MO.length-1],y:1,yref:'paper',
+      text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[],
+    legend:{...LO.legend,y:-0.32},margin:{...LO.margin,b:48}
+  },cfg),30);}
+
+function chartCostos(){
+  // Cost structure % of revenue — shows how each cost layer evolves
+  const ACT=P.actuals_monthly||{};
+  const ACT_MO=Object.keys(ACT).filter(m=>!MO.includes(m)).sort();
+  const ALL_MO=[...ACT_MO,...MO];
+  const allLb=ALL_MO.map(fmtM);
+  const getVal=(m,k)=>{
+    if(ACT_MO.includes(m)){const a=ACT[m];
+      if(k==='cogs')   return Math.abs(a.cogs)/a.rev*100;
+      if(k==='sga')    return Math.abs(a.sga)/a.rev*100;
+      if(k==='ebitda') return a.ebitda/a.rev*100;
+    }
+    if(k==='cogs')   return Math.abs(S.cogsT[m])/S.revT[m]*100;
+    if(k==='sga')    return Math.abs(S.sgaT[m])/S.revT[m]*100;
+    if(k==='ebitda') return S.ebitda[m]/S.revT[m]*100;
+    return 0;};
+  const shapes=ACT_MO.length?[{type:'line',x0:ACT_MO.length-.5,x1:ACT_MO.length-.5,
+    y0:0,y1:1,yref:'paper',line:{color:'#2563eb',width:1.5,dash:'dot'}}]:[];
+  setTimeout(()=>Plotly.react('ch-costos',[
+    {x:allLb,y:ALL_MO.map(m=>getVal(m,'cogs')),name:'COGS %',type:'bar',
+     marker:{color:'rgba(239,68,68,.55)'},text:ALL_MO.map(m=>getVal(m,'cogs').toFixed(1)+'%'),
+     textposition:'inside',textfont:{size:9,color:'#fff'},insidetextanchor:'middle'},
+    {x:allLb,y:ALL_MO.map(m=>getVal(m,'sga')),name:'SG&A %',type:'bar',
+     marker:{color:'rgba(245,158,11,.5)'},text:ALL_MO.map(m=>getVal(m,'sga').toFixed(1)+'%'),
+     textposition:'inside',textfont:{size:9,color:'#fff'},insidetextanchor:'middle'},
+    {x:allLb,y:ALL_MO.map(m=>getVal(m,'ebitda')),name:'EBITDA %',type:'bar',
+     marker:{color:'rgba(5,150,105,.55)'},text:ALL_MO.map(m=>getVal(m,'ebitda').toFixed(1)+'%'),
+     textposition:'inside',textfont:{size:9,color:'#fff'},insidetextanchor:'middle'},
+  ],{...LO,barmode:'stack',shapes,yaxis:{...LO.yaxis,ticksuffix:'%',range:[0,105]},
+     legend:{...LO.legend,y:-0.32},margin:{...LO.margin,b:48}},cfg),30);}
+
+// ── Ingresos ──
+function chartRevByProd(){
+  const traces=Object.keys(PRODS).map(p=>({x:lb,y:MO.map(m=>S.rev[p]?.[m]||0),name:PRODS[p],type:'bar',marker:{color:PCOL[p]}}));
+  Plotly.react('ch-rprod',traces,{...LO,barmode:'stack'},cfg);}
+
+function getBridgeData(prod,desde,hasta){
+  const rates=P.bridge_rates[prod]; if(!rates) return null;
+  const months=P.bridge_months.filter(m=>m>=desde&&m<=hasta); if(!months.length) return null;
+  const getMrr=m=>(S.mrr[prod]?.[m]!==undefined)?S.mrr[prod][m]:(P.bridge[prod]?.[m]?.eop||0);
+  const result={};
+  for(const m of months){
+    if(!MO.includes(m)){result[m]=P.bridge[prod][m];}
+    else{const eop=getMrr(m),bop=getMrr(addM(m,-1));
+      const ch=bop*rates.ch,ds=bop*rates.ds,up=bop*rates.up;
+      result[m]={bop,ch,ds,up,new:eop-(bop+ch+ds+up),eop};}
+  }
+  return{months,data:result};}
+
+function chartBridge(){
+  const prod=document.getElementById('bp-prod')?.value||'time';
+  const desde=document.getElementById('bp-desde')?.value||'2026-03';
+  const hasta=document.getElementById('bp-hasta')?.value||'2026-12';
+  const bd=getBridgeData(prod,desde,hasta); if(!bd) return;
+  const{months,data}=bd;
+  const bopV=data[months[0]].bop;
+  let chuT=0,dsnT=0,upT=0,newT=0;
+  for(const m of months){chuT+=Math.abs(data[m].ch);dsnT+=Math.abs(data[m].ds);upT+=data[m].up;newT+=data[m].new;}
+  const eopV=data[months[months.length-1]].eop,grossV=bopV-chuT-dsnT,netV=grossV+upT;
+  const names=['BoP ARR','(-) Churn','(-) Downsell','(+) Upsell','(+) Nuevos','EoP ARR'];
+  const absVals=[bopV,chuT,dsnT,upT,newT,eopV];
+  const bases=[0,bopV-chuT,grossV,grossV,netV,0];
+  const dispV=[bopV,-chuT,-dsnT,upT,newT,eopV];
+  const colors=['#3b82f6','#ef4444','#fca5a5','#059669','#6ee7b7','#3b82f6'];
+  setTimeout(()=>{
+    Plotly.react('ch-bridge',[{type:'bar',x:names,y:absVals,base:bases,
+      marker:{color:colors,opacity:0.88,line:{width:0}},
+      text:dispV.map(v=>v.toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})),
+      textposition:'inside',insidetextanchor:'middle',
+      textfont:{size:12,color:'#fff',family:"'DM Mono',monospace"},
+      hovertemplate:'<b>%{x}</b><br>%{text} UF<extra></extra>',
+    }],{paper_bgcolor:'transparent',plot_bgcolor:'#fff',
+      margin:{t:8,b:40,l:56,r:10},bargap:0.38,
+      font:{color:'#8a94a6',family:"'DM Mono',monospace",size:10},
+      xaxis:{tickfont:{size:11,color:'#4a5568'},showgrid:false,fixedrange:true,linecolor:'#e2e6ec'},
+      yaxis:{tickfont:{size:10,color:'#8a94a6'},gridcolor:'rgba(0,0,0,.05)',zeroline:false,fixedrange:true},
+      showlegend:false,
+      shapes:[{type:'line',x0:-.5,x1:5.5,y0:0,y1:0,line:{color:'rgba(0,0,0,.08)',width:1}}]
+    },{displayModeBar:false,responsive:true});
+    tableRetention();
+  },30);}
+
+function tableRetention(){
+  const prod=document.getElementById('bp-prod')?.value||'time';
+  const desde=document.getElementById('bp-desde')?.value||'2026-03';
+  const hasta=document.getElementById('bp-hasta')?.value||'2026-12';
+  const bd=getBridgeData(prod,desde,hasta); if(!bd) return;
+  const{months,data}=bd;
+  const gv=(m,k)=>{const b=data[m];
+    if(k==='gr') return b.bop+b.ch+b.ds;
+    if(k==='nr') return b.bop+b.ch+b.ds+b.up;
+    if(k==='grp') return b.bop?(b.bop+b.ch+b.ds)/b.bop*100:0;
+    if(k==='nrp') return b.bop?(b.bop+b.ch+b.ds+b.up)/b.bop*100:0;
+    if(k==='nw') return b.new;
+    return b[k]||0;};
+  const rows=[
+    {l:'BoP MRR',k:'bop',bold:true},{l:'(-) Churn',k:'ch',cls:'neg'},{l:'(-) Downsell',k:'ds',cls:'neg'},
+    {l:'Gross Ret.',k:'gr',bold:true},{l:'(+) Upsell',k:'up',cls:'pos'},{l:'Net Ret.',k:'nr',bold:true},
+    {l:'(+) Nuevos',k:'nw',cls:'pos'},{l:'EoP MRR',k:'eop',bold:true},
+    {l:'Gross Ret. %',k:'grp',pct:true},{l:'Net Ret. %',k:'nrp',pct:true},
+  ];
+  let h='<thead><tr><th>Métrica</th>'+months.map(m=>'<th>'+fmtM(m)+'</th>').join('')+'</tr></thead><tbody>';
+  for(const row of rows){
+    const bs=row.bold?'style="font-weight:600;color:var(--text)"':'';
+    h+=`<tr><td ${bs}>${row.l}</td>`+months.map(m=>{
+      const v=gv(m,row.k);
+      const cls=row.pct?(v>=100?'pos':v<95?'neg':''):(row.cls==='neg'&&v<0?'neg':row.cls==='pos'&&v>0?'pos':'');
+      return`<td class="${cls}" ${bs}>${row.pct?v.toFixed(1)+'%':v.toFixed(0)}</td>`;
+    }).join('')+'</tr>';
+  }
+  document.getElementById('t-ret').innerHTML=h+'</tbody>';}
+
+function tableMRR(){
+  const uf=m=>P.uf[m]||P.uf[MO[0]];
+  const getMrr=(prod,m)=>(S.mrr[prod]?.[m]!==undefined)?S.mrr[prod][m]:(P.bridge[prod]?.[m]?.eop||0);
+  let h='<thead><tr><th>Producto</th>'+AMO.map(m=>'<th>'+fmtM(m)+'</th>').join('')+'</tr></thead><tbody>';
+  for(const[prod,lbl]of Object.entries(PRODS)){
+    h+=`<tr class="sub"><td>${lbl} (UF)</td>`+AMO.map(m=>`<td>${f0(getMrr(prod,m))}</td>`).join('')+'</tr>';
+    h+=`<tr><td>${lbl} (M CLP)</td>`+AMO.map(m=>`<td>${f1(getMrr(prod,m)*uf(m)/1e6)}</td>`).join('')+'</tr>';
+  }
+  document.getElementById('t-mrr').innerHTML=h+'</tbody>';}
+
+// ── EERR ──
+function renderEERRKPIs(){
+  const act=P.actuals_jan_feb||{rev:0,ebitda:0,ni:0};
+  // actuals COGS y SGA sumados desde actuals_monthly
+  const actM=P.actuals_monthly||{};
+  const ACTUAL_MO=Object.keys(actM).filter(m=>!MO.includes(m)).sort();
+  const actCOGS=ACTUAL_MO.reduce((t,m)=>t+(actM[m]?.cogs||0),0);
+  const actSGA =ACTUAL_MO.reduce((t,m)=>t+(actM[m]?.sga||0),0);
+  const bRev=act.rev+MO.reduce((t,m)=>t+B.revT[m],0),   sRev=act.rev+MO.reduce((t,m)=>t+S.revT[m],0);
+  const bEB =act.ebitda+MO.reduce((t,m)=>t+B.ebitda[m],0),sEB=act.ebitda+MO.reduce((t,m)=>t+S.ebitda[m],0);
+  const bNI =act.ni+MO.reduce((t,m)=>t+B.ni[m],0),       sNI=act.ni+MO.reduce((t,m)=>t+S.ni[m],0);
+  const bCOGS=actCOGS+MO.reduce((t,m)=>t+B.cogsT[m],0),sCOGS=actCOGS+MO.reduce((t,m)=>t+S.cogsT[m],0);
+  const bSGA =actSGA +MO.reduce((t,m)=>t+B.sgaT[m],0), sSGA =actSGA +MO.reduce((t,m)=>t+S.sgaT[m],0);
+  const items=[
+    {l:'Revenue',bv:bRev,sv:sRev},{l:'COGS',bv:bCOGS,sv:sCOGS},
+    {l:'SG&A',bv:bSGA,sv:sSGA},
+    {l:'EBITDA  '+( sEB/sRev*100).toFixed(1)+'%',bv:bEB,sv:sEB,c:'blu'},
+    {l:'NI  '+(sNI/sRev*100).toFixed(1)+'%',bv:bNI,sv:sNI,c:'grn'},
+  ];
+  document.getElementById('eerr-kpis').innerHTML=items.map(k=>{
+    const d=k.sv-k.bv,p=k.bv?d/Math.abs(k.bv)*100:0;
+    const cls=d>0.1?'up':d<-0.1?'dn':'fl',sg=d>0.1?'+':'';
+    const st=k.c?`style="border-top:2px solid var(--${k.c==='blu'?'blue':'green'})"`:'' ;
+    return`<div class="kpi" ${st}><div class="kl">${k.l}</div><div class="kv" style="font-size:18px">${f0(k.sv)}</div>
+      <div class="kd ${cls}">${sg}${f1(d,0)} M &nbsp;${sg}${p.toFixed(1)}%</div></div>`;}).join('');}
+
+function chartWaterfall(){
+  const actM=P.actuals_monthly||{};
+  const ACTUAL_MO=Object.keys(actM).filter(m=>!MO.includes(m)).sort();
+  const actRev =ACTUAL_MO.reduce((t,m)=>t+(actM[m]?.rev||0),0);
+  const actCOGS=ACTUAL_MO.reduce((t,m)=>t+(actM[m]?.cogs||0),0);
+  const actSGA =ACTUAL_MO.reduce((t,m)=>t+(actM[m]?.sga||0),0);
+  const actEB  =ACTUAL_MO.reduce((t,m)=>t+(actM[m]?.ebitda||0),0);
+  const actNI  =ACTUAL_MO.reduce((t,m)=>t+(actM[m]?.ni||0),0);
+
+  const tRev =actRev +MO.reduce((t,m)=>t+S.revT[m],0);
+  const tCOGS=actCOGS+MO.reduce((t,m)=>t+S.cogsT[m],0);
+  const tSGA =actSGA +MO.reduce((t,m)=>t+S.sgaT[m],0);
+  const tEB  =actEB  +MO.reduce((t,m)=>t+S.ebitda[m],0);
+  const tNI  =actNI  +MO.reduce((t,m)=>t+S.ni[m],0);
+
+  const grossV=tRev+tCOGS;
+  const names=['Ingresos','− COGS','= Mg. Bruto','− SG&A','= EBITDA','Nonop+Tax','= NI'];
+  const absVals=[tRev,Math.abs(tCOGS),grossV,Math.abs(tSGA),tEB,Math.abs(tNI-tEB),tNI];
+  const bases=[0,grossV,0,tEB,0,Math.min(tEB,tNI),0];
+  const colors=['#3b82f6','#fca5a5','#93c5fd','#fca5a5','#86efac','#fca5a5','#86efac'];
+  const dispV=[tRev,tCOGS,grossV,tSGA,tEB,tNI-tEB,tNI];
+  setTimeout(()=>Plotly.react('ch-wf',[{type:'bar',x:names,y:absVals,base:bases,
+    marker:{color:colors,opacity:.9,line:{width:0}},
+    text:dispV.map(v=>f0(v)),textposition:'inside',insidetextanchor:'middle',
+    textfont:{size:11,color:'#1a202c',family:"'DM Mono',monospace"},
+    hovertemplate:'<b>%{x}</b><br>%{text} M<extra></extra>',
+  }],{paper_bgcolor:'transparent',plot_bgcolor:'#fff',
+    margin:{t:8,b:40,l:60,r:10},bargap:0.35,showlegend:false,
+    font:{color:'#8a94a6',family:"'DM Mono',monospace",size:10},
+    xaxis:{tickfont:{size:10,color:'#4a5568'},showgrid:false,fixedrange:true},
+    yaxis:{gridcolor:'rgba(0,0,0,.05)',zeroline:false,fixedrange:true,tickfont:{size:10}},
+    annotations:[{text:'Incluye Ene-Feb reales + Mar-Dic proyectado',
+      showarrow:false,x:0.5,y:1.06,xref:'paper',yref:'paper',
+      font:{size:9,color:'#8a94a6'}}],
+  },{displayModeBar:false,responsive:true}),30);}
+
+function chartMargins(){
+  const ACT=P.actuals_monthly||{};
+  const ACT_MO=Object.keys(ACT).filter(m=>!MO.includes(m)).sort();
+  const ALL_MO=[...ACT_MO,...MO];
+  const allLb=ALL_MO.map(fmtM);
+
+  // Revenue: actuals (solid blue) + projected (light blue)
+  const revAct=ALL_MO.map(m=>ACT_MO.includes(m)?(ACT[m]?.rev||0):null);
+  const revProy=ALL_MO.map(m=>ACT_MO.includes(m)?null:S.revT[m]);
+
+  // EBITDA: actuals (solid green) + projected (light green)
+  const ebitAct=ALL_MO.map(m=>ACT_MO.includes(m)?(ACT[m]?.ebitda||0):null);
+  const ebitProy=ALL_MO.map(m=>ACT_MO.includes(m)?null:S.ebitda[m]);
+
+  // EBITDA margin % line over all months
+  const mrgAll=ALL_MO.map(m=>{
+    const r=ACT_MO.includes(m)?(ACT[m]?.rev||0):S.revT[m];
+    const e=ACT_MO.includes(m)?(ACT[m]?.ebitda||0):S.ebitda[m];
+    return r?e/r*100:null;});
+
+  // Vertical shape to separate actuals / projected
+  const sepIdx=ACT_MO.length-0.5;
+
+  setTimeout(()=>Plotly.react('ch-margins',[
+    // Revenue bars
+    {x:allLb,y:revAct, name:'Revenue real', type:'bar', marker:{color:'#2563eb'},opacity:0.85,
+     hovertemplate:'%{x}<br>Revenue: %{y:.1f} M<extra></extra>'},
+    {x:allLb,y:revProy,name:'Revenue proy.', type:'bar', marker:{color:'rgba(37,99,235,.22)'},
+     hovertemplate:'%{x}<br>Revenue: %{y:.1f} M<extra></extra>'},
+    // EBITDA bars
+    {x:allLb,y:ebitAct, name:'EBITDA real', type:'bar', marker:{color:'#059669'},opacity:0.85,
+     hovertemplate:'%{x}<br>EBITDA: %{y:.1f} M<extra></extra>'},
+    {x:allLb,y:ebitProy,name:'EBITDA proy.', type:'bar', marker:{color:'rgba(5,150,105,.2)'},
+     hovertemplate:'%{x}<br>EBITDA: %{y:.1f} M<extra></extra>'},
+    // Margin % line (right axis)
+    {x:allLb,y:mrgAll, name:'% EBITDA', type:'scatter', mode:'lines+markers',
+     yaxis:'y2', line:{color:'#7c3aed',width:2,dash:'dot'},
+     marker:{size:4,color:mrgAll.map(v=>v===null?'transparent':v>=30?'#059669':v>=20?'#d97706':'#ef4444')},
+     hovertemplate:'%{x}<br>Margen: %{y:.1f}%<extra></extra>'},
+  ],{
+    ...LO, barmode:'group',
+    shapes:[{type:'line',x0:sepIdx,x1:sepIdx,y0:0,y1:1,yref:'paper',
+      line:{color:'#2563eb',width:1.5,dash:'dot'}}],
+    annotations:[{x:ACT_MO.length>0?allLb[ACT_MO.length-1]:allLb[0],y:1,yref:'paper',
+      text:'← Real · Proyección →',showarrow:false,
+      font:{size:9,color:'#2563eb'},xanchor:'right',yanchor:'top'}],
+    yaxis2:{overlaying:'y',side:'right',gridcolor:'transparent',
+      tickfont:{size:9},ticksuffix:'%',color:'#7c3aed',range:[0,50]},
+    legend:{...LO.legend,y:-0.32},
+    margin:{...LO.margin,r:48},
+  },cfg),30);}
+
+function tableEERR(){
+  const ACT=P.actuals_monthly||{};
+  const ACT_MO=Object.keys(ACT).filter(m=>!MO.includes(m)).sort();
+  const ALL_MO=[...ACT_MO,...MO];
+  const isAct=m=>ACT_MO.includes(m);
+
+  const gv=(m,k)=>{
+    if(isAct(m)){const a=ACT[m];
+      if(k==='rev')    return a.rev;   if(k==='revM')   return a.revM;
+      if(k==='revS')   return a.revS;  if(k==='cogs')   return a.cogs;
+      if(k==='gross')  return a.rev+a.cogs;
+      if(k==='grossP') return(a.rev+a.cogs)/a.rev*100;
+      if(k==='sga')    return a.sga;   if(k==='ebitda') return a.ebitda;
+      if(k==='ebitdaP')return a.ebitda/a.rev*100;
+      if(k==='ni')     return a.ni;    if(k==='niP')    return a.ni/a.rev*100;
+    } else {
+      if(k==='rev')    return S.revT[m];   if(k==='revM')   return S.revM[m];
+      if(k==='revS')   return S.revS[m];   if(k==='cogs')   return S.cogsT[m];
+      if(k==='gross')  return S.revT[m]+S.cogsT[m];
+      if(k==='grossP') return(S.revT[m]+S.cogsT[m])/S.revT[m]*100;
+      if(k==='sga')    return S.sgaT[m];   if(k==='ebitda') return S.ebitda[m];
+      if(k==='ebitdaP')return S.ebitda[m]/S.revT[m]*100;
+      if(k==='ni')     return S.ni[m];     if(k==='niP')    return S.ni[m]/S.revT[m]*100;
+    } return 0;};
+
+  const gb=(m,k)=>{if(isAct(m))return gv(m,k);
+    if(k==='rev')    return B.revT[m];   if(k==='revM')   return B.revM[m];
+    if(k==='revS')   return B.revS[m];   if(k==='cogs')   return B.cogsT[m];
+    if(k==='gross')  return B.revT[m]+B.cogsT[m];
+    if(k==='sga')    return B.sgaT[m];   if(k==='ebitda') return B.ebitda[m];
+    if(k==='ni')     return B.ni[m];     return 0;};
+
+  const totProy=(k,pct)=>{
+    // Suma actuals + proyectados para el año completo
+    const vals=ALL_MO.map(m=>gv(m,k));
+    if(pct) return(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+'%';
+    return f1(vals.reduce((a,b)=>a+b,0));};
+
+  // Margin bar helper
+  const mrgCell=(v,threshHi=35,threshMid=20)=>{
+    const pct=Math.max(0,Math.min(100,v));
+    const color=pct>=threshHi?'#059669':pct>=threshMid?'#d97706':'#ef4444';
+    const w=Math.max(2,Math.round(pct*0.7));
+    return`<div class="mrg-cell"><div class="mrg-bar" style="width:${w}px;background:${color}"></div><span class="mrg-val" style="color:${color};font-weight:600">${v.toFixed(1)}%</span></div>`;};
+
+  // Cell renderer
+  const cell=(m,k,pct,isSub)=>{
+    const v=gv(m,k),bv=gb(m,k);
+    const act=isAct(m);
+    const neg=v<0&&!pct;
+    const d=v-bv;
+    const dh=!pct&&!act&&Math.abs(d)>0.5?`<span class="di ${d>0?'up':'dn'}">${d>0?'+':''}${f1(d,0)}</span>`:'';
+    const clsAc=act?(isSub?'ac':'ac-bold'):'';
+    if(pct) return`<td class="${clsAc}">${act?v.toFixed(1)+'%':mrgCell(v)}</td>`;
+    return`<td class="${clsAc}${neg?' neg':''}">${f1(v)}${dh}</td>`;};
+
+  const badge=`<span class="act-badge">Real</span>`;
+  const COLS=ALL_MO.length;
+
+  // Build header
+  let h=`<table class="eerr-tbl"><thead><tr>
+    <th>Línea</th>
+    ${ACT_MO.map(m=>`<th class="act-h">${fmtM(m)} ${badge}</th>`).join('')}
+    ${lb.map(l=>`<th>${l}</th>`).join('')}
+    <th class="yr-h">2026</th>
+  </tr></thead><tbody>`;
+
+  // Helper: section divider
+  const sec=(lbl)=>`<tr class="eerr-sec"><td colspan="${COLS+2}">${lbl}</td></tr>`;
+
+  // ── Ingresos ──
+  h+=sec('▸ Ingresos');
+  h+=`<tr class="eerr-val"><td><strong>Ingresos totales</strong></td>`+ALL_MO.map(m=>cell(m,'rev')).join('')+`<td class="yr">${totProy('rev')}</td></tr>`;
+  h+=`<tr class="eerr-sub"><td>· Manager Software</td>`+ALL_MO.map(m=>cell(m,'revM',false,true)).join('')+`<td class="yr" style="font-size:10px;color:var(--text3)">${totProy('revM')}</td></tr>`;
+  h+=`<tr class="eerr-sub"><td>· Sistemica</td>`+ALL_MO.map(m=>cell(m,'revS',false,true)).join('')+`<td class="yr" style="font-size:10px;color:var(--text3)">${totProy('revS')}</td></tr>`;
+
+  // ── COGS + Margen Bruto ──
+  h+=sec('▸ Costos operacionales');
+  h+=`<tr class="eerr-val"><td>COGS</td>`+ALL_MO.map(m=>cell(m,'cogs')).join('')+`<td class="yr neg">${totProy('cogs')}</td></tr>`;
+  h+=`<tr class="eerr-tot"><td>Margen Bruto</td>`+ALL_MO.map(m=>cell(m,'gross')).join('')+`<td class="yr">${totProy('gross')}</td></tr>`;
+  h+=`<tr class="eerr-sub"><td>· % Mg. Bruto</td>`+ALL_MO.map(m=>cell(m,'grossP',true,true)).join('')+`<td class="yr" style="font-size:10px;color:var(--green)">${totProy('grossP',true)}</td></tr>`;
+
+  // ── SGA + EBITDA ──
+  h+=sec('▸ Gastos de administración y ventas');
+  h+=`<tr class="eerr-val"><td>SG&A</td>`+ALL_MO.map(m=>cell(m,'sga')).join('')+`<td class="yr neg">${totProy('sga')}</td></tr>`;
+  h+=`<tr class="eerr-tot hi-ebitda"><td><strong>EBITDA</strong></td>`+ALL_MO.map(m=>cell(m,'ebitda')).join('')+`<td class="yr">${totProy('ebitda')}</td></tr>`;
+  h+=`<tr class="eerr-sub hi-ebitda"><td>· % EBITDA</td>`+ALL_MO.map(m=>cell(m,'ebitdaP',true,true)).join('')+`<td class="yr" style="font-size:10px;color:var(--green)">${totProy('ebitdaP',true)}</td></tr>`;
+
+  // ── NI ──
+  h+=sec('▸ Resultado neto');
+  h+=`<tr class="eerr-tot hi-ni"><td><strong>NI</strong></td>`+ALL_MO.map(m=>cell(m,'ni')).join('')+`<td class="yr">${totProy('ni')}</td></tr>`;
+  h+=`<tr class="eerr-sub hi-ni"><td>· % NI</td>`+ALL_MO.map(m=>cell(m,'niP',true,true)).join('')+`<td class="yr" style="font-size:10px;color:var(--green)">${totProy('niP',true)}</td></tr>`;
+
+  h+='</tbody></table>';
+  document.getElementById('t-eerr').innerHTML=h;}
+
+function renderDeudaKPIs(){
+  const scheds=getDeudaScheds();
+  if(!scheds.length){
+    document.getElementById('deuda-kpis').innerHTML=
+      '<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:24px;font-size:12px">Agrega tramos de deuda en el panel izquierdo para ver el análisis.</div>';
+    return;}
+  const totDeuda=scheds.reduce((t,s)=>t+s.amount,0)/1e6;  // amount en CLP → convertir a M
+  const totInt=scheds.reduce((t,s)=>t+MO.reduce((tt,m)=>tt+Math.abs(s.sched[m]?.int||0),0),0);   // M CLP
+  const totAm=scheds.reduce((t,s)=>t+MO.reduce((tt,m)=>tt+Math.abs(s.sched[m]?.am||0),0),0);    // M CLP
+  const ebitdaAn=(P.actuals_jan_feb?.ebitda||0)+MO.reduce((t,m)=>t+S.ebitda[m],0);
+  const dsTotal=totInt+totAm; // total debt service 2026
+  const dscr=dsTotal>0?ebitdaAn/dsTotal:0;
+  const items=[
+    {l:'Deuda total nueva',v:totDeuda,c:'blu'},
+    {l:'Intereses 2026',v:-totInt,c:''},
+    {l:'Amortización 2026',v:-totAm,c:''},
+    {l:'DSCR 2026',v:dscr,c:dscr>=1.2?'grn':dscr>=1?'':'red',raw:true,suffix:'x'},
+  ];
+  document.getElementById('deuda-kpis').innerHTML=items.map(k=>{
+    const disp=k.raw?k.v.toFixed(2)+k.suffix:f0(k.v)+' M';
+    const brd=k.c==='blu'?'border-top:2px solid var(--blue)':k.c==='grn'?'border-top:2px solid var(--green)':k.c==='red'?'border-top:2px solid var(--red)':'';
+    return`<div class="kpi" style="${brd}"><div class="kl">${k.l}</div><div class="kv" style="font-size:18px">${disp}</div></div>`;
+  }).join('');}
+
+function chartSaldo(){
+  const scheds=getDeudaScheds();
+  if(!scheds.length){Plotly.purge('ch-saldo');return;}
+  const traces=scheds.map((s,i)=>({
+    x:lb,y:MO.map(m=>Math.abs(s.sched[m]?.bal??0)),
+    name:s.label,type:'scatter',mode:'lines+markers',fill:'tozeroy',
+    fillcolor:`rgba(37,99,235,${0.1/(i+1)})`,
+    line:{width:2},marker:{size:3}
+  }));
+  Plotly.react('ch-saldo',traces,{...LO,yaxis:{...LO.yaxis,rangemode:'tozero'}},cfg);}
+
+function chartCuota(){
+  const scheds=getDeudaScheds();
+  if(!scheds.length){Plotly.purge('ch-cuota');return;}
+  const intArr=MO.map(m=>-scheds.reduce((t,s)=>t+(s.sched[m]?.int||0),0));
+  const amArr =MO.map(m=>-scheds.reduce((t,s)=>t+(s.sched[m]?.am||0),0));
+  Plotly.react('ch-cuota',[
+    {x:lb,y:amArr, name:'Capital',type:'bar',marker:{color:'rgba(37,99,235,.7)'}},
+    {x:lb,y:intArr,name:'Interés', type:'bar',marker:{color:'rgba(239,68,68,.6)'}},
+  ],{...LO,barmode:'stack'},cfg);}
+
+function chartDSCR(){
+  const scheds=getDeudaScheds();
+  const dsArr=MO.map(m=>scheds.reduce((t,s)=>t+Math.abs((s.sched[m]?.int||0)+(s.sched[m]?.am||0)),0));
+  const ebitArr=MO.map(m=>S.ebitda[m]);
+  const dscrArr=MO.map((m,i)=>dsArr[i]>0?ebitArr[i]/dsArr[i]:null);
+  const shapes=[{type:'line',x0:lb[0],x1:lb[lb.length-1],y0:1.2,y1:1.2,
+    line:{color:'#059669',width:1,dash:'dash'}},
+    {type:'line',x0:lb[0],x1:lb[lb.length-1],y0:1,y1:1,
+    line:{color:'#dc2626',width:1,dash:'dash'}}];
+  Plotly.react('ch-dscr',[
+    {x:lb,y:dscrArr,name:'DSCR',type:'scatter',mode:'lines+markers',
+     line:{color:'#2563eb',width:2.5},marker:{size:4,
+       color:dscrArr.map(v=>v===null?'#ccc':v>=1.2?'#059669':v>=1?'#d97706':'#dc2626')}},
+  ],{...LO,shapes,yaxis:{...LO.yaxis,zeroline:false,rangemode:'tozero'},
+     annotations:[
+       {x:lb[lb.length-1],y:1.2,text:'1.2x',showarrow:false,font:{size:9,color:'#059669'},xanchor:'right'},
+       {x:lb[lb.length-1],y:1.0,text:'1.0x',showarrow:false,font:{size:9,color:'#dc2626'},xanchor:'right'},
+     ]},cfg);}
+
+function chartLeverage(){
+  const scheds=getDeudaScheds();
+  // Deuda total = deuda existente Santander (saldo estimado) + nueva deuda balance
+  const ndBal=MO.map(m=>scheds.reduce((t,s)=>t+Math.abs(s.sched[m]?.bal??0),0));
+  const ebitTrail=MO.map((_,i)=>{
+    const w=MO.slice(Math.max(0,i-11),i+1);
+    const s=w.reduce((t,m)=>t+S.ebitda[m],0);
+    return s*(12/w.length);});  // annualized trailing EBITDA
+  const levArr=MO.map((m,i)=>ebitTrail[i]>0?ndBal[i]/ebitTrail[i]:null);
+  Plotly.react('ch-leverage',[
+    {x:lb,y:ndBal, name:'Deuda nueva',type:'bar',marker:{color:'rgba(37,99,235,.2)'},yaxis:'y'},
+    {x:lb,y:levArr,name:'ND/EBITDA',type:'scatter',mode:'lines+markers',
+     yaxis:'y2',line:{color:'#7c3aed',width:2},marker:{size:3,color:'#7c3aed'}},
+  ],{...LO,yaxis2:{overlaying:'y',side:'right',gridcolor:'transparent',tickfont:{size:9},ticksuffix:'x',color:'#7c3aed'}},cfg);}
+
+function tableAmort(){
+  const scheds=getDeudaScheds();
+  if(!scheds.length){document.getElementById('t-amort').innerHTML='<tbody><tr><td colspan="20" style="text-align:center;color:var(--text3);padding:16px">Sin deuda nueva configurada</td></tr></tbody>';return;}
+  let h='<thead><tr><th>Tramo</th><th>Tipo</th><th>Monto</th><th>Tasa</th>'+lb.map(l=>'<th>'+l+'</th>').join('')+'<th>Total int.</th></tr></thead><tbody>';
+  for(const s of scheds){
+    const montoDisp=f0(s.amount/1e6)+' M CLP'+(s.moneda==='usd'?' (USD '+f1(s.rawAm)+'M @ '+s.tc+')':'');
+    const tInt=MO.reduce((t,m)=>t+Math.abs(s.sched[m]?.int||0),0); // M CLP
+    // Capital row
+    h+=`<tr class="sub"><td>${s.label}</td><td>${s.tipo==='bullet'?'Bullet':'Francés'}</td><td>${montoDisp}</td><td>${(s.rate*100).toFixed(2)}%</td>`+
+      MO.map(m=>{const v=s.sched[m]?.am||0;return`<td class="${v<0?'neg':''}">${v?f1(v):'-'}</td>`;}).join('')+
+      `<td>-</td></tr>`;
+    // Interest row
+    h+=`<tr><td colspan="4" style="color:var(--text3);font-size:10px;padding-left:20px">└ Intereses</td>`+
+      MO.map(m=>{const v=s.sched[m]?.int||0;return`<td class="${v<0?'neg':''}">${v?f1(v):'-'}</td>`;}).join('')+
+      `<td class="neg">${f1(-tInt)}</td></tr>`;
+    // Balance row — now in M CLP, no /1e6 needed
+    h+=`<tr><td colspan="4" style="color:var(--text3);font-size:10px;padding-left:20px">└ Saldo</td>`+
+      MO.map(m=>{const v=s.sched[m]?.bal;return`<td>${v!=null?f1(v):'-'}</td>`;}).join('')+
+      `<td>-</td></tr>`;
+  }
+  // Totals
+  const totInt=MO.reduce((t,m)=>t-scheds.reduce((tt,s)=>tt+(s.sched[m]?.int||0),0),0);
+  const totAm =MO.reduce((t,m)=>t-scheds.reduce((tt,s)=>tt+(s.sched[m]?.am||0),0),0);
+  h+=`<tr class="tot"><td colspan="4">Total servicio deuda</td>`+
+    MO.map(m=>{const v=-scheds.reduce((t,s)=>t+(s.sched[m]?.int||0)+(s.sched[m]?.am||0),0);return`<td class="${v>0?'neg':''}">${v?f1(-v):'-'}</td>`;}).join('')+
+    `<td class="neg">${f1(-(totInt+totAm))}</td></tr>`;
+  document.getElementById('t-amort').innerHTML=h+'</tbody>';
+}
+
+function getDeudaScheds(){
+  const nd=[];
+  document.querySelectorAll('.dc').forEach((c,i)=>{
+    const moneda=c.querySelector('.dmon')?.value||'clp';
+    const tc=+c.querySelector('.dtc')?.value||950;
+    const rawAm=+c.querySelector('.da')?.value||0;
+    const amClp=(moneda==='usd'?rawAm*tc:rawAm)*1e6;
+    const r=+c.querySelector('.dr2')?.value/100||0;
+    const st=c.querySelector('.ds')?.value||MO[0];
+    const tn=+c.querySelector('.dt')?.value||12;
+    const tipo=c.querySelector('.dtp')?.value||'frances';
+    if(amClp>0) nd.push({amount:amClp,rawAm,moneda,tc,rate:r,start:st,tenor:tn,tipo,label:'Tramo '+(i+1)});
+  });
+  return nd.map(d=>({...d,sched:dSch(d.amount/1e6,d.rate,d.start,d.tenor,d.tipo)}));
+}
+
+function renderCFKPIs(){
+  const cfopTot=MO.reduce((t,m)=>t+S.cfop[m],0);
+  const cfinTot=MO.reduce((t,m)=>t+S.cfin[m],0);
+  const divTot =-MO.reduce((t,m)=>t+Math.min(0,S.cfin[m]-(P.debt_amort[m]||0)-(S.ndA(m)||0)-(S.ndIn(m)||0)),0);
+  const cashDec=S.cashEOP['2026-12'];
+  const items=[
+    {l:'CF Operacional',   v:cfopTot, c:'blu', suf:'M'},
+    {l:'CF Financiero',    v:cfinTot, c:'',    suf:'M'},
+    {l:'Dividendos pagados',v:-divTot,c:'',    suf:'M'},
+    {l:'Caja Dic 2026',    v:cashDec, c:'grn', suf:'M'},
+  ];
+  document.getElementById('cf-kpis').innerHTML=items.map(k=>{
+    const brd=k.c==='blu'?'border-top:2px solid var(--blue)':k.c==='grn'?'border-top:2px solid var(--green)':'';
+    const cls=k.v<0?'dn':'up';
+    return`<div class="kpi" style="${brd}"><div class="kl">${k.l}</div>
+      <div class="kv" style="font-size:18px">${f0(k.v)} M</div></div>`;
+  }).join('');}
+
+function chartCF(){
+  // Main chart: CFop bars (blue) + CFin bars (red/green) + cash EOP line
+  const cfopArr=MO.map(m=>S.cfop[m]);
+  const cfinArr=MO.map(m=>S.cfin[m]);
+  const cashArr=MO.map(m=>S.cashEOP[m]);
+  const cashBase=MO.map(m=>B.cashEOP[m]);
+  setTimeout(()=>Plotly.react('ch-cf',[
+    // CFop bars
+    {x:lb,y:cfopArr,name:'CF Operacional',type:'bar',
+     marker:{color:cfopArr.map(v=>v>=0?'rgba(5,150,105,.7)':'rgba(239,68,68,.6)')},
+     hovertemplate:'%{x}<br>CFop: %{y:.1f} M<extra></extra>'},
+    // CFin bars
+    {x:lb,y:cfinArr,name:'CF Financiero',type:'bar',
+     marker:{color:cfinArr.map(v=>v>=0?'rgba(37,99,235,.5)':'rgba(220,38,38,.4)')},
+     hovertemplate:'%{x}<br>CFin: %{y:.1f} M<extra></extra>'},
+    // Cash EOP line — right axis
+    {x:lb,y:cashArr,name:'Caja EOP',type:'scatter',mode:'lines+markers',
+     yaxis:'y2',line:{color:'#2563eb',width:2.5},
+     marker:{size:5,color:'#2563eb',line:{width:2,color:'#fff'}},
+     hovertemplate:'%{x}<br>Caja: %{y:.1f} M<extra></extra>'},
+    // Base cash line (dashed)
+    {x:lb,y:cashBase,name:'Caja base',type:'scatter',mode:'lines',
+     yaxis:'y2',line:{color:'#d0d5dd',width:1.5,dash:'dot'},
+     hovertemplate:'%{x}<br>Base: %{y:.1f} M<extra></extra>'},
+  ],{
+    ...LO,barmode:'relative',
+    yaxis:{...LO.yaxis,title:{text:'CF mensual (M)',font:{size:9,color:'#8a94a6'}},zeroline:true,zerolinecolor:'#e2e6ec'},
+    yaxis2:{overlaying:'y',side:'right',gridcolor:'transparent',tickfont:{size:9},
+      color:'#2563eb',title:{text:'Saldo (M)',font:{size:9,color:'#2563eb'}}},
+    legend:{...LO.legend,y:-0.3},margin:{...LO.margin,r:54,b:40},
+    shapes:[{type:'line',x0:-.5,x1:lb.length-.5,y0:0,y1:0,
+      line:{color:'rgba(0,0,0,.15)',width:1}}],
+  },cfg),30);}
+
+function chartCF2(){
+  // Caja base vs escenario con área de diferencia
+  setTimeout(()=>Plotly.react('ch-cf2',[
+    {x:lb,y:MO.map(m=>B.cashEOP[m]),name:'Base',
+     type:'scatter',mode:'lines',fill:'tozeroy',
+     fillcolor:'rgba(209,213,219,.15)',line:{color:'#d0d5dd',width:2},
+     hovertemplate:'Base: %{y:.1f} M<extra></extra>'},
+    {x:lb,y:MO.map(m=>S.cashEOP[m]),name:'Escenario',
+     type:'scatter',mode:'lines+markers',fill:'tozeroy',
+     fillcolor:'rgba(37,99,235,.08)',line:{color:'#2563eb',width:2.5},
+     marker:{size:5,color:'#2563eb',line:{width:2,color:'#fff'}},
+     hovertemplate:'Escenario: %{y:.1f} M<extra></extra>'},
+  ],{...LO,yaxis:{...LO.yaxis,rangemode:'tozero'},
+     legend:{...LO.legend,y:-0.3},margin:{...LO.margin,b:40}},cfg),30);}
+
+function chartCFin(){
+  // CFin decomposed: deuda existente + dividendos + nueva deuda
+  const deudaArr=MO.map(m=>P.debt_amort[m]||0);
+  const divArr  =MO.map(m=>S.cfin[m]-(P.debt_amort[m]||0)-(S.ndA(m)||0)-(S.ndIn(m)||0));
+  const ndArr   =MO.map(m=>(S.ndIn(m)||0)+(S.ndA(m)||0));
+  setTimeout(()=>Plotly.react('ch-cfin',[
+    {x:lb,y:ndArr,  name:'Nueva deuda (neto)',type:'bar',marker:{color:'rgba(37,99,235,.6)'}},
+    {x:lb,y:deudaArr,name:'Deuda existente',  type:'bar',marker:{color:'rgba(239,68,68,.4)'}},
+    {x:lb,y:divArr, name:'Dividendos',        type:'bar',marker:{color:'rgba(245,158,11,.5)'}},
+  ],{...LO,barmode:'relative',
+     shapes:[{type:'line',x0:-.5,x1:lb.length-.5,y0:0,y1:0,line:{color:'rgba(0,0,0,.1)',width:1}}],
+     legend:{...LO.legend,y:-0.3},margin:{...LO.margin,b:40}},cfg),30);}
+
+function tableFC(){
+  const sec=(lbl,span)=>`<tr style="background:#f8f9fb"><td colspan="${span}" style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text3);padding:3px 11px;border-top:1px solid var(--border)">${lbl}</td></tr>`;
+  const COLS=MO.length+2;
+  const rows=[
+    {sec:'▸ CF Operacional'},
+    {l:'NI',                f:m=>S.ni[m]},
+    {l:'Δ Capital trabajo',  f:m=>S.dWC[m]},
+    {l:'CF Operacional',    f:m=>S.cfop[m], tot:true},
+    {sec:'▸ CF Financiero'},
+    {l:'Deuda existente',   f:m=>P.debt_amort[m]||0},
+    {l:'Dividendos',        f:m=>S.cfin[m]-(P.debt_amort[m]||0)-(S.ndA(m)||0)-(S.ndIn(m)||0)},
+    {l:'Nueva deuda neto',  f:m=>(S.ndIn(m)||0)+(S.ndA(m)||0)},
+    {l:'CF Financiero',     f:m=>S.cfin[m], tot:true},
+    {sec:'▸ Saldo'},
+    {l:'Caja EOP',          f:m=>S.cashEOP[m], tot:true, cash:true},
+  ];
+  const cell=(v,cash)=>{
+    const neg=v<0; const pos=v>0&&!cash;
+    return`<td class="${neg?'neg':''}">${f1(v)}</td>`;};
+  let h='<thead><tr><th>Línea</th>'+lb.map(l=>'<th>'+l+'</th>').join('')+'<th>Total/Dic</th></tr></thead><tbody>';
+  for(const r of rows){
+    if(r.sec){h+=sec(r.sec,COLS);continue;}
+    const tot=r.l==='Caja EOP'?r.f(MO[MO.length-1]):MO.reduce((t,m)=>t+r.f(m),0);
+    h+=`<tr class="${r.tot?'tot':''}">${r.tot?`<td><strong>${r.l}</strong></td>`:`<td>${r.l}</td>`}`+
+      MO.map(m=>cell(r.f(m),r.cash)).join('')+
+      `<td class="${tot<0?'neg':''}">${f1(tot)}</td></tr>`;
+  }
+  document.getElementById('t-fc').innerHTML=h+'</tbody>';}
+// ── Debt card UI ──
+let dCnt2=0;
+function addD(){
+  dCnt2++;const id=dCnt2;
+  const div=document.createElement('div');div.className='dc';div.id='dbt-'+id;
+  const MO_OPTS=['2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12']
+    .map(m=>`<option value="${m}">${fmtM(m)}</option>`).join('');
+  div.innerHTML=`<button class="dr-btn" onclick="rmD(${id})">×</button>
+    <div style="font-size:9px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Tramo ${id}</div>
+    <div class="ir">
+      <div><div class="il">Moneda</div>
+        <select class="dmon" onchange="toggleTC(${id});compute();renderAll()">
+          <option value="clp">M CLP</option><option value="usd">M USD</option>
+        </select></div>
+      <div id="tc-wrap-${id}" style="display:none">
+        <div class="il">T/C CLP/USD</div>
+        <input type="number" class="dtc" value="950" min="1" step="10" oninput="compute();renderAll()">
+      </div>
+    </div>
+    <div class="ir">
+      <div><div class="il" id="monto-lbl-${id}">Monto (M CLP)</div>
+        <input type="number" class="da" value="500" min="0" step="50" oninput="compute();renderAll()"></div>
+      <div><div class="il">Tasa anual %</div>
+        <input type="number" class="dr2" value="7" min="0" max="30" step=".25" oninput="compute();renderAll()"></div>
+    </div>
+    <div class="ir">
+      <div><div class="il">Tipo</div>
+        <select class="dtp" onchange="compute();renderAll()">
+          <option value="frances">Francés</option><option value="bullet">Bullet</option>
+        </select></div>
+      <div><div class="il">Plazo (meses)</div>
+        <input type="number" class="dt" value="36" min="6" max="120" step="6" oninput="compute();renderAll()"></div>
+    </div>
+    <div><div class="il">Mes de inicio</div>
+      <select class="ds" onchange="compute();renderAll()">${MO_OPTS}</select></div>`;
+  document.getElementById('dc').appendChild(div);compute();renderAll();}
+
+function toggleTC(id){
+  const card=document.getElementById('dbt-'+id);
+  const mon=card.querySelector('.dmon').value;
+  card.querySelector('#tc-wrap-'+id).style.display=mon==='usd'?'block':'none';
+  card.querySelector('#monto-lbl-'+id).textContent='Monto (M '+(mon==='usd'?'USD':'CLP')+')';
+  card.querySelector('.da').step=mon==='usd'?'1':'50';
+  card.querySelector('.da').value=mon==='usd'?'20':'500';}
+
+function rmD(id){document.getElementById('dbt-'+id)?.remove();compute();renderAll();}
+
+// ══════════════════════════════════════════════════════
+// EXCEL PARSER
+// ══════════════════════════════════════════════════════
+
+// Column index (0-based) for a given YYYY-MM
+function ymCol(ym){
+  const y=+ym.slice(0,4), m=+ym.slice(5);
+  return 17+(y-2023)*12+(m-1);
+}
+
+// Read a cell value from SheetJS sheet (0-indexed row/col)
+function cellV(ws, r, c){
+  const cell = ws[XLSX.utils.encode_cell({r,c})];
+  return cell ? (cell.v ?? null) : null;
+}
+
+// Month range generator
+function monthRange(from, to){
+  const months=[];
+  let [y,m]=[+from.slice(0,4),+from.slice(5)];
+  const [ey,em]=[+to.slice(0,4),+to.slice(5)];
+  while(y<ey||(y===ey&&m<=em)){
+    months.push(y+'-'+(m<10?'0':'')+m);
+    m++;if(m>12){m=1;y++;}
+  }
+  return months;
+}
+
+function handleXlsx(input){
+  console.log('handleXlsx called', input?.files?.[0]?.name);
+  if(typeof XLSX === 'undefined'){
+    alert('Error: librería XLSX no cargada. Revisa tu conexión.');
+    return;
+  }
+  const file = input.files[0];
+  if(!file){ console.log('No file selected'); return; }
+  document.getElementById('upload-status').textContent = '⏳ Leyendo '+file.name+'...';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      console.log('Sheets:', wb.SheetNames);
+      window._loadedWB = wb;
+      const wsE = wb.Sheets['ERPs'];
+      console.log('ERPs sheet:', wsE ? 'found' : 'NOT FOUND');
+      if(!wsE) throw new Error("Sheet 'ERPs' no encontrado. Sheets disponibles: " + wb.SheetNames.join(', '));
+
+      // Test a known cell
+      const testVal = cellV(wsE, 21, ymCol('2026-01'));
+      console.log('R22 Jan2026 raw value:', testVal, 'type:', typeof testVal);
+
+      const availableMonths = [];
+      // Only scan years 2025-2026 to avoid false positives from projected cols
+      for(let yr=2025; yr<=2026; yr++){
+        for(let mo=1; mo<=12; mo++){
+          const ym = yr+'-'+(mo<10?'0':'')+mo;
+          const v = cellV(wsE, 21, ymCol(ym));
+          if(v && typeof v==='number' && Math.abs(v) > 1e8) availableMonths.push(ym);
+        }
+      }
+      if(!availableMonths.length){
+        console.log('No months found. Testing adjacent cols:');
+        for(let c=50;c<60;c++){
+          const v=cellV(wsE,21,c);
+          if(v) console.log(`  col ${c}:`, v);
+        }
+        throw new Error('No se encontraron datos de revenue — revisa la consola');
+      }
+      console.log('Available months:', availableMonths.length, availableMonths[0], '→', availableMonths[availableMonths.length-1]);
+      const firstMonth = availableMonths[0];
+      const lastMonth  = availableMonths[availableMonths.length-1];
+      // Populate desde/hasta selectors with all detected months
+      const opts = availableMonths.map(m=>`<option value="${m}">${fmtM(m)}</option>`).join('');
+      const selDesde  = document.getElementById('desde-month');
+      const selHasta  = document.getElementById('cutoff-month');
+      selDesde.innerHTML = opts;
+      selHasta.innerHTML = opts;
+      selDesde.value = firstMonth;   // default: primer mes disponible
+      selHasta.value = lastMonth;    // default: último mes disponible
+      document.getElementById('cutoff-row').style.display='';
+      document.getElementById('hasta-row').style.display='';
+      document.getElementById('horizon-row').style.display='';
+      document.getElementById('upload-status').textContent =
+        `✓ ${file.name.slice(0,22)} · ${availableMonths.length} meses`;
+      document.getElementById('upload-status').style.color='var(--green)';
+      onCutoffChange();
+    } catch(err){
+      console.error('Parser error:', err);
+      document.getElementById('upload-status').textContent = '✗ '+err.message;
+      document.getElementById('upload-status').style.color='var(--red)';
+      // Show error visibly in overlay too
+      const ov = document.getElementById('empty-overlay');
+      if(ov){
+        const errDiv = ov.querySelector('.err-msg') || document.createElement('div');
+        errDiv.className='err-msg';
+        errDiv.style.cssText='color:#dc2626;font-size:12px;background:#fef2f2;padding:10px 16px;border-radius:6px;max-width:400px;font-family:monospace';
+        errDiv.textContent = '✗ '+err.message;
+        if(!ov.querySelector('.err-msg')) ov.appendChild(errDiv);
+      }
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value='';
+}
+
+function onCutoffChange(){
+  if(!window._loadedWB) return;
+  // Keep desde <= hasta
+  const sd = document.getElementById('desde-month');
+  const sh = document.getElementById('cutoff-month');
+  if(sd.value > sh.value) sh.value = sd.value;
+  onHorizonChange();
+}
+
+function onHorizonChange(){
+  if(!window._loadedWB) return;
+  const desde   = document.getElementById('desde-month').value;
+  const cutoff  = document.getElementById('cutoff-month').value;
+  let   horizon = document.getElementById('horizon-month').value;
+  // Ensure horizon is strictly after cutoff
+  if(horizon <= cutoff){
+    // auto-pick: same month next year
+    const [y,m] = cutoff.split('-');
+    horizon = (parseInt(y)+1)+'-'+m;
+    // Update the select to reflect this
+    const sel = document.getElementById('horizon-month');
+    // Add option if not there
+    if(![...sel.options].some(o=>o.value===horizon)){
+      const opt = document.createElement('option');
+      opt.value = horizon;
+      opt.textContent = fmtM(horizon);
+      sel.insertBefore(opt, sel.firstChild);
+    }
+    sel.value = horizon;
+  }
+  parseAndRebuild(window._loadedWB, desde, cutoff, horizon);
+}
+
+async function parseAndRebuild(wb, desdeYM, cutoffYM, horizonYM){
+  console.log('parseAndRebuild:', desdeYM, cutoffYM, horizonYM);
+  try {
+    const wsE   = wb.Sheets['ERPs'];
+    const wsI   = wb.Sheets['Inputs'];
+    const wsP   = wb.Sheets['Gastos ppto 26'];
+    console.log('Sheets - wsI:', wsI?'ok':'NULL', 'wsP:', wsP?'ok':'NULL');
+    const cutC  = ymCol(cutoffYM);
+    // projFirst — primer mes proyectado
+    const [cy,cm]=[+cutoffYM.slice(0,4),+cutoffYM.slice(5)];
+    const projFirst = (cm===12)?`${cy+1}-01`:`${cy}-${String(cm+1).padStart(2,'0')}`;
+    // projC — columna de parámetros de proyección
+    // Si projFirst está fuera del rango del modelo (ej. 2027-01 cuando el modelo llega hasta 2026-12),
+    // usamos cutC como fallback para leer parámetros
+    const projC_raw = ymCol(projFirst);
+    const projC_test = cellV(wsE, 21, projC_raw); // R22 = revenue, test si existe
+    const projC = projC_test ? projC_raw : cutC;
+    console.log('projFirst:', projFirst, '| projC valid:', !!projC_test, '→ using col', projC);
+    const MN    = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+    // ── Helper ──
+    const E=(r,ym)=>cellV(wsE,r-1,ymCol(ym));
+    const I=(r,c)=>wsI?cellV(wsI,r-1,c-1):null;
+    const Pp=(r,c)=>wsP?cellV(wsP,r-1,c-1):null;
+
+    // ── Actual months (desde → cutoff) ──
+    const actualMonths = monthRange(desdeYM, cutoffYM);
+    // ── Projected months (projFirst → horizon) ──
+    const projMonths = monthRange(projFirst, horizonYM);
+    const allMonths  = [...actualMonths, ...projMonths];
+
+    // ── UF & IPC ──
+    // UF: read for all known months, extend with constant IPC for future
+    const ufMap = {}, ipcMap = {};
+    let lastUF = cellV(wsE,13,cutC) || 39835; // R14
+    for(const m of allMonths){
+      const v = cellV(wsE,13,ymCol(m));
+      if(v && v>30000){ ufMap[m]=v; lastUF=v; }
+      else {
+        // project UF: lastUF * (1 + lastIPC)
+        const lastIPC = ipcMap[allMonths[allMonths.indexOf(m)-1]] || 0.0025;
+        lastUF = lastUF*(1+lastIPC);
+        ufMap[m] = Math.round(lastUF*100)/100;
+      }
+      const ipcV = cellV(wsE,14,ymCol(m));
+      ipcMap[m] = (ipcV && Math.abs(ipcV)<0.05) ? ipcV : 0.0025;
+    }
+
+    // ── MRR EoP at cutoff (base for projection) ──
+    const mrrEoP0 = {
+      time:    cellV(wsE, 40, cutC),  // R41
+      flex:    cellV(wsE, 99, cutC),  // R100  
+      mgrplus: cellV(wsE,157, cutC),  // R158
+      einv:    cellV(wsE,211, cutC),  // R212
+      rcl:     cellV(wsE,279, cutC),  // R280
+    };
+
+
+    // ── MRR annual growth rates — leer desde primera col proyectada (no actuals) ──
+    const mrrRates = {
+      time:    (cellV(wsE, 41, projC)||0.020833)*12,  // R42
+      flex:    (cellV(wsE,100, projC)||0.008333)*12,  // R101
+      mgrplus: (cellV(wsE,158, projC)||0.016667)*12,  // R159
+      einv:    (cellV(wsE,212, projC)||0.012500)*12,  // R213
+      rcl:     (cellV(wsE,280, projC)||0.008333)*12,  // R281
+    };
+
+    // ── MRR Bridge rates — leer desde primera col proyectada ──
+    const bridgeRates = {
+      time:    {ch: cellV(wsE,45,projC)||-.006417, ds: cellV(wsE,46,projC)||-.003333, up: cellV(wsE,48,projC)||.005833},
+      flex:    {ch: cellV(wsE,103,projC)||-.005417, ds: cellV(wsE,104,projC)||-.008333, up: cellV(wsE,106,projC)||.007083},
+      mgrplus: {ch: cellV(wsE,161,projC)||-.010,    ds: cellV(wsE,162,projC)||-.008333, up: cellV(wsE,164,projC)||.012},
+      einv:    {ch: cellV(wsE,215,projC)||-.007,    ds: cellV(wsE,216,projC)||-.002,    up: cellV(wsE,218,projC)||.002},
+      rcl:     {ch: cellV(wsE,283,projC)||-.002,    ds: cellV(wsE,284,projC)||-.007,    up: cellV(wsE,286,projC)||.002},
+    };
+
+    // ── Rate products (Inputs sheet) ──
+    const rateAnnual = {
+      rex:    I(16,3)||0.08, bnovus: I(17,3)||0.05,
+      geo:    I(18,3)||0.30, gaxu:   I(19,3)||0.03,
+      otros:  I(20,3)||0.03, rpe:    I(22,3)||0.15,
+    };
+    const rateMonthly = {};
+    for(const [k,ann] of Object.entries(rateAnnual))
+      rateMonthly[k] = Math.pow(1+ann, 1/12)-1;
+    // Rate product bases: EoP al cutoff (último mes real)
+    const rateBases = {
+      rex:   (cellV(wsE,247,cutC)||0)/1e6,
+      bnovus:(cellV(wsE,250,cutC)||0)/1e6,
+      geo:   (cellV(wsE,256,cutC)||0)/1e6,
+      rpe:   (cellV(wsE,316,cutC)||0)/1e6,
+      gaxu:  (cellV(wsE,253,cutC)||0)/1e6,
+      otros: (cellV(wsE,259,cutC)||0)/1e6,
+    };
+
+    // ── COGS ppto (Gastos ppto 26) ──
+    const pptoColFor = m => 8 + (+m.slice(5) - 1); // col 8=Jan .. 19=Dec (1-indexed)
+    const cogs_ppto = {time:{},flex:{},mgrplus:{},einv:{},rcl:{}};
+    for(const m of [...actualMonths,...projMonths]){
+      const pc = pptoColFor(m);
+      cogs_ppto.time[m]    = ((Pp(8,pc)||0)+(Pp(32,pc)||0))/1e6;
+      cogs_ppto.flex[m]    = ((Pp(9,pc)||0)+(Pp(33,pc)||0))/1e6;
+      cogs_ppto.mgrplus[m] = ((Pp(10,pc)||0)+(Pp(34,pc)||0))/1e6;
+      cogs_ppto.einv[m]    = ((Pp(14,pc)||0))/1e6;
+      cogs_ppto.rcl[m]     = (cellV(wsE,554,ymCol(m))||0)/1e6;
+    }
+
+    // ── COGS var rates — parámetros estructurales del modelo
+    // No se leen del sheet (los valores en ERPs son trailing averages, no constantes).
+    // Se usan los defaults calibrados contra el modelo. Si cambian en el modelo,
+    // actualizar aquí manualmente o regenerar params desde Python.
+    const cogs_var = {
+      time:    -0.135158,
+      flex:    -0.064615,
+      mgrplus: -0.080768,
+      einv:    -0.395387,
+      rcl:     -0.176833,
+      rpe:     -0.131246,
+      rex:     -0.85, bnovus: -0.85,
+      geo:     -0.660595,
+      gaxu:    0, otros: 0,
+    };
+    const cogs_ovhd = -0.015744; // overhead % de revM — también estructural
+
+    // ── SGA ppto (MKT rows en Gastos ppto 26) ──
+    const sga_ppto = {};
+    for(const m of [...actualMonths,...projMonths]){
+      const pc = pptoColFor(m);
+      sga_ppto[m] = ((Pp(21,pc)||0)+(Pp(22,pc)||0)+(Pp(26,pc)||0))/1e6;
+    }
+
+    // ── SGA efficiencies (Inputs) ──
+    const sga_eff = I(44,3)||0.25;
+
+    // ── SGA var0 — leer desde projC (primera col proyectada)
+    // Estas filas solo existen en la sección proyectada del modelo,
+    // no en los meses de actuals. projC = Mar si cutoff = Feb.
+    const sga_var0 = {
+      time:  (cellV(wsE,642,projC)||0)/1e6,   // R643
+      flex:  (cellV(wsE,672,projC)||0)/1e6,   // R673
+      einv:  (cellV(wsE,702,projC)||0)/1e6,   // R703
+      r761:  (cellV(wsE,760,projC)||0)/1e6,   // R761
+      r766:  (cellV(wsE,765,projC)||0)/1e6,   // R766
+      einv2: (cellV(wsE,902,projC)||0)/1e6,   // R903
+      sist:  (cellV(wsE,915,projC)||0)/1e6,   // R916
+    };
+
+    // ── SGA rates — parámetros estructurales ──
+    const sga_rates = {
+      rex:    -0.028867,
+      bnovus: -0.058063,
+      geo:    -0.185024,
+      ovhd:   -0.015560,
+    };
+
+    // ── December Sistemica bonus — R933 ──
+    const decYear = horizonYM.slice(0,4);
+    const decM = decYear+'-12';
+    const sga_dec_sist = (projMonths.includes(decM)||actualMonths.includes(decM))
+      ? (cellV(wsE,932,ymCol(decM))||0)/1e6   // R933 = bono Dic Sistemica
+      : -84.907;
+
+    // ── Cash & WC al cutoff ──
+    // R1230 @ projC = caja BOP del primer mes proyectado = caja EOP del cutoff
+    const cash_start = (cellV(wsE,1229,projC)||0)/1e6;  // R1230 @ projC
+    const ar_days = 35.26, ap_days = 14.85;
+    // AR y AP se leen directamente del balance sheet del modelo (no calculados)
+    const ar_start = (cellV(wsE,1478,cutC)||0)/1e6;  // R1479 = AR balance
+    const ap_start = (cellV(wsE,1487,cutC)||0)/1e6;  // R1488 = AP balance
+
+    // ── Debt amort Santander — R1218 ──
+    const debt_amort = {};
+    for(const m of projMonths){
+      const v = cellV(wsE,1217,ymCol(m));  // R1218
+      if(v && Math.abs(v)>1e6) debt_amort[m] = v/1e6;
+    }
+
+    // ── Tax seed: NI acumulado del año proyectado (meses reales)
+    // Se usa NI (≈ EBT en meses no-diciembre, sin impuesto) igual que el modelo hardcodeado.
+    // R1143 = NI (row 1143, 0-indexed 1142)
+    const projYear = projMonths[0]?.slice(0,4) || cutoffYM.slice(0,4);
+    let annEBT_seed = 0;
+    for(const m of actualMonths){
+      if(m.slice(0,4) !== projYear) continue;
+      annEBT_seed += (cellV(wsE,1142,ymCol(m))||0)/1e6;  // R1143 = NI
+    }
+
+    // ── Actuals monthly ──
+    const actuals_monthly = {};
+    for(const m of actualMonths){
+      const rev  = (cellV(wsE,21,  ymCol(m))||0)/1e6;
+      const cogs = (cellV(wsE,321, ymCol(m))||0)/1e6;
+      const sga  = (cellV(wsE,627, ymCol(m))||0)/1e6;
+      const ebit = (cellV(wsE,1029,ymCol(m))||0)/1e6;
+      const ni   = (cellV(wsE,1142,ymCol(m))||0)/1e6;
+      actuals_monthly[m] = {
+        rev, revM:(cellV(wsE,25,ymCol(m))||0)/1e6,
+        revS:(cellV(wsE,263,ymCol(m))||0)/1e6,
+        cogs, gross:rev+cogs, sga, ebitda:ebit, ni
+      };
+    }
+
+    // ── Build bridge data from actual months ──
+    const bridgeProdRows = {
+      time:{bop:33,ch:34,ds:35,up:37,new:39,eop:40},
+      flex:{bop:92,ch:93,ds:94,up:96,new:98,eop:99},
+      mgrplus:{bop:150,ch:151,ds:152,up:154,new:156,eop:157},
+      einv:{bop:204,ch:205,ds:206,up:208,new:210,eop:211},
+      rcl:{bop:272,ch:273,ds:274,up:276,new:278,eop:279},
+    };
+    const bridge = {};
+    for(const [prod,rows] of Object.entries(bridgeProdRows)){
+      bridge[prod]={};
+      for(const m of allMonths){
+        bridge[prod][m]={
+          bop: (cellV(wsE,rows.bop,ymCol(m))||0),
+          ch:  (cellV(wsE,rows.ch, ymCol(m))||0),
+          ds:  (cellV(wsE,rows.ds, ymCol(m))||0),
+          up:  (cellV(wsE,rows.up, ymCol(m))||0),
+          new: (cellV(wsE,rows.new,ymCol(m))||0),
+          eop: (cellV(wsE,rows.eop,ymCol(m))||0),
+        };
+      }
+    }
+
+    // ── actuals_jan_feb: suma de los meses reales del año proyectado ──
+    const actYearMonths = actualMonths.filter(m=>m.slice(0,4)===projYear);
+    const actuals_jan_feb = {
+      rev:    actYearMonths.reduce((t,m)=>(t+(actuals_monthly[m]?.rev||0)),0),
+      ebitda: actYearMonths.reduce((t,m)=>(t+(actuals_monthly[m]?.ebitda||0)),0),
+      ni:     actYearMonths.reduce((t,m)=>(t+(actuals_monthly[m]?.ni||0)),0),
+    };
+
+    // ── Assemble new P ──
+    const newP = {
+      uf: ufMap, ipc: ipcMap,
+      mrr_rates: mrrRates, mrr_eop0: mrrEoP0,
+      rev_factor:{time:1,flex:0.95,mgrplus:1,einv:1,rcl:1},
+      cons_pct:{time:0.07,flex:0.15,mgrplus:0.07,einv:0.12,rcl:0.10},
+      lic_uf:{time:(P.lic_uf?.time||100.4139),flex:(P.lic_uf?.flex||100.4139)},
+      rate_bases: rateBases, rate_monthly: rateMonthly,
+      cogs_ppto, cogs_var, cogs_ovhd,
+      sga_ppto, sga_var0, sga_rates, sga_eff, sga_dec_sist,
+      ar_days, ap_days, cash_start, ar_start, ap_start,
+      div_pct: P.div_pct||0.5, tax_rate: 0.27,
+      debt_amort, annEBT_seed,
+      base_month: cutoffYM,
+      proj_months: projMonths,
+      actuals_jan_feb,
+      actuals_monthly,
+      bridge, bridge_months: allMonths, bridge_rates: bridgeRates,
+    };
+
+    // ── Update globals ──
+    console.log('Parse complete. projMonths:', projMonths.length, 'actualMonths:', actualMonths.length);
+    P = newP;
+    MO = projMonths;
+    AMO = allMonths;
+    lb = projMonths.map(fmtM);
+    alb = allMonths.map(fmtM);
+
+    // Sync MRR_D defaults from parsed model rates
+    if(newP.mrr_rates){
+      if(newP.mrr_rates.time)    MRR_D.time    = Math.round(newP.mrr_rates.time*100);
+      if(newP.mrr_rates.flex)    MRR_D.flex    = Math.round(newP.mrr_rates.flex*100);
+      if(newP.mrr_rates.mgrplus) MRR_D.mgrplus = Math.round(newP.mrr_rates.mgrplus*100);
+      if(newP.mrr_rates.rcl)     MRR_D.rcl     = Math.round(newP.mrr_rates.rcl*100);
+    }
+    buildMrrCtrls();
+    // Awaitar loadState antes de compute — sino compute corre con valores default
+    if(typeof loadState === 'function') await loadState();
+    console.log('Calling compute...');
+    compute();
+    console.log('B:', B ? 'ok' : 'null', 'S:', S ? 'ok' : 'null');
+    renderAll();
+    console.log('renderAll done');
+    document.getElementById('upload-status').textContent =
+      `✓ Actuals: ${fmtM(actualMonths[0])}→${fmtM(cutoffYM)} · Proyección: ${fmtM(projFirst)}→${fmtM(horizonYM)}`;
+
+  } catch(err){
+    console.error('Parser error:', err);
+    document.getElementById('upload-status').textContent = '✗ Error al parsear: '+err.message;
+    document.getElementById('upload-status').style.color='var(--red)';
+  }
+}
+
+
+
+function hideEmptyState(){
+  const el = document.getElementById('empty-overlay');
+  if(el) el.remove();
+}
+function showEmptyState(){
+  if(document.getElementById('empty-overlay')) return;
+  const el = document.createElement('div');
+  el.id = 'empty-overlay';
+  el.style.cssText = `
+    position:fixed;inset:0;z-index:999;
+    background:var(--surface2);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:20px;text-align:center;
+  `;
+  el.innerHTML = `
+    <div style="font-size:56px;opacity:.15">📊</div>
+    <div style="font-family:var(--sans);font-size:24px;font-weight:700;color:var(--text2)">
+      Carga el modelo para comenzar
+    </div>
+    <div style="font-size:12px;color:var(--text4);max-width:340px;line-height:1.8">
+      Sube el archivo <strong>.xlsx</strong> en el panel izquierdo,<br>
+      define el rango de actuals y el horizonte de proyección.
+    </div>
+    <button onclick="document.getElementById('xlsx-input').click()"
+      style="padding:12px 32px;background:var(--blue2);color:#fff;border:none;
+        border-radius:8px;font-family:var(--sans);font-size:13px;font-weight:600;
+        cursor:pointer;margin-top:4px;box-shadow:0 4px 16px rgba(37,99,235,.3)">
+      ↑ Cargar modelo .xlsx
+    </button>`;
+  document.body.appendChild(el);
+}
+// Init
+console.log('Dashboard init — XLSX:', typeof XLSX !== 'undefined' ? 'loaded ✓' : 'NOT LOADED ✗');
+buildMrrCtrls();
+showEmptyState();
+
+</script>
+
+<div id="login-screen">
+  <div class="login-box">
+    <img class="login-logo" src="data:image/png;base64,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" alt="Sable">
+    <div class="login-title">Proyecciones Financieras</div>
+    <div class="login-sub">Grupo Sable · 2026</div>
+    <div class="login-field">
+      <label>Usuario</label>
+      <input type="text" id="l-user" placeholder="usuario" autocomplete="username"
+        onkeydown="if(event.key==='Enter')document.getElementById('l-pass').focus()">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Ingresar</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<button class="save-btn" id="save-btn" onclick="saveState()" title="Guardar estado en la nube">
+  💾 Guardar
+</button>
+
+<script>
+const WORKER = 'https://modelofinanciero.pnovoav.workers.dev';
+const GIST   = '3d5e1bb9791a5f272143e978a119a451';
+let _token = null;  // GitHub token recibido del worker tras login
+
+// ── LOGIN ──
+async function doLogin() {
+  const u = document.getElementById('l-user').value.trim();
+  const p = document.getElementById('l-pass').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-err');
+  if(!u||!p) return;
+  btn.disabled = true; btn.textContent = 'Verificando...';
+  err.style.display = 'none';
+  try {
+    const res = await fetch(WORKER+'/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({user:u, pass:p})
+    });
+    if(res.ok) {
+      const data = await res.json();
+      _token = data.token;
+      sessionStorage.setItem('sable_auth','1');
+      document.getElementById('login-screen').style.display = 'none';
+      await loadState();  // cargar estado guardado
+    } else {
+      err.textContent = 'Usuario o contraseña incorrectos';
+      err.style.display = 'block';
+      document.getElementById('l-pass').value = '';
+      document.getElementById('l-pass').focus();
+      setTimeout(()=>err.style.display='none', 3000);
+    }
+  } catch(e) {
+    err.textContent = 'Error de conexión con el servidor';
+    err.style.display = 'block';
+    setTimeout(()=>err.style.display='none', 4000);
+  }
+  btn.disabled = false; btn.textContent = 'Ingresar';
+}
+document.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && document.getElementById('login-screen')?.style.display!=='none') doLogin();
+});
+
+// ── ESTADO: qué se guarda ──
+function getState() {
+  // Sliders
+  const sliders = {
+    div_pct: +document.getElementById('div')?.value || 50,
+    mrr_rates: {},
+    debt: []
+  };
+  Object.keys(typeof MRR_D !== 'undefined' ? MRR_D : {}).forEach(p => {
+    const el = document.getElementById('mr-'+p);
+    if(el) sliders.mrr_rates[p] = +el.value;
+  });
+  document.querySelectorAll('#dc .dc').forEach(c => {
+    sliders.debt.push({
+      moneda: c.querySelector('.dmon')?.value||'clp',
+      tc:     +c.querySelector('.dtc')?.value||950,
+      amount: +c.querySelector('.da')?.value||0,
+      rate:   +c.querySelector('.dr2')?.value||0,
+      plazo:  +c.querySelector('.dt')?.value||36,
+      start:  c.querySelector('.ds')?.value||'',
+      tipo:   c.querySelector('.dtp')?.value||'frances',
+    });
+  });
+  // Modelo: P completo + MO (el engine reconstruye proyecciones desde esto)
+  const model = (typeof P !== 'undefined' && P.proj_months) ? {P, MO} : null;
+  return { sliders, model };
+}
+
+function applyState(state) {
+  if(!state) return;
+  const { sliders, model } = state;
+
+  // ── Restaurar modelo P si existe ──
+  if(model?.P && model?.MO) {
+    P  = model.P;
+    MO = model.MO;
+    lb = MO.map(fmtM);
+    buildMrrCtrls();   // reconstruir sliders con defaults del modelo
+  }
+
+  // ── Aplicar sliders guardados ──
+  if(sliders) {
+    if(sliders.div_pct != null) {
+      const el = document.getElementById('div');
+      if(el) { el.value = sliders.div_pct; document.getElementById('div-lbl').textContent = sliders.div_pct+'%'; }
+    }
+    if(sliders.mrr_rates) {
+      Object.entries(sliders.mrr_rates).forEach(([p,v]) => {
+        const el = document.getElementById('mr-'+p);
+        const lb = document.getElementById('ml-'+p);
+        if(el) { el.value = v; if(lb) lb.textContent = v+'%'; }
+      });
+    }
+    if(sliders.debt?.length) {
+      document.querySelectorAll('#dc .dc').forEach(el => el.remove());
+      sliders.debt.forEach(d => {
+        addD();
+        const cards = document.querySelectorAll('#dc .dc');
+        const c = cards[cards.length-1]; if(!c) return;
+        const setVal = (cls,v) => { const el=c.querySelector(cls); if(el) el.value=v; };
+        setVal('.da', d.amount); setVal('.dr2', d.rate);
+        setVal('.dt', d.plazo);  setVal('.dtp', d.tipo); setVal('.dtc', d.tc);
+        const cid = +c.id.replace('dbt-','');
+        const dmon = c.querySelector('.dmon');
+        if(dmon) { dmon.value = d.moneda; toggleTC(cid); }
+        const ds = c.querySelector('.ds');
+        if(ds) { for(let o of ds.options) if(o.value===d.start) o.selected=true; }
+      });
+    }
+  }
+
+  // ── Recomputar y renderizar ──
+  if(P.proj_months) {
+    compute();
+    hideEmptyState();
+    renderAll();
+    // Actualizar status bar
+    const ums = Object.keys(P.actuals_monthly||{}).sort();
+    if(ums.length) {
+      const status = document.getElementById('upload-status');
+      if(status) status.textContent =
+        `✓ Restaurado desde nube · Actuals: ${fmtM(ums[0])}→${fmtM(ums[ums.length-1])}`;
+    }
+  }
+}
+
+// ── SAVE ──
+async function saveState() {
+  const btn = document.getElementById('save-btn');
+  btn.classList.add('saving'); btn.textContent = '⏳ Guardando...';
+  try {
+    const state = getState();
+    const body = JSON.stringify({
+      files: { 'dashboard_state.json': { content: JSON.stringify(state, null, 2) } }
+    });
+    const res = await fetch(WORKER+'/gist/'+GIST, {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json', 'Authorization':'token '+(_token||'')},
+      body
+    });
+    if(res.ok) {
+      btn.classList.remove('saving'); btn.classList.add('saved');
+      btn.textContent = '✓ Guardado';
+      setTimeout(()=>{ btn.classList.remove('saved'); btn.textContent='💾 Guardar'; }, 2500);
+    } else {
+      throw new Error('HTTP '+res.status);
+    }
+  } catch(e) {
+    btn.classList.remove('saving'); btn.textContent = '✗ Error';
+    setTimeout(()=>{ btn.textContent='💾 Guardar'; }, 2500);
+  }
+}
+
+// ── LOAD ──
+async function loadState() {
+  console.log('[loadState] iniciando — worker:', WORKER, '| gist:', GIST);
+  try {
+    const res = await fetch(WORKER+'/gist/'+GIST);
+    console.log('[loadState] GET gist status:', res.status);
+    if(!res.ok) {
+      const txt = await res.text();
+      console.warn('[loadState] error response:', txt);
+      return;
+    }
+    const data = await res.json();
+    console.log('[loadState] gist files:', Object.keys(data?.files||{}));
+    const file = data?.files?.['dashboard_state.json'];
+    if(!file) { console.warn('[loadState] dashboard_state.json no encontrado en el gist'); return; }
+    let content = file.content;
+    console.log('[loadState] file truncated:', file.truncated, '| content length:', content?.length);
+    if(file.truncated && file.raw_url) {
+      const raw = await fetch(WORKER+'/raw?url='+encodeURIComponent(file.raw_url));
+      content = await raw.text();
+    }
+    const state = JSON.parse(content);
+    console.log('[loadState] state cargado:', JSON.stringify(state).slice(0,200));
+    applyState(state);
+    console.log('[loadState] applyState completado ✓');
+  } catch(e) {
+    console.error('[loadState] excepción:', e);
+  }
+}
+
+// Auto-login check
+if(sessionStorage.getItem('sable_auth')==='1') {
+  document.getElementById('login-screen').style.display = 'none';
+  loadState();
+}
+</script>
+
+</body></html>
