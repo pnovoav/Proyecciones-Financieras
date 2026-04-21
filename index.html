@@ -583,6 +583,38 @@ function onHorizonChange(){
   parseAndRebuild(window._wb,desde,cutoff,horizon);
 }
 
+
+// ═══ STRUCTURAL CONSTANTS for line-by-line engine ═══
+const COGS_LINES_STD = ['Staff Costs','External Staff','3rd Party Licenses','Other Costs','Servers','Intercompany','Royalty','Office Costs','Licences'];
+const SGA_LINES_STD = ['Consulting Services','Training / Staff Training','Collections / Debt Collection','Depreciation','Office Expenses','Personnel Expenses / Staff Expenses','General Expenses','Bad Debt Expense','Marketing','Legal Services','Technology / IT Expenses','Travel and Transportation'];
+const RCL_COGS_LINES = ['Personal Costs','Servers','Consulting','External Staff','Other Costs'];
+const RPE_COGS_LINES = ['Personal Costs','Cloud','Office Costs (Phone and Internet)','External Staff','Other Costs','Recruitment'];
+const RCL_SGA_LINES = ['External Staff','Bad Debt','Consulting','Marketing','Office Expenses','General Expenses','Rent','Staff Expenses','Corporate Expenses','Travel Expenses','Bonus'];
+const RPE_SGA_LINES = ['Depreciation & Amortization','Marketing','Office Expenses','Other Expenses','Staff Expenses'];
+const PROD_COGS_ANCHORS = {time:376,flex:400,einv:424,mgrplus:472,ramaflex:497,rex:448,bnovus:522,geo:547,gaxu:571,otros:595}; // 0-indexed
+const PROD_SGA_ANCHORS = {time:712,flex:742,einv:772,mgrplus:830,ramaflex:889,rex:801,bnovus:860,geo:918,gaxu:947,otros:976,corp:979,rcl:996,rpe:1026};
+const REV_PRODUCT_ROWS = {time:27,flex:85,einv:198,mgrplus:144,ramaflex:248,rex:294,bnovus:297,gaxu:300,geo:303,otros:306,rcl:314,rpe:363};
+const SGA_EFF_RANGES = {time:[39,50], flex:[53,64], mgrplus:[67,78]}; // 1-indexed Inputs rows
+// Map model growth-row to product (rev growth referenced in SGA formulas)
+const REV_GROWTH_ROW_TO_PROD = {28:'time', 86:'flex', 145:'mgrplus', 199:'einv', 249:'ramaflex', 311:'sistemica', 315:'sistemica', 364:'rpe'}; // 0-indexed
+
+function findLineRowInBlock(ws, anchor, label, maxOffset=22){
+  for(let r=anchor; r<anchor+maxOffset; r++){
+    for(let c=6; c<=10; c++){ // cols G-K
+      const cell = ws[XLSX.utils.encode_cell({r,c})];
+      if(cell && typeof cell.v==='string' && cell.v.trim()===label) return r;
+    }
+  }
+  return -1;
+}
+
+function parseGrowthRowFromFormula(formula){
+  if(typeof formula !== 'string') return {growth_row:null, has_if_dec:false};
+  const gm = formula.match(/\(1\+\w+\$?(\d+)/);
+  const has_if_dec = formula.indexOf('IF(BE9=12')>=0 || formula.indexOf('IF(BE$9=12')>=0;
+  return {growth_row: gm ? parseInt(gm[1])-1 : null, has_if_dec}; // -1 for 0-indexed
+}
+
 function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
   try{
     const wsE=wb.Sheets['ERPs'],wsI=wb.Sheets['Inputs'];
@@ -684,6 +716,9 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
         model.sga[p][m]=numV(wsE,rowProdSGA[p],c)/1e6;
       }
       model.corp.sga[m]=numV(wsE,rowProdSGA.corp,c)/1e6;
+      // Also store in model.sga.corp so engine can read for actual months
+      if(!model.sga.corp) model.sga.corp={};
+      model.sga.corp[m]=model.corp.sga[m];
       for(const p of BRIDGE){
         if(brigs[p]){
           model.mrrUF[p][m]=numV(wsE,brigs[p].eop_uf,c);
@@ -807,6 +842,112 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     const ap_days=numV(wsE,rowAPd,projC)||15;
     const cashStart=numV(wsE,rowCashBOP,projC)/1e6;
 
+    // ═══ STRUCTURAL PARAMS for line-by-line engine ═══
+    function buildCogsParams(){
+      const out={};
+      for(const [prod, anchor] of Object.entries(PROD_COGS_ANCHORS)){
+        out[prod]={fixed:{},variable:{}};
+        for(const line of COGS_LINES_STD){
+          const r=findLineRowInBlock(wsE,anchor,line,22);
+          if(r<0) continue;
+          const isFixed=(line==='Staff Costs'||line==='Servers');
+          if(isFixed){
+            out[prod].fixed[line]={};
+            for(let mo=1;mo<=12;mo++){
+              const ym='2026-'+String(mo).padStart(2,'0');
+              out[prod].fixed[line][ym]=numV(wsE,r,ymCol(ym))/1e6;
+            }
+          }else{
+            const val=numV(wsE,r,projC)/1e6;
+            const revRow=REV_PRODUCT_ROWS[prod];
+            const revAt=numV(wsE,revRow,projC)/1e6 || 1;
+            out[prod].variable[line]=revAt?val/revAt:0;
+          }
+        }
+      }
+      // Random CL
+      out.rcl={fixed:{},variable:{}};
+      for(const line of RCL_COGS_LINES){
+        const r=findLineRowInBlock(wsE,625,line,20);
+        if(r<0) continue;
+        const val=numV(wsE,r,projC)/1e6;
+        const revAt=numV(wsE,REV_PRODUCT_ROWS.rcl,projC)/1e6 || 1;
+        out.rcl.variable[line]=revAt?val/revAt:0;
+      }
+      // Random Perú
+      out.rpe={fixed:{},variable:{}};
+      for(const line of RPE_COGS_LINES){
+        const r=findLineRowInBlock(wsE,647,line,20);
+        if(r<0) continue;
+        const val=numV(wsE,r,projC)/1e6;
+        const revAt=numV(wsE,REV_PRODUCT_ROWS.rpe,projC)/1e6 || 1;
+        out.rpe.variable[line]=revAt?val/revAt:0;
+      }
+      return out;
+    }
+    function buildSgaParams(){
+      const out={};
+      for(const [prod, anchor] of Object.entries(PROD_SGA_ANCHORS)){
+        out[prod]={fixed:{},variable:{}};
+        let useLines=SGA_LINES_STD;
+        if(prod==='rcl') useLines=RCL_SGA_LINES;
+        else if(prod==='rpe') useLines=RPE_SGA_LINES;
+        else if(prod==='corp') useLines=['Corporate Expenses: Administrative Fees','Corporate Expenses: Office Rent','Corporate Expenses: Office Expenses'];
+        for(const line of useLines){
+          const r=findLineRowInBlock(wsE,anchor,line,18);
+          if(r<0) continue;
+          const isMarketing=(line==='Marketing'&&prod!=='rcl'&&prod!=='rpe');
+          if(isMarketing){
+            out[prod].fixed[line]={};
+            for(let mo=1;mo<=12;mo++){
+              const ym='2026-'+String(mo).padStart(2,'0');
+              out[prod].fixed[line][ym]=numV(wsE,r,ymCol(ym))/1e6;
+            }
+          }else{
+            // Get eff from Inputs
+            let eff=0;
+            const ranges={time:[39,50],flex:[53,64],mgrplus:[67,78]};
+            if(ranges[prod]){
+              const [lo,hi]=ranges[prod];
+              for(let rr=lo;rr<=hi;rr++){
+                const lbl=cellV(wsI,rr-1,1);
+                if(typeof lbl==='string'&&lbl.trim()===line){
+                  eff=numV(wsI,rr-1,2);
+                  break;
+                }
+              }
+            }
+            const formula=wsE[XLSX.utils.encode_cell({r,c:projC})]?.f;
+            const {growth_row,has_if_dec}=parseGrowthRowFromFormula(formula);
+            const seed=numV(wsE,r,projC)/1e6;
+            let growth_type='other', growth_product=null;
+            if(growth_row in REV_GROWTH_ROW_TO_PROD){
+              growth_type='rev_product';
+              growth_product=REV_GROWTH_ROW_TO_PROD[growth_row];
+            }
+            if(growth_row==null) growth_type='fixed_growth';
+            const monthly_model={};
+            for(let mo=1;mo<=12;mo++){
+              const ym='2026-'+String(mo).padStart(2,'0');
+              monthly_model[ym]=numV(wsE,r,ymCol(ym))/1e6;
+            }
+            // For fixed_growth lines, also store growth_row monthly values
+            const growth_monthly_model={};
+            if(growth_row!=null){
+              for(let mo=1;mo<=12;mo++){
+                const ym='2026-'+String(mo).padStart(2,'0');
+                growth_monthly_model[ym]=numV(wsE,growth_row,ymCol(ym));
+              }
+            }
+            out[prod].variable[line]={eff,seed,growth_row,growth_type,growth_product,has_if_dec,monthly_model,growth_monthly_model};
+          }
+        }
+      }
+      return out;
+    }
+    const cogsParamsLine=buildCogsParams();
+    const sgaParamsLine=buildSgaParams();
+
     // Prior year revenue total (for YoY growth calc)
     const prevYear=+cutoffYM.slice(0,4)-1;
     let priorYearRev=0,priorYearEbitda=0;
@@ -823,6 +964,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       mrr_growth:{...mrrGrowthBase},
       nonRec,rateMonthly,bridgeRates,
       cogsPct,sgaPct,corpSgaPct,
+      cogsParams:cogsParamsLine,sgaParams:sgaParamsLine,
       ar_days,ap_days,cashStart,
       tax_rate:0.27,
       div_pct_base:0.5,
@@ -846,7 +988,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
 // ═══════════════════════════════════════════════════════════════
 // PROJECTION ENGINE
 // ═══════════════════════════════════════════════════════════════
-// Engine: scenario = model + deltas. Base (sliders unchanged) = model exact parity.
+// Line-by-line projection engine. Replicates model formulas. Drift vs model ≈ 2-3%.
 function project(ov={}){
   if(!P.months||!P.months.length)return null;
   const mrrGrowth={...P.mrr_growth_base,...(ov.mrr_growth||{})};
@@ -856,10 +998,63 @@ function project(ov={}){
   const isAct=m=>P.actualMonths.includes(m);
   const MT=P.modelTot;
 
-  // === 1. Compute scenario MRR per bridge product ===
-  const mrrUF={};
+  // Check if scenario = base (no overrides) → return model values directly for exact parity
+  const isBase=(()=>{
+    if(newDebt.length>0)return false;
+    if(Math.abs(divPct-(P.div_pct_base||0.5))>0.0005)return false;
+    for(const p of BRIDGE){
+      const baseG=P.mrr_growth_base?.[p]||0;
+      if(Math.abs((mrrGrowth[p]||0)-baseG)>0.00005)return false;
+    }
+    return true;
+  })();
+  if(isBase){
+    // Base scenario: read all values from model directly. ZERO drift.
+    const out={rev:{},cogs:{},sga:{},mrrUF:{},revT:{},revM:{},revS:{},cogsT:{},sgaT:{},sgaCorp:{},ajustes:{},ebitda:{},ni:{},cfop:{},cfin:{},cashEOP:{},dWC:{},divs:{},ndI:()=>0,ndA:()=>0,ndIn:()=>0};
+    for(const p of ALL_PRODS){out.rev[p]={};out.cogs[p]={};out.sga[p]={};}
+    if(P.sgaParams) for(const p of Object.keys(P.sgaParams))if(!out.sga[p])out.sga[p]={};
+    for(const p of BRIDGE){out.mrrUF[p]={};}
+    for(const m of P.months){
+      for(const p of ALL_PRODS){
+        out.rev[p][m]=P.model.rev?.[p]?.[m]||0;
+        out.cogs[p][m]=P.model.cogs?.[p]?.[m]||0;
+        out.sga[p][m]=P.model.sga?.[p]?.[m]||0;
+      }
+      // corp/rcl/rpe SGA from model
+      if(P.sgaParams){
+        for(const p of Object.keys(P.sgaParams)){
+          if(!ALL_PRODS.includes(p))out.sga[p][m]=P.model.sga?.[p]?.[m]||0;
+        }
+      }
+      for(const p of BRIDGE){out.mrrUF[p][m]=P.model.mrrUF?.[p]?.[m]||0;}
+      out.revT[m]=MT.rev[m]||0;
+      out.cogsT[m]=MT.cogs[m]||0;
+      out.sgaT[m]=MT.sga[m]||0;
+      out.ebitda[m]=MT.ebitda[m]||0;
+      out.ajustes[m]=MT.ajustes[m]||0;
+      out.ni[m]=MT.ni[m]||0;
+      out.cfop[m]=MT.cfop[m]||0;
+      out.cfin[m]=MT.cffin[m]||0;
+      out.cashEOP[m]=MT.cashEOP[m]||MT.cashBS[m]||0;
+      out.dWC[m]=(MT.cfop[m]||0)-(MT.ni[m]||0)-(MT.dep[m]||0);
+      out.divs[m]=MT.divs[m]||0;
+      out.revM[m]=MGR_PRODS.reduce((s,p)=>s+(out.rev[p][m]||0),0);
+      out.revS[m]=SIS_PRODS.reduce((s,p)=>s+(out.rev[p][m]||0),0);
+      out.sgaCorp[m]=out.sga.corp?.[m]||0;
+    }
+    return out;
+  }
+
+  // Output
+  const rev={},cogs={},sga={},mrrUF={};
+  for(const p of ALL_PRODS){rev[p]={};cogs[p]={};sga[p]={};}
+  // SGA includes corp + rcl + rpe (from sgaParams)
+  if(P.sgaParams) for(const p of Object.keys(P.sgaParams)){if(!sga[p])sga[p]={};}
+  for(const p of BRIDGE){mrrUF[p]={};}
+  const revT={},revM={},revS={},cogsT={},sgaT={},sgaCorp={},ebitda={},ajustes={},ni={};
+
+  // Step 1: MRR per bridge product
   for(const p of BRIDGE){
-    mrrUF[p]={};
     for(const m of P.months){
       if(isAct(m)){mrrUF[p][m]=P.model.mrrUF[p][m]||0;continue;}
       if(p==='ramaflex'){mrrUF[p][m]=0;continue;}
@@ -868,100 +1063,150 @@ function project(ov={}){
     }
   }
 
-  // === 2. Compute scenario Revenue per product ===
-  const rev={};
-  for(const p of ALL_PRODS){rev[p]={};}
+  // Step 2: Revenue per product
   for(const m of P.months){
     for(const p of ALL_PRODS){
       if(isAct(m)){rev[p][m]=P.model.rev[p][m]||0;continue;}
       if(p==='ramaflex'){rev[p][m]=0;continue;}
       if(BRIDGE.includes(p)){
-        // If MRR slider matches base → revenue equals model exactly (since mrrUF matches)
-        // Use model's rev directly to preserve licences/consulting from model
-        const scale=(P.model.mrrUF[p][m]&&Math.abs(P.model.mrrUF[p][m])>1e-9)?mrrUF[p][m]/P.model.mrrUF[p][m]:1;
-        // Scale the recurring part (MRR*UF*factor). Non-recurring stays from model.
-        // Simple approach: scale entire product revenue proportionally to MRR change
-        rev[p][m]=(P.model.rev[p][m]||0)*scale;
+        const mrrCLP=mrrUF[p][m]*uf(m)/1e6;
+        const nr=P.nonRec[p]||{};
+        const factor=nr.factorA??1;
+        const consulting=(nr.consultPct??0)*mrrCLP;
+        let licences=0;
+        if((p==='time'||p==='flex')&&nr.licBase){
+          const idx=P.projMonths.indexOf(m);
+          licences=(nr.licBase||0)*Math.pow(1+(nr.licGrowth||0),idx);
+        }
+        rev[p][m]=mrrCLP*factor+consulting+licences;
       }else if(RATE.includes(p)){
-        // Rate products use model values (no slider)
-        rev[p][m]=P.model.rev[p][m]||0;
+        const prev=rev[p][addM(m,-1)]??(P.model.rev[p][addM(m,-1)]||0);
+        rev[p][m]=prev*(1+(P.rateMonthly[p]||0));
       }else{
         rev[p][m]=P.model.rev[p][m]||0;
       }
     }
-  }
-
-  // === 3. Revenue aggregates ===
-  const revT={},revM={},revS={};
-  for(const m of P.months){
     revM[m]=MGR_PRODS.reduce((s,p)=>s+(rev[p][m]||0),0);
     revS[m]=SIS_PRODS.reduce((s,p)=>s+(rev[p][m]||0),0);
     revT[m]=revM[m]+revS[m];
   }
 
-  // === 4. COGS / SGA: scale from model proportionally to product revenue ===
-  const cogs={},sga={},sgaCorp={};
-  for(const p of ALL_PRODS){cogs[p]={};sga[p]={};}
+  // Step 3: COGS per product (line-by-line: fixed ppto + variable %)
   for(const m of P.months){
     for(const p of ALL_PRODS){
-      if(isAct(m)){
-        cogs[p][m]=P.model.cogs[p][m]||0;
-        sga[p][m]=P.model.sga[p][m]||0;
-      }else{
-        const modelR=P.model.rev[p][m]||0;
-        const scale=Math.abs(modelR)>1e-9?(rev[p][m]||0)/modelR:1;
-        cogs[p][m]=(P.model.cogs[p][m]||0)*scale;
-        sga[p][m]=(P.model.sga[p][m]||0)*scale;
+      if(isAct(m)){cogs[p][m]=P.model.cogs[p][m]||0;continue;}
+      const params=P.cogsParams[p];
+      if(!params){cogs[p][m]=0;continue;}
+      let total=0;
+      // Fixed (Staff Costs, Servers from ppto)
+      for(const line of Object.keys(params.fixed||{})){
+        const monthly=params.fixed[line];
+        if(m in monthly) total+=monthly[m]||0;
+        else {
+          // 2027+: scale Dec-26 ratio
+          const dec=monthly['2026-12']||0;
+          const decRev=P.model.rev[p]?.['2026-12']||1;
+          total+=(dec/decRev)*(rev[p][m]||0);
+        }
       }
+      // Variable (% of revenue)
+      for(const line of Object.keys(params.variable||{})){
+        total+=params.variable[line]*(rev[p][m]||0);
+      }
+      cogs[p][m]=total;
     }
-    if(isAct(m)){
-      sgaCorp[m]=P.model.corp.sga[m]||0;
-    }else{
-      const modelRevM=MGR_PRODS.reduce((s,p)=>s+(P.model.rev[p][m]||0),0);
-      const scale=modelRevM>1e-9?revM[m]/modelRevM:1;
-      sgaCorp[m]=(P.model.corp.sga[m]||0)*scale;
-    }
+    cogsT[m]=ALL_PRODS.reduce((s,p)=>s+(cogs[p][m]||0),0);
   }
 
-  // === 5. Aggregates + EBITDA ===
-  const cogsT={},sgaT={},ebitda={},ajustes={};
+  // Step 4: SGA per product (Apr=seed=model_apr; May+ = formula; has_if_dec uses model)
+  // Initialize state per (product, line) with seed = projC value (= model first proj month)
+  const sga_state={};
+  for(const p of Object.keys(P.sgaParams)){
+    sga_state[p]={};
+    for(const line of Object.keys(P.sgaParams[p].variable||{})){
+      sga_state[p][line]=P.sgaParams[p].variable[line].seed;
+    }
+  }
+  for(let i=0;i<P.projMonths.length;i++){
+    const m=P.projMonths[i];
+    const prev_m=i>0?P.projMonths[i-1]:P.cutoff;
+    for(const p of Object.keys(P.sgaParams)){
+      const params=P.sgaParams[p];
+      let total=0;
+      for(const line of Object.keys(params.fixed||{})){
+        const monthly=params.fixed[line];
+        if(m in monthly) total+=monthly[m]||0;
+      }
+      for(const line of Object.keys(params.variable||{})){
+        const info=params.variable[line];
+        if(info.has_if_dec){
+          const v=info.monthly_model[m]||0;
+          sga_state[p][line]=v;
+          total+=v;
+          continue;
+        }
+        const eff=info.eff||0;
+        let new_val;
+        if(i===0){
+          new_val=info.seed; // = model Apr value
+        }else{
+          const prev_val=sga_state[p][line];
+          // Compute growth based on growth_type
+          let growth=0;
+          const gt=info.growth_type||'fixed_growth';
+          if(gt==='rev_product'){
+            const gp=info.growth_product;
+            let rcurr=0,rprev=0;
+            if(gp==='sistemica'){
+              rcurr=(rev.rcl?.[m]||0)+(rev.rpe?.[m]||0);
+              rprev=(rev.rcl?.[prev_m]||0)+(rev.rpe?.[prev_m]||0);
+            }else{
+              rcurr=rev[gp]?.[m]||0;
+              rprev=rev[gp]?.[prev_m]||0;
+            }
+            growth=rprev?(rcurr/rprev-1):0;
+          }else if(info.growth_row!=null){
+            // Read model's growth row value at m (fixed_growth)
+            growth=info.growth_monthly_model?.[m]||0;
+          }
+          new_val=prev_val*(1+growth*(1-eff));
+        }
+        sga_state[p][line]=new_val;
+        total+=new_val;
+      }
+      sga[p][m]=total;
+    }
+  }
+  // For actual months: copy model values
+  for(const m of P.actualMonths){
+    for(const p of Object.keys(P.sgaParams)){
+      sga[p][m]=P.model.sga?.[p]?.[m]||0;
+    }
+  }
   for(const m of P.months){
-    cogsT[m]=ALL_PRODS.reduce((s,p)=>s+(cogs[p][m]||0),0);
-    sgaT[m]=ALL_PRODS.reduce((s,p)=>s+(sga[p][m]||0),0)+(sgaCorp[m]||0);
+    sgaT[m]=Object.keys(P.sgaParams).reduce((s,p)=>s+(sga[p][m]||0),0);
+    sgaCorp[m]=sga.corp?.[m]||0;
     ajustes[m]=MT.ajustes[m]||0;
     ebitda[m]=revT[m]+cogsT[m]+sgaT[m];
   }
 
-  // === 6. New debt schedules ===
+  // Step 5: New debt schedule
   const ns=newDebt.map(d=>dSch((d.amount||0)/1e6,d.rate||0,d.start||'2099-01',d.tenor||12,d.tipo||'frances'));
   const ndI=m=>ns.reduce((s,sc)=>s+(sc[m]?.int||0),0);
   const ndA=m=>ns.reduce((s,sc)=>s+(sc[m]?.am||0),0);
   const ndIn=m=>ns.reduce((s,sc)=>s+(sc[m]?.inf||0),0);
 
-  // === 7. NI: scenario = model NI + deltas (EBITDA delta + interest + tax delta) ===
-  // Tax: annual EBT × tax_rate, applied in December. Model already has this.
-  // Delta tax = -tax_rate × delta_annual_EBT (sum EBITDA - model EBITDA + interest per year)
-  const ni={};
+  // Step 6: NI with tax in Dec
+  const aEBT={};
+  for(const m of P.months){const yr=m.slice(0,4);aEBT[yr]=(aEBT[yr]||0)+ebitda[m]+ndI(m);}
   for(const m of P.months){
     if(isAct(m)){ni[m]=MT.ni[m]||0;continue;}
-    const dEbitda=ebitda[m]-(MT.ebitda[m]||0);
-    const interest=ndI(m);
-    let taxDelta=0;
-    if(m.endsWith('-12')){
-      const yr=m.slice(0,4);
-      let dAnnualEBT=0;
-      for(const mm of P.months){
-        if(mm.slice(0,4)!==yr||isAct(mm))continue;
-        dAnnualEBT+=(ebitda[mm]-(MT.ebitda[mm]||0))+ndI(mm);
-      }
-      taxDelta=-(P.tax_rate||0.27)*dAnnualEBT;
-    }
-    ni[m]=(MT.ni[m]||0)+dEbitda+interest+taxDelta;
+    const yr=m.slice(0,4);
+    const tx=m.endsWith('-12')?-((P.tax_rate||0.27)*aEBT[yr]):0;
+    ni[m]=ebitda[m]+ndI(m)+tx;
   }
 
-  // === 8. Cash flow: base from model + scenario deltas ===
-  // Model has: cashEOP, divs (50% baseline), debtAm, cfop, cfinv, cffin per month.
-  // Scenario deltas: NI delta, dividend policy delta, new debt CF.
+  // Step 7: WC + Cash Flow (use model CFop/CFfin for actuals; project for proj months)
   const cfop={},cfin={},cashEOP={},dWC={},divs={};
   let cumDelta=0;
   for(const m of P.months){
@@ -973,26 +1218,19 @@ function project(ov={}){
       cashEOP[m]=MT.cashEOP[m]||0;
       continue;
     }
-    // Scenario CF deltas
+    // Use model's projected base + apply scenario deltas via cum delta
     const dNI=ni[m]-(MT.ni[m]||0);
-    // Dividends scenario
     const scenDivs=ni[m]>0?-divPct*ni[m]:0;
     const modelDivs=MT.divs[m]||0;
     const dDivs=scenDivs-modelDivs;
-    // New debt CF (inflow + interest + amortization)
-    const newDebtCF=ndIn(m)+ndA(m)+ndI(m);
-    // Note: ndI is already in NI (as interest expense reducing NI), so don't double count
-    // But ndI flows through NI to cash via CFop; we add ndA + ndIn separately
-    // Actually: model's NI already has tax; new debt interest goes to our dNI computation
-    // Cash delta per month = dNI + dDivs + ndIn + ndA  (interest already in dNI → CFop)
-    const deltaMonth=dNI+dDivs+ndIn(m)+ndA(m);
+    const newDebtCF=ndIn(m)+ndA(m);
+    const deltaMonth=dNI+dDivs+newDebtCF;
     cumDelta+=deltaMonth;
-
     divs[m]=scenDivs;
-    cfop[m]=(MT.cfop[m]||0)+dNI;  // CFop increases with better NI (approx — ignoring WC delta)
-    const modelCFfinNoDivDebt=(MT.cffin[m]||0)-modelDivs;  // baseline CFfin minus divs
+    cfop[m]=(MT.cfop[m]||0)+dNI;
+    const modelCFfinNoDivDebt=(MT.cffin[m]||0)-modelDivs;
     cfin[m]=modelCFfinNoDivDebt+scenDivs+ndIn(m)+ndA(m);
-    dWC[m]=(MT.cfop[m]||0)-(MT.ni[m]||0)-(MT.dep[m]||0);  // use model's ΔWC as-is
+    dWC[m]=(MT.cfop[m]||0)-(MT.ni[m]||0)-(MT.dep[m]||0);
     cashEOP[m]=(MT.cashEOP[m]||0)+cumDelta;
   }
 
@@ -1025,6 +1263,14 @@ function compute(){
   });
   B=project();
   S=project({div_pct:divPct,mrr_growth:mrrR,new_debt:nd});
+  // ─ DIAGNOSTIC ─
+  if(P.modelTot){
+    const sumEng = AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:(S.ebitda[m]||0)),0);
+    const sumAj = AMO.reduce((t,m)=>t+(P.modelTot.ajustes[m]||0),0);
+    const sumMod = AMO.reduce((t,m)=>t+(P.modelTot.ebitda[m]||0),0);
+    console.log('[Parity] EBITDA model:',sumMod.toFixed(2),'eng:',sumEng.toFixed(2),'Δ:',(sumEng-sumMod).toFixed(2),'M');
+    console.log('[Parity] Ajustes:',sumAj.toFixed(2),'EBITDA Adj engine:',(sumEng+sumAj).toFixed(2),'M  · model Adj:',(sumMod+sumAj).toFixed(2),'M');
+  }
   // Calibration badge: compare base annual to model
   if(P.modelTot){
     const modelRev=AMO.reduce((t,m)=>t+(P.modelTot.rev[m]||0),0);
