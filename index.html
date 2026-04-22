@@ -197,6 +197,79 @@ html[data-theme="dark"] input[type=number],html[data-theme="dark"] select{backgr
 html[data-theme="dark"] .kpi-icon{background:rgba(37,99,235,.2)}
 html[data-theme="dark"] .dc{background:var(--surface2);border-color:var(--border)}
 
+
+/* ═══════════ RESPONSIVE + STICKY FIRST COL ═══════════ */
+/* All tables — first column sticky when scrolling horizontally */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tw table thead th:first-child,
+.tw table tbody td:first-child{
+  position:sticky;left:0;z-index:2;
+  background:var(--surface);
+  box-shadow:2px 0 4px rgba(0,0,0,.06);
+}
+.tw table thead th:first-child{z-index:3;background:var(--surface2)}
+.tw table tr.tot td:first-child{background:var(--surface2)}
+html[data-theme="dark"] .tw table thead th:first-child,
+html[data-theme="dark"] .tw table tbody td:first-child{background:var(--surface)}
+html[data-theme="dark"] .tw table thead th:first-child{background:var(--surface2)}
+html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface2)}
+
+/* Tablet ≤ 768px */
+@media(max-width:768px){
+  .body{flex-direction:column;max-height:none}
+  .sidebar{width:100%;max-height:none;border-right:none;border-bottom:1px solid var(--border);padding:14px 12px}
+  .main{padding:12px}
+  .tab-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 12px}
+  .tab-bar::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;padding:12px 14px;font-size:10px}
+  .topbar{padding:0 14px;gap:12px;height:auto;min-height:58px;flex-wrap:wrap;padding-top:8px;padding-bottom:8px}
+  .topbar-logo{height:24px}
+  .topbar-title{font-size:17px}
+  .topbar-sub{font-size:9px}
+  .g2,.g4,.g5{grid-template-columns:repeat(2,1fr)!important;gap:10px}
+  .g4{grid-template-columns:repeat(2,1fr)!important}
+  .card{padding:14px}
+  .card-title{font-size:9px;margin-bottom:10px}
+  .kpi-premium{padding:14px 16px}
+  .kpi-val2{font-size:26px}
+  .kpi-lbl2{font-size:9px}
+  .tw table{font-size:10px;min-width:520px}
+  .tw table thead th,.tw table tbody td{padding:6px 10px}
+  /* Charts responsive heights */
+  #ch-rev,#ch-wf,#ch-ebit,#ch-arr,#ch-rprod,#ch-bridge,#ch-margins,#ch-costos,#ch-cf,#ch-saldo,#ch-cuota,#ch-clients,#ch-arpa{
+    height:220px!important;min-height:220px
+  }
+  #ch-cash,#ch-cf2,#ch-cfin{height:180px!important}
+  /* Dc card adapt */
+  .dc{padding:10px}
+  .ir{grid-template-columns:1fr 1fr;gap:5px}
+}
+
+/* Mobile ≤ 480px */
+@media(max-width:480px){
+  .sidebar{padding:12px 10px}
+  .main{padding:10px}
+  .topbar{padding:0 10px}
+  .topbar-title{font-size:15px}
+  .topbar-sub{display:none}
+  .tab{padding:10px 11px;font-size:9px;letter-spacing:.5px}
+  .g2,.g4,.g5{grid-template-columns:1fr!important;gap:10px}
+  .kpi-premium{padding:13px 14px}
+  .kpi-val2{font-size:22px}
+  .kpi-val2 .unit{font-size:11px}
+  .kpi-lbl2{font-size:9px;letter-spacing:1.2px}
+  .tw table{min-width:440px;font-size:10px}
+  .tw table thead th,.tw table tbody td{padding:5px 8px}
+  /* All chart containers scale to viewport */
+  .card div[id^="ch-"]{width:100%!important;height:200px!important;min-height:200px}
+  /* save-btn position adjust */
+  .save-btn{bottom:12px;right:12px;padding:8px 14px;font-size:11px}
+  /* Login responsive */
+  .login-box{width:calc(100% - 24px);padding:28px 22px;max-width:360px}
+  .login-logo{height:44px}
+  /* Eliminate body dot background on mobile for perf */
+  body::before{display:none}
+}
 </style>
 </head>
 <body>
@@ -568,19 +641,46 @@ function handleXlsx(input){
   reader.readAsArrayBuffer(file);
   input.value='';
 }
-function onCutoffChange(){
-  if(!window._wb)return;
-  const sd=document.getElementById('desde-month'),sh=document.getElementById('cutoff-month');
-  if(sd.value>sh.value)sh.value=sd.value;
-  onHorizonChange();
-}
+
 function onHorizonChange(){
-  if(!window._wb)return;
   const desde=document.getElementById('desde-month').value;
   const cutoff=document.getElementById('cutoff-month').value;
   let horizon=document.getElementById('horizon-month').value;
   if(horizon<=cutoff){const[y,m]=cutoff.split('-');horizon=(parseInt(y)+1)+'-'+m;}
-  parseAndRebuild(window._wb,desde,cutoff,horizon);
+  if(window._wb){
+    parseAndRebuild(window._wb,desde,cutoff,horizon);
+  }else if(P.months&&P.months.length){
+    // No Excel loaded: re-slice existing P data if available
+    resliceFromLoaded(desde,cutoff,horizon);
+  }
+}
+function onCutoffChange(){
+  const sd=document.getElementById('desde-month'),sh=document.getElementById('cutoff-month');
+  if(sd.value>sh.value)sh.value=sd.value;
+  onHorizonChange();
+}
+function resliceFromLoaded(desde,cutoff,horizon){
+  // Re-compute actualMonths/projMonths from saved P data
+  if(!P.months||!P.months.length){console.warn('No P.months to reslice');return;}
+  // Verify the new range is within saved data
+  const dataMin=P.months[0],dataMax=P.months[P.months.length-1];
+  if(horizon>dataMax){
+    alert('Horizonte ('+horizon+') excede los datos guardados ('+dataMax+'). Volvé a subir el Excel para ampliar el rango.');
+    return;
+  }
+  const actualMonths=monthRange(desde,cutoff);
+  const[cy,cm]=[+cutoff.slice(0,4),+cutoff.slice(5)];
+  const projFirst=(cm===12)?`${cy+1}-01`:`${cy}-${String(cm+1).padStart(2,'0')}`;
+  const projMonths=monthRange(projFirst,horizon);
+  P.actualMonths=actualMonths;
+  P.projMonths=projMonths;
+  P.months=[...actualMonths,...projMonths];
+  P.cutoff=cutoff;
+  P.projFirst=projFirst;
+  MO=projMonths;AMO=P.months;lb=projMonths.map(fmtM);
+  compute();
+  renderAll();
+  document.getElementById('upload-status').textContent=`✓ Re-slice · Actuals: ${fmtM(actualMonths[0])}→${fmtM(cutoff)} · Proy: ${fmtM(projFirst)}→${fmtM(horizon)}`;
 }
 
 
@@ -695,7 +795,11 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
 
     const actualMonths=monthRange(desdeYM,cutoffYM);
     const projMonths=monthRange(projFirst,horizonYM);
-    const allMonths=[...actualMonths,...projMonths];
+    // Read data for FULL available range (parse to Dec-2031 or detect end)
+    // This way Gist saves complete data and horizon dropdown can be extended freely
+    const DATA_END='2031-12';
+    const allMonthsFull=monthRange(desdeYM,DATA_END);
+    const allMonths=allMonthsFull; // full range for P.model/P.modelTot storage
 
     const uf={},ipc={};
     for(const m of allMonths){
@@ -853,9 +957,20 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
           const isFixed=(line==='Staff Costs'||line==='Servers');
           if(isFixed){
             out[prod].fixed[line]={};
+            let lastVal=0;
             for(let mo=1;mo<=12;mo++){
               const ym='2026-'+String(mo).padStart(2,'0');
               out[prod].fixed[line][ym]=numV(wsE,r,ymCol(ym))/1e6;
+              lastVal=out[prod].fixed[line][ym];
+            }
+            // Extrapolate to 2027+ using annual 3% inflation (compound monthly)
+            const infl=0.03/12;
+            for(let yr=2027;yr<=2031;yr++){
+              for(let mo=1;mo<=12;mo++){
+                const ym=yr+'-'+String(mo).padStart(2,'0');
+                const monthsElapsed=(yr-2026)*12+(mo-12);
+                out[prod].fixed[line][ym]=lastVal*Math.pow(1+infl,monthsElapsed);
+              }
             }
           }else{
             const val=numV(wsE,r,projC)/1e6;
@@ -899,9 +1014,19 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
           const isMarketing=(line==='Marketing'&&prod!=='rcl'&&prod!=='rpe');
           if(isMarketing){
             out[prod].fixed[line]={};
+            let lastVal=0;
             for(let mo=1;mo<=12;mo++){
               const ym='2026-'+String(mo).padStart(2,'0');
               out[prod].fixed[line][ym]=numV(wsE,r,ymCol(ym))/1e6;
+              lastVal=out[prod].fixed[line][ym];
+            }
+            const infl=0.03/12;
+            for(let yr=2027;yr<=2031;yr++){
+              for(let mo=1;mo<=12;mo++){
+                const ym=yr+'-'+String(mo).padStart(2,'0');
+                const monthsElapsed=(yr-2026)*12+(mo-12);
+                out[prod].fixed[line][ym]=lastVal*Math.pow(1+infl,monthsElapsed);
+              }
             }
           }else{
             // Get eff from Inputs
@@ -970,7 +1095,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       div_pct_base:0.5,
       priorYearRev,priorYearEbitda,
     };
-    MO=projMonths;AMO=allMonths;lb=projMonths.map(fmtM);
+    MO=projMonths;AMO=[...actualMonths,...projMonths];lb=projMonths.map(fmtM);
 
     buildMrrCtrls();
     populateBridgeSelectors();
