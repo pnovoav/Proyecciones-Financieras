@@ -1780,12 +1780,32 @@ function chartBridge(){
   for(const m of months){chT+=Math.abs(data[m].ch);dsT+=Math.abs(data[m].ds);upT+=data[m].up;nwT+=data[m].new;}
   const eopV=data[months[months.length-1]].eop;
   const grossV=bopV-chT-dsT,netV=grossV+upT;
-  const names=['BoP ARR','(-) Churn','(-) Downsell','(+) Upsell','(+) Nuevos','EoP ARR'];
+  const isMobile=window.innerWidth<=480;
+  const names=isMobile
+    ?['BoP','Churn','Dnsell','Upsell','Nuevos','EoP']
+    :['BoP ARR','(-) Churn','(-) Downsell','(+) Upsell','(+) Nuevos','EoP ARR'];
   const absVals=[bopV,chT,dsT,upT,nwT,eopV];
   const bases=[0,bopV-chT,grossV,grossV,netV,0];
   const dispV=[bopV,-chT,-dsT,upT,nwT,eopV];
   const colors=['#3b82f6','#ef4444','#fca5a5','#059669','#6ee7b7','#3b82f6'];
-  Plotly.react('ch-bridge',[{type:'bar',x:names,y:absVals,base:bases,marker:{color:colors,opacity:0.88},text:dispV.map(f0),textposition:'inside',insidetextanchor:'middle',textfont:{size:12,color:'#fff',family:"'DM Mono',monospace"}}],{...LO,showlegend:false,bargap:0.38},cfg);
+  const fmtK=v=>{const a=Math.abs(v);if(a>=1000)return (v/1000).toFixed(1)+'k';return Math.round(v).toString();};
+  const texts=isMobile?dispV.map(fmtK):dispV.map(f0);
+  Plotly.react('ch-bridge',[{
+    type:'bar',x:names,y:absVals,base:bases,
+    marker:{color:colors,opacity:0.88},
+    text:texts,
+    textposition:isMobile?'outside':'inside',
+    insidetextanchor:'middle',
+    textfont:{size:isMobile?9:12,color:isMobile?undefined:'#fff',family:"'DM Mono',monospace"},
+    cliponaxis:false,
+  }],{
+    ...LO,
+    showlegend:false,
+    bargap:isMobile?0.2:0.38,
+    margin:isMobile?{t:24,b:40,l:36,r:8}:LO.margin,
+    xaxis:{...LO.xaxis,tickfont:{size:isMobile?9:10},tickangle:0,automargin:true},
+    yaxis:{...LO.yaxis,tickfont:{size:isMobile?8:9},automargin:true},
+  },cfg);
   tableRetention();
 }
 
