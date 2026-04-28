@@ -22,9 +22,18 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;bac
 .tab{padding:13px 20px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;border:none;background:transparent;color:var(--text4);border-bottom:2px solid transparent;transition:all .2s;font-family:var(--sans)}
 .tab:hover{color:var(--text2)}
 .tab.on{color:var(--blue2);border-bottom-color:var(--blue2)}
-.body{display:flex;flex:1;overflow:hidden;max-height:calc(100vh - 58px - 44px)}
-.sidebar{width:var(--sidebar);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:20px 16px}
-.main{flex:1;overflow-y:auto;padding:20px}
+.body{display:flex;flex:1;overflow:hidden;max-height:calc(100vh - 58px - 44px);position:relative}
+.sidebar{width:var(--sidebar);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:20px 16px;position:absolute;top:0;bottom:0;left:0;z-index:60;transform:translateX(-100%);transition:transform .25s ease;box-shadow:4px 0 24px rgba(0,0,0,.08)}
+.sidebar.open{transform:translateX(0)}
+.sidebar-scrim{position:absolute;inset:0;background:rgba(0,0,0,.2);z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
+.sidebar-scrim.on{opacity:1;pointer-events:auto}
+.main{flex:1;overflow-y:auto;padding:20px;width:100%}
+.drawer-btn{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:11px;border:1px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.65);font-family:'DM Mono',monospace;font-size:10px;font-weight:500;cursor:pointer;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+.drawer-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.curr-toggle{display:inline-flex;border:1px solid rgba(255,255,255,.15);border-radius:11px;overflow:hidden;font-family:'DM Mono',monospace}
+.curr-toggle button{background:transparent;border:0;color:rgba(255,255,255,.5);font-size:9px;font-weight:600;letter-spacing:.8px;padding:4px 10px;cursor:pointer;text-transform:uppercase}
+.curr-toggle button.on{background:rgba(255,255,255,.12);color:#fff}
+.curr-toggle button:hover:not(.on){color:rgba(255,255,255,.85)}
 .ctrl-section{margin-bottom:20px}
 .ctrl-section-title{font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--text4);padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:12px}
 .ctrl-row{margin-bottom:10px}
@@ -67,10 +76,34 @@ tbody td:first-child{text-align:left;color:var(--text2)}
 tbody tr:hover{background:var(--surface2)}
 tr.tot td{background:var(--surface2);font-weight:600;color:var(--text);border-top:1px solid var(--border2)!important}
 tr.sub td{color:var(--text4);font-size:10px}
+tr.exp-hdr td{cursor:pointer;user-select:none}
+tr.exp-hdr td:first-child::before{content:'▸ ';font-size:9px;color:var(--text3);display:inline-block;width:10px;transition:transform .2s}
+tr.exp-hdr.open td:first-child::before{content:'▾ '}
+tr.exp-row td:first-child{padding-left:28px!important;color:var(--text3);font-style:normal}
+tr.exp-row td{background:var(--surface2)!important;font-size:10px;color:var(--text3)}
+tr.exp-row.hide{display:none}
+/* ═══ Balance Sheet styling ═══ */
+tr.bs-section-hdr td{background:var(--surface2)!important;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text4);padding:8px 11px;font-weight:700;border-top:2px solid var(--border2);text-align:left!important}
+tr.bs-sub-tot td{background:var(--surface2)!important;font-weight:600;color:var(--text);border-top:1px solid var(--border2)!important;font-size:11px}
+tr.bs-sub-tot td:first-child{background:var(--surface2)!important}
+tr.bs-grand-tot td{background:var(--blue-tint)!important;color:var(--blue2)!important;font-weight:700;font-size:12px;border-top:2px solid var(--blue3)!important;border-bottom:2px solid var(--blue3)!important}
+tr.bs-grand-tot td:first-child{background:var(--blue-tint)!important;color:var(--blue2)!important}
+html[data-theme="dark"] tr.bs-grand-tot td{background:rgba(37,99,235,.18)!important;color:#93c5fd!important}
+html[data-theme="dark"] tr.bs-grand-tot td:first-child{background:rgba(37,99,235,.18)!important;color:#93c5fd!important}
+.dyn-badge{font-size:8px;padding:1px 5px;border-radius:8px;background:var(--blue2);color:#fff;margin-left:5px;font-family:var(--mono);font-weight:700;vertical-align:middle;letter-spacing:.3px}
 .neg{color:var(--red)!important}.pos{color:var(--green)!important}
 .act-h{background:#eff6ff!important;color:var(--blue2)!important}
 .ac{background:#f8fbff!important}.ac-bold{background:#eff6ff!important;font-weight:600;color:var(--text)!important}
 .act-badge{font-size:8px;padding:1px 6px;border-radius:10px;background:var(--blue2);color:#fff;margin-left:5px;font-family:var(--sans);font-weight:700}
+.fc-badge{font-size:8px;padding:1px 6px;border-radius:10px;background:rgba(124,58,237,.12);color:#7c3aed;margin-left:5px;font-family:var(--sans);font-weight:700;border:1px solid rgba(124,58,237,.2)}
+html[data-theme="dark"] .fc-badge{background:rgba(167,139,250,.18);color:#c4b5fd;border-color:rgba(167,139,250,.3)}
+tr.tot td{font-weight:700!important}
+/* Destaque violeta en celdas total de columnas forecast (las que no tienen .ac) */
+tr.tot td:not(.ac):not(:first-child){background:rgba(124,58,237,.10)!important}
+html[data-theme="dark"] tr.tot td:not(.ac):not(:first-child){background:rgba(167,139,250,.14)!important}
+/* Destaque azul más fuerte en celdas total de columnas históricas (sobre el .ac base) */
+tr.tot td.ac{background:rgba(37,99,235,.14)!important}
+html[data-theme="dark"] tr.tot td.ac{background:rgba(37,99,235,.22)!important}
 .save-btn{position:fixed;bottom:20px;right:24px;z-index:500;background:#1d4ed8;color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,.3);opacity:0.9}
 .save-btn:hover{opacity:1;transform:translateY(-1px)}
 .save-btn.saving{background:#d97706}
@@ -239,7 +272,7 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
   #ch-rev,#ch-wf,#ch-ebit,#ch-arr,#ch-rprod,#ch-bridge,#ch-margins,#ch-costos,#ch-cf,#ch-saldo,#ch-cuota,#ch-clients,#ch-arpa{
     height:220px!important;min-height:220px
   }
-  #ch-cash,#ch-cf2,#ch-cfin{height:180px!important}
+  #ch-cash,#ch-cash-fc,#ch-gfin-annual,#ch-gfin-mo{height:180px!important}
   /* Dc card adapt */
   .dc{padding:10px}
   .ir{grid-template-columns:1fr 1fr;gap:5px}
@@ -277,8 +310,10 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
 <header class="topbar">
   <img class="topbar-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAADICAYAAABS39xVAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAABLKADAAQAAAABAAAAyAAAAADOaDBdAAARx0lEQVR4Ae2cCdQd4xnHkyCJrRr7GqEqkSJRSlBatEVE7UttVWrpiSV25YRUgloOzmljLU5DrVHrqZ3QquUgggi1JCKSSNS+RCJJ/3+93/Hl5t73nbl37r1z7/d7zvnnfvM+z7zLb2aeeeedoVMnDAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCBQZwKdQ+316zk85E7i66qgNaWVpFWl70g9pCWl9tZFG19IH0gfS5OlGdJb0nwJgwAEWoTAuMlDKx7JohXvufCOK6iot9RT2kTqL/WS1pIqsbna6U3pNekF6XlpojROahY7UB3dT5pTpsOLqXy8dGIZf72KD1VDe0rl+lmPfixSaH+mfqdLE6Sp0quFbf1kasuqtqslH4N5RTW77FlpaFF5Hjf7qVPnSB5Dnm/unhz5GJ8tPSFVZNUmrOXU6k7SvtK2UjcpK/Pg1i1o53aVevZ1s3ST5CSWV3PiHpWgczso5ilpdILYWoX8VBW7H3k0J9F7pEukxzPs4FKqa9dAfWvL1wwJy+fZwMA48ua6VR2qOGF1qXA0fbTfbdI70l+lHaUsk5WqK2s+QCdJz0menRwu5dGuS9EpM3Tyb5T58Tuv5tnObtJj0iOSZ0ZZ2NeqxCpnPrebwbyU0kz2aTWdTZuwllFjvrg8Xd9dWlxqpPVV41dIYyX3Jy82RB3ZOkVnllCsH0+wMIFt5H5J8swb64AE0iSsbcXH60cH5ZBTf/XJM74Lc9A3v1y4qIJ+7KJ99qlgv462i/k+IHXvaANnvJ06JU1Yni08LPmNX57tBHXubsmPEY2y+9Rw5wob/4v2q9ejdYVdzMVuPg9H5KIndCItgaQ5p2S9SRbdffF7/SCNfaLgN6Vp0rvS59J/pdnSlwW1dXyetv2Zg++YS0t+7Fxe8km5itRLSmODFHyn1IiFyCPU7gZpOlsU64XgWyTPtvJkk9UZH8OsbwRtb7V87FeU0iTrvRXf6Ler6gKWkkCSnFO2yiQ7X152728ds/TnSMlTdZ/cTlJVLa5p/zbrqT9Wlrxu4ZN0ZylmfglwsnR+LDBDv5NrjNVgxWwh7R9o95fybSX9MxBTb9d2avCNGjfqm5STVl9puOQXOyFbQ87ekj97wcoTGCbX/eXddff8p5oWYwnLJ8UhkQZGy+9FZiepWpgToPWMdL00QPKddQ8pZOfJeZmUVeIMtWWfX9eG7HU5L5VulkIJy3XcLvkCzouF3qZl1cf3VZH1iuRzyrN6L0WEzGuXJKwQoU6dnpT7qXBI83i7RLq6UcQ/Tf69pFolq1LNG/6e0rWlnEVlI4q2a7XpBLplpPLtC34/Gnv2F7Ll5Lw4FFBnXyPeBg/SGD+LjLNHxI+7U6cVWglCLGHFTlQ/AjbKDlHDMyKNHyP/apGYat3rqIILIpX4EWdiuxjHeyYRMs9aNw4FtLjPM+NHI2P0WinWgQjEElbsUWDzBrM6Se1/IL0nTS+Syz6XvCZSS7stUrkT0xklYjxLjFnsMTO2f7P7Y+ffy80+QPqfjkAsYX0cqc4L4X4j54XxRtgoNeoZ1Opl5EerMVKt7HhVvGGk8nIftPrj22GRfdeS/9xITCu7fxwYnG9ILwb8uFqQQCxhvZBgzH6r5U8Y/iYdJ+0h/Ujy5wn1ML+h9J14bpFc9pU0R6qFrahKz4tUPFT+0KLwH+SfGqnjVPn7RWKqdc+LVGC29bbT1WBo/SX2uFjv/ua1vUYcu5qxWDRSs9/anC/FFoldz34F6ecb+0L/et3Gj2pvSV5v8sU5RfKjmhdU/U2WE07b3x/q72ax+9XRED+/vh2RYDADFRO7Mfit2fcT1FUqpLMK55dytCsz/5D52NXDuqmRdSSfS6cFGnSC/X3Aj+tbAh99+2fz/xW64NpGd4r+OExK+0ZmCe3zg4L8HU/IfEF5NjRT8lTfkKdIvlBcNrnw9+v6dVJzMmykHaHG+0c6sHfE3+Yepz8uljw7LWe+iD0bO7NcQKC8j3zXSOZWKnH54vdxCtmdcnqBOzYjD9VRzuf2u0pLS07Ky0sx21UBk2JB+L8h8Ef9O1iqxbFLg7i7gq+Vrk+zU3FskoTlfXxxPiOt5I0amGcBHtAaBYWa8IXnmZ+T2BPSw9LjUr3Ma2aXRxrz3d+JKKl5LWx7qW9ghzPku0KKPUIWVzFRBe7zgGJHiu2tU8TWItSJtu2toR+RX61FIy1aZz+Ny8qD+bhVlbCSZl0nBw/66hyMuof64DuxZ22+iB+TfFHeKHk9rdbmx7OQjZfTd7W0dkCCHR5IEFMcMksFhxQXNtm2Z2GeXV8mkaya7OC1664nGlVZ0oTlRvyo9lvp59I1kteh8mK91JF9JT+6PCINkmphJ6nSAZGKd4j4y7nHyuHvtULmRzf3Ia09pB2c2JvVFlHHN5buk/zhrc+/XSSsgxFIk7Da0PjkP1TqKR0ljZGqzpyqIyvbRhXdLQ3LqsJCPb30e36kzrPknxKJCbnPkNM3hpC5D0nWeYrr8FpkK9iyGsRvpDukUdJiEtZBCFSSsNrQ+IPNkZIThNee1pYGSl6/uUF6Tkq73qJdMrMzVdMlmdX2///fVqi6CXK6zWpt2wQVXJcgpjjkaRWMLy5s8u0D1X+/je3W5OPoKN2v+jgtmhGpWarH60jWve3qdEJcU/IbIGtJafHCrxfZvyutIK0kfUdaVVpO8l20klmEdlvAjtXWXZIfE6uxU7XzDyMV7BHxJ3W/okAn2iGBHfzY6Ys1beLaXfv8WporzZdsc6SdpNCj7iT5Z0v1Mp+XvgkmmT31Upwfd0P9l7vDmo+zj3c1k5Ms4Ll954mqLKuEVa4T8+SYWM4ZKHdScxJzQvue5OTlxGatL20qLSUlsZEKWi9JYJkYJ9Fzy/jaik/RHxPaNjL4PU51+LFnmUBdf5bvfmlGIKbY5dnI6cWF2vZxCl3wnvVVchxLNJW4yMe/r7Sl9DvJx6GcbSaH11YfLBfQgcuP0dhHS41OWF3VB68/VmW1TliVdu5L7TipsPMLJSpxIvNs4VfSz0r42xf10cZPJN+FKzEv5IfsCTm9rpS1edbzr0ClnpHeKG0XiEnq8qw2b/aeOmQ9Kl0uPSX55lXODpKDhLUwnUkqmr5wcXOWxLLushqWk0MpNfIk/0h9ukbyXbXUjEHFC9jmC2wl3zhcoZtEwpN+IBqpZiG3E+GVC5UuWOCZzz4LFtVkq3tNak1eqV/q7BgJ31l+38WxBQmEZukLRjbBVixh+XHjnTKarPIjczDGcwr9C3WlkpmkH0muCFUq3wnS1EhMNe4jtPOUSAU3Rfyt4n5dA5kWGIwvzHUDflwtQCCWsBbRGL1WVEpLqHxIThg4sWZtftwK2ctyXhQKyMjnxfWYxfoa279Z/F9FOuonAayFCcQSVuxC6C02u+SAT89IH/yWJI0drWB/rhGyHULODH1jVFfs0XBfxWyfYZt5rMo3z5UjHfP/oQNrYQKxhHV9grH/XTH1unhLdcdvy/z2MGQvhZxFvl7avqSorHjzNBW8W1xYw22/Jfs4Uv8N8vuzkVa1szSw7pHBeZE+K5ufVUUNrsdvgFvGYgnrAY10ZmS0ruNe6R/S1pHYLN1Okk9LgyOVesHW/UtqoxUY4vK8/OcmrSyjOJ9020Xq8gsSJ+9aWD2Tc3H/PbNysvJNImTT5JwUCkjpm5UyPq/hses3r/0u2a/YYrSn2IMkJ4aY7agA621psjRW8keQr0leY/IJ9bk0W0pqXifzhehHvrWl/pLf2vlvf1iYxIYrKOkj4cmK3ThQqXnsGvDX0vWcKr9KOizQyMHyXSs9HoipxPUL7fSm1KWSnVPs48TcVeoh9ZUGSFtIq0kxu08BWc6KNlV9N0mdC9JPXaytvRPV2qQMWhyhOg6VnPgbbZ4h+zhdWmlHYgnL9T4jnSed4o0EtqZirK2KYn3HcsLyo81n0pdS2wXg7W7SYpIPmB9tLC+i+nujSs0X2WUJd15VcR5nyI6U851QQI19h6t+3xRWD7QzSr5eAX8lrlsr2anO+3hmnKWtqMr2ybLClHVdqPhJKfcpFb6ZCq28mK/zmiYsD/RUyRfJ/t6o0JxdrXp9vzVHbW0j+TeJ3RUJekj+qyMx9XAfqEYeDTTkm4XX4IYEYlrNNUUDerDFBuUbfCva1GoG1TbDSVLHAQry9LIZ7G110o8USWdDRyk29CjoMe/lf3JgY9SH6yL9OFb+9SIxreROc2NqpXF3uLGkSViGM1Ty9PJJb+TULlC/+khvJOzfyor7UyTWX1F/FImpp/tgNTYp0mCrzThKDfcDFQ6Qkh7rUnVQ1kQE0iYsD81rWl4I3U26UZovNdpmqAPDpfWlk6U00+lbFB+y2+W8JxTQAJ8Xp/ePtLua/MMiMc3q9jro2ZJnkU836yDod3oCSRbdy9V6hxyWE8RAaUOpt7SRVOt1Ki/SPyuNK/yO1m+aJKXwb+wq/btV4e9SP04Me5dy5KDs3+rDRdLxgb6cKZ8ZOemGbJWQMwe+D9WH8QWN1a9vMi6rxvyCp5rzv5q2k+zr9d4ktlSSoBzFrF5NX7I4YFPUgSvbdcKgnbg2kNaQ1pX8pq/tzZ/bdIx/O0tdpTbz9lxpdkH+TzH8ZvETabo0QXqxIN9lqzWf/MdI5WaJTgpfV9tIDfc/QXVPDNRvtmYZs5EK8FjzYj4HPpVmStMkP/J9IWVp76uywVIlTxlZ9qNcXUkfc/25y9HlKslhua9hDAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIAABCEAAAhCAAAQgAAEIQAACEIAABCAAAQhAAAIQgAAEIACBKgn8D8l3NGHdT3eFAAAAAElFTkSuQmCC" alt="Sable">
   <div class="topbar-sep"></div>
+  <button class="drawer-btn" onclick="toggleDrawer()" title="Inputs & controles">☰ Inputs</button>
   <div><div class="topbar-title">Proyecciones Financieras</div><div class="topbar-sub">Grupo Sable · 2026 · v2</div></div>
   <div class="topbar-right">
+    <div class="curr-toggle" id="curr-toggle"><button class="on" data-c="CLP" onclick="setCurr('CLP')">MM CLP</button><button data-c="UF" onclick="setCurr('UF')">UF</button></div>
     <button id="theme-toggle" onclick="toggleTheme()" title="Cambiar modo claro/oscuro"><span class="theme-icon" id="themeIcon"></span><span id="themeLabel">Claro</span></button>
     <div class="badge-live" id="badge">Sin modelo</div>
   </div>
@@ -288,16 +323,18 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
   <button class="tab" onclick="showTab('ing',this)">Ingresos</button>
   <button class="tab" onclick="showTab('eerr',this)">EERR</button>
   <button class="tab" onclick="showTab('fc',this)">Flujo de Caja</button>
+  <button class="tab" onclick="showTab('bs',this)">Balance</button>
   <button class="tab" onclick="showTab('deuda',this)">Deuda</button>
 </nav>
 <div class="body">
-<aside class="sidebar">
+<div class="sidebar-scrim" id="sidebar-scrim" onclick="toggleDrawer(false)"></div>
+<aside class="sidebar" id="sidebar">
   <div class="ctrl-section">
     <div class="ctrl-section-title">Modelo Excel</div>
     <div id="upload-status" style="font-size:10px;color:var(--text4);margin-bottom:8px;font-family:var(--mono)">Sin modelo cargado</div>
     <div class="ctrl-row" id="cutoff-row" style="display:none"><div class="ctrl-label">Actuals desde</div><select id="desde-month" onchange="onCutoffChange()"></select></div>
     <div class="ctrl-row" id="hasta-row" style="display:none"><div class="ctrl-label">Actuals hasta (cutoff)</div><select id="cutoff-month" onchange="onCutoffChange()"></select></div>
-    <div class="ctrl-row" id="horizon-row" style="display:none"><div class="ctrl-label">Proyectar hasta</div><select id="horizon-month" onchange="onHorizonChange()"><option value="2026-12" selected>Dic-26</option><option value="2027-06">Jun-27</option><option value="2027-12">Dic-27</option></select></div>
+    <div class="ctrl-row" id="horizon-row" style="display:none"><div class="ctrl-label">Proyectar hasta</div><select id="horizon-month" onchange="onHorizonChange()"><option value="2026-12">Dic-26</option><option value="2027-06">Jun-27</option><option value="2027-12">Dic-27</option><option value="2028-06">Jun-28</option><option value="2028-12" selected>Dic-28</option></select></div>
     <button class="btn btn-outline" onclick="document.getElementById('xlsx-input').click()">↑ Cargar modelo .xlsx</button>
     <input type="file" id="xlsx-input" accept=".xlsx" style="display:none" onchange="handleXlsx(this)">
   </div>
@@ -312,39 +349,29 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
     <div class="ctrl-section-title">Crecimiento MRR (mensual)</div>
     <div id="mrr-ctrls"></div>
   </div>
-  <div class="ctrl-section">
-    <div class="ctrl-section-title">Nueva deuda</div>
-    <div id="dc"></div>
-    <button class="btn btn-outline" onclick="addD()">＋ Agregar tramo</button>
-  </div>
 </aside>
 <main class="main">
 <div id="pg-dash" class="pg on">
   <div class="g4" id="kpis" style="margin-bottom:10px"></div>
   <div class="g4" id="kpis2"></div>
   <div class="g2">
-    <div class="card"><div class="card-title">Revenue mensual por producto</div><div id="ch-rev" style="height:220px"></div></div>
+    <div class="card"><div class="card-title" id="dash-title-rev">Revenue mensual por producto</div><div id="ch-rev" style="height:220px"></div></div>
     <div class="card"><div class="card-title">Cascada P&amp;L anual</div><div id="ch-wf" style="height:220px"></div></div>
   </div>
-  <div class="g2">
-    <div class="card"><div class="card-title">EBITDA mensual · margen %</div><div id="ch-ebit" style="height:200px"></div></div>
-    <div class="card"><div class="card-title">MRR por ERP (M CLP)</div><div id="ch-arr" style="height:200px"></div></div>
-  </div>
-  <div class="card gmb"><div class="card-title">Saldo caja EOP (M CLP)</div><div id="ch-cash" style="height:180px"></div></div>
-  <div class="g2">
-    <div class="card"><div class="card-title">Clientes por producto (EoP)</div><div id="ch-clients" style="height:200px"></div></div>
-    <div class="card"><div class="card-title">ARPA Total por producto (UF)</div><div id="ch-arpa" style="height:200px"></div></div>
-  </div>
+  <div class="card gmb"><div class="card-title" id="dash-title-ebit">EBITDA mensual · margen %</div><div id="ch-ebit" style="height:200px"></div></div>
+  <div class="card gmb"><div class="card-title" id="dash-title-cash">Saldo caja EOP</div><div id="ch-cash" style="height:180px"></div></div>
   <div class="card gmb"><div class="card-title">Métricas por producto — último mes real</div><div class="tw"><table id="t-metrics"></table></div></div>
 </div>
 <div id="pg-ing" class="pg">
-  <div class="card gmb"><div class="card-title">Revenue mensual por producto (M CLP)</div><div id="ch-rprod" style="height:260px"></div></div>
+  <div class="card gmb"><div class="card-title">Revenue anual por segmento · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">2023-2028 con históricos reales y proyección — click para expandir por producto</span></div><div class="tw" id="t-rev-annual"></div></div>
+  <div class="card gmb"><div class="card-title"><span data-curr-title>Revenue mensual por producto</span></div><div id="ch-rprod" style="height:260px"></div></div>
   <div class="card gmb">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-      <div class="card-title" style="margin-bottom:0">MRR Bridge — Stock ARR (UF)</div>
+      <div class="card-title" style="margin-bottom:0">MRR Bridge — <span id="bridge-unit-lbl">UF</span></div>
       <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
         <div><div class="il">Producto</div>
-          <select id="bp-prod" onchange="chartBridge()" style="width:130px">
+          <select id="bp-prod" onchange="chartBridge();tableBridge()" style="width:130px">
+            <option value="all">Todos</option>
             <option value="time">Time</option>
             <option value="flex">Flexline</option>
             <option value="mgrplus">Manager+</option>
@@ -353,44 +380,121 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
           </select></div>
         <div><div class="il">Desde</div><select id="bp-desde" onchange="chartBridge()"></select></div>
         <div><div class="il">Hasta</div><select id="bp-hasta" onchange="chartBridge()"></select></div>
+        <div style="display:flex;gap:4px;align-items:flex-end">
+          <button id="btn-bridge-uf" class="btn btn-outline" style="padding:4px 10px;font-size:10px;background:var(--acc);color:#fff;border-color:var(--acc)" onclick="setBridgeUnit('UF')">UF</button>
+          <button id="btn-bridge-clp" class="btn btn-outline" style="padding:4px 10px;font-size:10px" onclick="setBridgeUnit('CLP')">M CLP</button>
+        </div>
       </div>
     </div>
-    <div id="ch-bridge" style="height:280px"></div>
+    <div id="ch-bridge" style="height:260px"></div>
+    <div class="tw" style="margin-top:12px"><table id="t-bridge"></table></div>
   </div>
-  <div class="card gmb"><div class="card-title">Tabla de retención mensual</div><div class="tw"><table id="t-ret"></table></div></div>
-  <div class="card"><div class="card-title">MRR por producto (UF y M CLP)</div><div class="tw"><table id="t-mrr"></table></div></div>
+  <div class="card gmb">
+    <div class="card-title" id="ret-title">Tabla de retención mensual</div>
+    <div class="tw"><table id="t-ret"></table></div>
+  </div>
+  <div class="card"><div class="card-title"><span data-curr-title-mrr>MRR por producto (UF y M CLP) · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">EoP Dic anual</span></span></div><div class="tw"><table id="t-mrr"></table></div></div>
 </div>
 <div id="pg-eerr" class="pg">
   <div class="g5" id="eerr-kpis"></div>
+  <div class="card gmb"><div class="card-title">EERR anual · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">2023-2028 con históricos reales y proyección</span></div><div class="tw" id="t-eerr-annual"></div></div>
+  <div class="card gmb"><div class="card-title"><span data-curr-title>Revenue / EBITDA / NI anual</span> · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">barras agrupadas por año</span></div><div id="ch-eerr-annual" style="height:240px"></div></div>
   <div class="g2">
-    <div class="card"><div class="card-title">Revenue y EBITDA</div><div id="ch-margins" style="height:240px"></div></div>
-    <div class="card"><div class="card-title">Estructura de costos (%)</div><div id="ch-costos" style="height:240px"></div></div>
+    <div class="card"><div class="card-title" id="margins-title"><span data-curr-title>Revenue y EBITDA</span> · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">mensual (hasta Dic-26)</span></div><div id="ch-margins" style="height:240px"></div></div>
+    <div class="card"><div class="card-title">Estructura de costos · % sobre revenue · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">mensual (hasta Dic-26)</span></div><div id="ch-costos" style="height:240px"></div></div>
   </div>
-  <div class="card"><div class="card-title">Estado de Resultados (M CLP)</div><div class="tw" id="t-eerr"></div></div>
+  <div class="card"><div class="card-title" id="eerr-title">EERR mensual (M CLP) · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">hasta Dic-26 — click en COGS o SG&A para expandir por producto</span></div><div class="tw" id="t-eerr"></div></div>
 </div>
 <div id="pg-fc" class="pg">
   <div class="g4" id="cf-kpis"></div>
-  <div class="card gmb"><div class="card-title">Flujo de caja mensual</div><div id="ch-cf" style="height:240px"></div></div>
-  <div class="g2">
-    <div class="card"><div class="card-title">Caja · Base vs Escenario</div><div id="ch-cf2" style="height:200px"></div></div>
-    <div class="card"><div class="card-title">Composición CF Financiero</div><div id="ch-cfin" style="height:200px"></div></div>
+  <div class="g2 gmb">
+    <div class="card"><div class="card-title" id="cash-fc-title">Saldo caja EOP · año en curso</div><div id="ch-cash-fc" style="height:200px"></div></div>
+    <div class="card"><div class="card-title">Saldo caja EOP · anual (Dic)</div><div id="ch-cash-fc-an" style="height:200px"></div></div>
   </div>
-  <div class="card"><div class="card-title">Flujo de caja detallado (M CLP)</div><div class="tw"><table id="t-fc"></table></div></div>
+  <div class="card gmb"><div class="card-title">Flujo de caja anual · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">2023-2028 con históricos</span></div><div class="tw" id="t-fc-annual"></div></div>
+  <div class="g2">
+    <div class="card"><div class="card-title" id="gfin-an-title">Gasto financiero anual · deuda + dividendos</div><div id="ch-gfin-annual" style="height:220px"></div></div>
+    <div class="card"><div class="card-title" id="gfin-mo-title">Gasto financiero mensual · año en curso</div><div id="ch-gfin-mo" style="height:220px"></div></div>
+  </div>
+  <div class="card"><div class="card-title" id="fc-title">Flujo de caja mensual (M CLP) · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">hasta Dic-26</span></div><div class="tw"><table id="t-fc"></table></div></div>
+</div>
+<div id="pg-bs" class="pg">
+  <div class="g4" id="bs-kpis"></div>
+  <div class="card gmb"><div class="card-title"><span data-curr-title>Balance Sheet anual</span> · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">snapshots Dic 2023-2028 · líneas con badge <strong>dyn</strong> responden a los sliders</span></div><div class="tw" id="t-bs-annual"></div></div>
+  <div class="card"><div class="card-title"><span data-curr-title>Balance Sheet mensual</span> · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">hasta Dic-26</span></div><div class="tw" id="t-bs"></div></div>
 </div>
 <div id="pg-deuda" class="pg">
+  <div class="card gmb" style="padding:16px 20px">
+    <div class="card-title" style="margin-bottom:12px">Tramos de deuda nueva</div>
+    <div id="dc" style="display:flex;flex-direction:column;gap:10px"></div>
+    <button class="btn btn-outline" style="margin-top:10px;width:auto;padding:7px 18px" onclick="addD()">＋ Agregar tramo</button>
+  </div>
   <div class="g4" id="deuda-kpis"></div>
   <div class="g2">
-    <div class="card"><div class="card-title">Saldo insoluto por tramo (M CLP)</div><div id="ch-saldo" style="height:220px"></div></div>
+    <div class="card"><div class="card-title"><span data-curr-title>Saldo insoluto por tramo</span></div><div id="ch-saldo" style="height:220px"></div></div>
     <div class="card"><div class="card-title">Composición cuota</div><div id="ch-cuota" style="height:220px"></div></div>
   </div>
-  <div class="card"><div class="card-title">Tabla de amortización (M CLP)</div><div class="tw"><table id="t-amort"></table></div></div>
+  <div class="card"><div class="card-title"><span data-curr-title>Tabla de amortización</span></div><div class="tw"><table id="t-amort"></table></div></div>
 </div>
 </main>
 </div></div>
 
 <script>
 // ═══ STATE ═══
-let P={}, MO=[], AMO=[], lb=[], B=null, S=null;
+let P={}, MO=[], AMO=[], lb=[], B=null, S=null, Bbs=null, Sbs=null;
+let CURR='CLP'; // 'CLP' => MM CLP (default) · 'UF' => UF
+
+// ═══ DRAWER ═══
+function toggleDrawer(force){
+  const sb=document.getElementById('sidebar');
+  const sc=document.getElementById('sidebar-scrim');
+  if(!sb||!sc)return;
+  const open=force===true?true:force===false?false:!sb.classList.contains('open');
+  sb.classList.toggle('open',open);
+  sc.classList.toggle('on',open);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')toggleDrawer(false);});
+
+// ═══ CURRENCY ═══
+// Returns value converted from MM CLP to target currency for a given month.
+// UF mode: value_M_CLP * 1e6 / UF[m] / 1e3 => thousand UF (M UF) for table/chart values.
+// CLP mode: returns the M CLP value untouched.
+function convV(vMM_CLP, m){
+  if(vMM_CLP==null||isNaN(vMM_CLP))return vMM_CLP;
+  if(CURR==='CLP')return vMM_CLP;
+  const uf = (P.uf && P.uf[m]) || 39000;
+  return vMM_CLP*1e6/uf/1e3; // MUF (miles de UF)
+}
+function currUnitLbl(){return CURR==='CLP'?'M CLP':'MUF';}
+function currLongLbl(){return CURR==='CLP'?'M CLP':'miles de UF';}
+// For annual totals: use avg UF of months within year (approx). Fallback: dec UF.
+function convYearly(sumMM_CLP, months){
+  if(CURR==='CLP')return sumMM_CLP;
+  if(!months||!months.length)return sumMM_CLP;
+  let tot=0,n=0;for(const m of months){const u=(P.uf&&P.uf[m])||0;if(u){tot+=u;n++;}}
+  const avgUF=n?tot/n:39000;
+  return sumMM_CLP*1e6/avgUF/1e3;
+}
+function setCurr(c){
+  if(c!=='CLP'&&c!=='UF')return;
+  CURR=c;
+  document.querySelectorAll('#curr-toggle button').forEach(b=>b.classList.toggle('on',b.dataset.c===c));
+  applyCurrLabels();
+  if(P.months&&B&&S)renderAll();
+}
+function applyCurrLabels(){
+  const u=currUnitLbl();
+  document.querySelectorAll('[data-curr-title]').forEach(el=>{
+    const baseText=el.dataset.currBase||el.textContent.replace(/\s*\([^)]*\)$/,'').trim();
+    el.dataset.currBase=baseText;
+    el.textContent=`${baseText} (${u})`;
+  });
+  // MRR title uses both units
+  document.querySelectorAll('[data-curr-title-mrr]').forEach(el=>{
+    el.textContent=`MRR por producto (UF y ${u}) · EoP Dic anual`;
+  });
+}
+document.addEventListener('DOMContentLoaded',applyCurrLabels);
 // Theme toggle
 const SUN_ICON=`<svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="19.78" y1="4.22" x2="17.66" y2="6.34"/><line x1="6.34" y1="17.66" x2="4.22" y2="19.78"/></svg>`;
 const MOON_ICON=`<svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
@@ -560,8 +664,59 @@ function dSch(am,ar,st,tn,tipo='frances'){
   }
   return s;
 }
+// Debt tranches parsed from Excel "Deuda" sheet on last load
+let _xlsxDeudaTranches=[];
+
+function parseDeudaSheet(wb){
+  _xlsxDeudaTranches=[];
+  const ws=wb.Sheets['Deuda']||wb.Sheets['DEUDA']||wb.Sheets['deuda'];
+  if(!ws)return;
+  // Scan rows 1-80 looking for tranches: detect "Monto","Tasa","Inicio","Plazo","Tipo" header row
+  const decode=XLSX.utils.decode_range(ws['!ref']||'A1:Z80');
+  const maxR=Math.min(decode.e.r,100);
+  let hdrRow=-1,colMonto=-1,colTasa=-1,colInicio=-1,colPlazo=-1,colTipo=-1,colLabel=-1;
+  for(let r=0;r<=maxR;r++){
+    for(let c=0;c<=30;c++){
+      const cell=ws[XLSX.utils.encode_cell({r,c})];
+      const v=(cell?.v||'').toString().toLowerCase().trim();
+      if(v==='monto'||v==='amount')colMonto=c;
+      else if(v==='tasa'||v==='rate')colTasa=c;
+      else if(v==='inicio'||v==='start')colInicio=c;
+      else if(v==='plazo'||v==='tenor'||v==='meses')colPlazo=c;
+      else if(v==='tipo'||v==='type')colTipo=c;
+      else if(v==='tramo'||v==='nombre'||v==='label'||v==='name')colLabel=c;
+    }
+    if(colMonto>=0&&colTasa>=0&&colInicio>=0){hdrRow=r;break;}
+  }
+  if(hdrRow<0)return;
+  for(let r=hdrRow+1;r<=maxR;r++){
+    const getV=c=>c>=0?(ws[XLSX.utils.encode_cell({r,c})]?.v??null):null;
+    const monto=+getV(colMonto)||0;
+    if(!monto)continue;
+    const tasa=+getV(colTasa)||0;
+    const inicioRaw=getV(colInicio);
+    let inicio=MO[0]||'2026-01';
+    if(typeof inicioRaw==='number'){
+      // Excel serial date
+      const d=XLSX.SSF.parse_date_code(inicioRaw);
+      if(d)inicio=d.y+'-'+(d.m<10?'0':'')+d.m;
+    } else if(typeof inicioRaw==='string'&&inicioRaw.match(/^\d{4}-\d{2}/)){
+      inicio=inicioRaw.slice(0,7);
+    }
+    const plazo=+getV(colPlazo)||12;
+    const tipoRaw=(getV(colTipo)||'frances').toString().toLowerCase().trim();
+    const tipo=tipoRaw.includes('bullet')||tipoRaw.includes('bala')?'bullet':tipoRaw.includes('alem')?'aleman':'frances';
+    const labelRaw=getV(colLabel);
+    const label=labelRaw?labelRaw.toString():('Tramo '+(r-hdrRow));
+    _xlsxDeudaTranches.push({amount:monto*1e6,rawAm:monto,moneda:'clp',tc:1,rate:tasa,start:inicio,tenor:plazo,tipo,label});
+  }
+}
+
 function getDeudaScheds(){
-  const nd=[];
+  // Prefer Excel sheet tranches if available, fall back to sidebar form
+  const src=_xlsxDeudaTranches.length>0?_xlsxDeudaTranches:[];
+  const nd=[...src];
+  // Always also include sidebar-entered tranches (additive)
   document.querySelectorAll('.dc').forEach((c,i)=>{
     const mon=c.querySelector('.dmon')?.value||'clp';
     const tc=+c.querySelector('.dtc')?.value||950;
@@ -571,7 +726,7 @@ function getDeudaScheds(){
     const st=c.querySelector('.ds')?.value||MO[0];
     const tn=+c.querySelector('.dt')?.value||12;
     const tp=c.querySelector('.dtp')?.value||'frances';
-    if(amC>0)nd.push({amount:amC,rawAm:ra,moneda:mon,tc,rate:r,start:st,tenor:tn,tipo:tp,label:'Tramo '+(i+1)});
+    if(amC>0)nd.push({amount:amC,rawAm:ra,moneda:mon,tc,rate:r,start:st,tenor:tn,tipo:tp,label:'Tramo '+(src.length+i+1)});
   });
   return nd.map(d=>({...d,sched:dSch(d.amount/1e6,d.rate,d.start,d.tenor,d.tipo)}));
 }
@@ -606,6 +761,7 @@ function handleXlsx(input){
   reader.onload=e=>{
     try{
       const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      parseDeudaSheet(wb);
       window._wb=wb;
       const wsE=wb.Sheets['ERPs'];if(!wsE)throw new Error("Hoja 'ERPs' no encontrada");
       const probeC=ymCol('2024-01');
@@ -629,6 +785,7 @@ function handleXlsx(input){
       document.getElementById('cutoff-row').style.display='';
       document.getElementById('hasta-row').style.display='';
       document.getElementById('horizon-row').style.display='';
+      document.getElementById('horizon-month').value='2028-12';
       document.getElementById('upload-status').textContent=`✓ ${file.name.slice(0,22)} · ${avail.length} meses`;
       document.getElementById('upload-status').style.color='var(--green)';
       onCutoffChange();
@@ -697,6 +854,40 @@ const REV_PRODUCT_ROWS = {time:27,flex:85,einv:198,mgrplus:144,ramaflex:248,rex:
 const SGA_EFF_RANGES = {time:[39,50], flex:[53,64], mgrplus:[67,78]}; // 1-indexed Inputs rows
 // Map model growth-row to product (rev growth referenced in SGA formulas)
 const REV_GROWTH_ROW_TO_PROD = {28:'time', 86:'flex', 145:'mgrplus', 199:'einv', 249:'ramaflex', 311:'sistemica', 315:'sistemica', 364:'rpe'}; // 0-indexed
+
+// ─── EERR drill-down concept mappings ────────────────────────────────────────
+const COGS_CONCEPT_MGR=[
+  {label:'Staff Costs',          lines:['Staff Costs']},
+  {label:'Servers',              lines:['Servers']},
+  {label:'External Staff',       lines:['External Staff']},
+  {label:'3rd Party Licenses',   lines:['3rd Party Licenses']},
+  {label:'Other',                lines:['Other Costs','Intercompany','Royalty','Office Costs','Licences']},
+];
+const COGS_CONCEPT_SIS=[
+  {label:'Personal Costs',       lines:['Personal Costs']},
+  {label:'Servers / Cloud',      lines:['Servers','Cloud']},
+  {label:'Consulting / Ext.',    lines:['Consulting','External Staff']},
+  {label:'Other',                lines:['Other Costs','Recruitment','Office Costs (Phone and Internet)']},
+];
+const SGA_CONCEPT_MGR=[
+  {label:'Personnel',            lines:['Personnel Expenses / Staff Expenses']},
+  {label:'Marketing',            lines:['Marketing']},
+  {label:'Depreciation',         lines:['Depreciation']},
+  {label:'Consulting Services',  lines:['Consulting Services']},
+  {label:'General Expenses',     lines:['General Expenses','Office Expenses','Legal Services']},
+  {label:'Bad Debt',             lines:['Bad Debt Expense']},
+  {label:'Tech / Travel',        lines:['Technology / IT Expenses','Travel and Transportation','Training / Staff Training','Collections / Debt Collection']},
+];
+const SGA_CONCEPT_SIS=[
+  {label:'Staff Expenses',       lines:['Staff Expenses','Bonus']},
+  {label:'Marketing',            lines:['Marketing']},
+  {label:'Bad Debt',             lines:['Bad Debt']},
+  {label:'Consulting / Ext.',    lines:['Consulting','External Staff']},
+  {label:'Office / General',     lines:['Office Expenses','General Expenses','Rent','Corporate Expenses','Travel Expenses']},
+  {label:'Depreciation',         lines:['Depreciation & Amortization']},
+  {label:'Other',                lines:['Other Expenses']},
+];
+const SGA_CORP_LINES=['Corporate Expenses: Administrative Fees','Corporate Expenses: Office Rent','Corporate Expenses: Office Expenses'];
 
 function findLineRowInBlock(ws, anchor, label, maxOffset=22){
   for(let r=anchor; r<anchor+maxOffset; r++){
@@ -803,8 +994,17 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
 
     const uf={},ipc={};
     for(const m of allMonths){
-      uf[m]=numV(wsE,rowUF,ymCol(m))||39000;
+      const rawUF=numV(wsE,rowUF,ymCol(m));
+      uf[m]=rawUF>0?rawUF:0; // defer fallback for correct extrapolation
       ipc[m]=numV(wsE,rowIPC,ymCol(m))||0.0025;
+    }
+    // Extrapolate UF/IPC for months where Excel has no value: compound at 4%/yr (0.0033/mo) from last known
+    const sortedM=allMonths.slice().sort();
+    let lastUF=0;
+    for(const m of sortedM){
+      if(uf[m]>0){lastUF=uf[m];continue;}
+      if(lastUF>0)uf[m]=lastUF*Math.pow(1+0.04/12,1),lastUF=uf[m];
+      else uf[m]=39000;
     }
 
     const model={rev:{},cogs:{},sga:{},mrrUF:{},bridge:{}};
@@ -855,6 +1055,89 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     const rowCFop=findRow(wsE,'Net Cash Provided By (Used In) Operating Activities');
     const rowCFinv=findRow(wsE,'Net Cash Provided By (Used In) Investing Activities');
     const rowCFfin=findRow(wsE,'Net Cash Provided By (Used In) Financing Activities');
+
+    // ═══ BALANCE SHEET rows (from 0-indexed exploration of the Excel) ═══
+    const BS_ROWS = {
+      cash:             {label:'Cash and Cash Equivalents',           row:1233, section:'ca', dynamic:'cash'},
+      ar:               {label:'Accounts Receivable',                 row:1234, section:'ca'},
+      rpReceivable:     {label:'Related Party Receivable',            row:1235, section:'ca'},
+      currentTaxA:      {label:'Current Tax Assets',                  row:1236, section:'ca'},
+      otherCurrentA:    {label:'Other Current Assets',                row:1237, section:'ca'},
+      otherFinA:        {label:'Other Financial Assets',              row:1238, section:'ca'},
+      inventory:        {label:'Inventory',                           row:1239, section:'ca'},
+      totalCurrentA:    {label:'Current Assets',                      row:1241, section:'ca', subtotal:true},
+      ltRelatedR:       {label:'Long Term Related Party Receivable',  row:1243, section:'nca'},
+      investments:      {label:'Investments',                         row:1244, section:'nca'},
+      ppe:              {label:'PP&E',                                row:1245, section:'nca'},
+      intangibles:      {label:'Intangible Assets',                   row:1246, section:'nca'},
+      otherNonCurrentA: {label:'Other Non Current Assets',            row:1248, section:'nca'},
+      totalNonCurrentA: {label:'Non Current Assets',                  row:1250, section:'nca', subtotal:true},
+      totalAssets:      {label:'Total Assets',                        row:1252, section:'tot', subtotal:true},
+      otherFinL:        {label:'Other Financial Liabilities',         row:1254, section:'cl'},
+      ap:               {label:'Accounts Payable',                    row:1255, section:'cl'},
+      rpPayable:        {label:'Related Party Payable',               row:1256, section:'cl'},
+      deferredRev:      {label:'Deferred Revenue',                    row:1257, section:'cl'},
+      provEmp:          {label:'Provisions for Employee Benefits',    row:1258, section:'cl'},
+      currentTaxL:      {label:'Current Tax Liabilities',             row:1259, section:'cl'},
+      otherCurrentL:    {label:'Other Current Liabilities',           row:1260, section:'cl'},
+      otherPayables:    {label:'Other Payables',                      row:1261, section:'cl'},
+      totalCurrentL:    {label:'Current Liabilities',                 row:1264, section:'cl', subtotal:true},
+      debtLT:           {label:'Financial Debt Non Current',          row:1266, section:'ncl', dynamic:'newDebtLT'},
+      totalNonCurrentL: {label:'Non Current Liabilities',             row:1267, section:'ncl', subtotal:true},
+      totalLiab:        {label:'Total Liabilities',                   row:1269, section:'tot', subtotal:true},
+      equity:           {label:'Equity (Capital)',                    row:1273, section:'eq'},
+      retainedEarnings: {label:'Retained Earnings',                   row:1274, section:'eq', dynamic:'retained'},
+      totalEquity:      {label:'Total Equity',                        row:1276, section:'eq', subtotal:true},
+      checkEL:          {label:'Equity + Liabilities',                row:1278, section:'tot', subtotal:true},
+    };
+    const bs={};
+    // Parse allMonths PLUS Dec snapshots for every annual year (so BS annual shows 2023-2028 even if desde=2026)
+    const bsMonths=[...new Set([...allMonths,...[2023,2024,2025,2026,2027,2028].map(y=>y+'-12')])];
+    const _bsEarliestAMOYr=+allMonths[0].slice(0,4);
+    // Historical Dec snapshots live in the annual summary cols (col 125=DV=2023, 126=DW=2024, …)
+    // — same layout as the EERR annual block. AMO months use the normal ymCol() mapping.
+    const bsCol=m=>{const yr=+m.slice(0,4);return(m.slice(5)==='12'&&yr<_bsEarliestAMOYr)?125+(yr-2023):ymCol(m);};
+    for(const k of Object.keys(BS_ROWS)){
+      bs[k]={};
+      const rRow=BS_ROWS[k].row;
+      for(const m of bsMonths){
+        const c=bsCol(m);
+        bs[k][m]=rRow>0?numV(wsE,rRow,c)/1e6:0;
+      }
+    }
+
+    // ═══ Annual historical totals (cols 125-130 = 2023-2028) — from summary cols ═══
+    const ANNUAL_COL_BASE=125; // 0-idx col 125 = 2023
+    const ANNUAL_YEARS=[2023,2024,2025,2026,2027,2028];
+    const annual={rev:{},cogs:{},sga:{},ebitda:{},ebitdaAdj:{},ni:{}};
+    const rowEBAdj=findRow(wsE,'Adjusted EBITDA');
+    for(let i=0;i<ANNUAL_YEARS.length;i++){
+      const yr=ANNUAL_YEARS[i];
+      const c=ANNUAL_COL_BASE+i;
+      annual.rev[yr]=numV(wsE,rowRev,c)/1e6;
+      annual.cogs[yr]=numV(wsE,rowCOGS,c)/1e6;
+      annual.sga[yr]=numV(wsE,rowSGA,c)/1e6;
+      annual.ebitda[yr]=numV(wsE,rowEBITDA,c)/1e6;
+      annual.ebitdaAdj[yr]=rowEBAdj>0?numV(wsE,rowEBAdj,c)/1e6:annual.ebitda[yr];
+      annual.ni[yr]=numV(wsE,rowNI,c)/1e6;
+    }
+    // Per-product annual totals for years before "desde" (not in allMonths / model.rev)
+    // Summed from monthly columns so they match the per-cell actuals exactly
+    const _histBeforeDesdeYrs=ANNUAL_YEARS.filter(y=>y<+desdeYM.slice(0,4));
+    annual.revProd={};annual.cogsProd={};annual.sgaProd={};
+    for(const p of ALL_PRODS){annual.revProd[p]={};annual.cogsProd[p]={};annual.sgaProd[p]={};}
+    annual.sgaProd.corp={};
+    for(const yr of _histBeforeDesdeYrs){
+      for(let mo=1;mo<=12;mo++){
+        const c=ymCol(yr+'-'+String(mo).padStart(2,'0'));
+        for(const p of ALL_PRODS){
+          annual.revProd[p][yr]=(annual.revProd[p][yr]||0)+(rowProdRev[p]>0?numV(wsE,rowProdRev[p],c)/1e6:0);
+          annual.cogsProd[p][yr]=(annual.cogsProd[p][yr]||0)+(rowProdCOGS[p]>0?numV(wsE,rowProdCOGS[p],c)/1e6:0);
+          annual.sgaProd[p][yr]=(annual.sgaProd[p][yr]||0)+(rowProdSGA[p]>0?numV(wsE,rowProdSGA[p],c)/1e6:0);
+        }
+        annual.sgaProd.corp[yr]=(annual.sgaProd.corp[yr]||0)+(rowProdSGA.corp>0?numV(wsE,rowProdSGA.corp,c)/1e6:0);
+      }
+    }
     // Balance Sheet Cash (R1234, has values for ALL months including actuals)
     // Use findRow (not findDataRow) since probeC=2024-01 might be empty for BS
     const rowCashBS=findRow(wsE,'Cash and Cash Equivalents');
@@ -949,6 +1232,9 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     // ═══ STRUCTURAL PARAMS for line-by-line engine ═══
     function buildCogsParams(){
       const out={};
+      // Standard products (Time, Flex, etc.)
+      // Staff Costs & Servers: fixed → store 2026 monthly budget; 2027+ uses ratio × revenue (handled in project() fallback)
+      // Variable lines: % of revenue
       for(const [prod, anchor] of Object.entries(PROD_COGS_ANCHORS)){
         out[prod]={fixed:{},variable:{}};
         for(const line of COGS_LINES_STD){
@@ -957,21 +1243,11 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
           const isFixed=(line==='Staff Costs'||line==='Servers');
           if(isFixed){
             out[prod].fixed[line]={};
-            let lastVal=0;
             for(let mo=1;mo<=12;mo++){
               const ym='2026-'+String(mo).padStart(2,'0');
               out[prod].fixed[line][ym]=numV(wsE,r,ymCol(ym))/1e6;
-              lastVal=out[prod].fixed[line][ym];
             }
-            // Extrapolate to 2027+ using annual 3% inflation (compound monthly)
-            const infl=0.03/12;
-            for(let yr=2027;yr<=2031;yr++){
-              for(let mo=1;mo<=12;mo++){
-                const ym=yr+'-'+String(mo).padStart(2,'0');
-                const monthsElapsed=(yr-2026)*12+(mo-12);
-                out[prod].fixed[line][ym]=lastVal*Math.pow(1+infl,monthsElapsed);
-              }
-            }
+            // 2027+ pre-population REMOVED — project() fallback uses Dec-26 ratio × scenario revenue (Excel methodology)
           }else{
             const val=numV(wsE,r,projC)/1e6;
             const revRow=REV_PRODUCT_ROWS[prod];
@@ -981,15 +1257,40 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
         }
       }
       // Random CL
+      //  - Personal Costs: 2026 budget + +3% jump every March (Excel formula IF(month=3, prev*1.03, prev))
+      //  - Servers: ratio × Random revenue (same pattern as Staff Costs of other products)
+      //  - Rest (Consulting, External Staff, Other Costs): % of revenue
       out.rcl={fixed:{},variable:{}};
       for(const line of RCL_COGS_LINES){
         const r=findLineRowInBlock(wsE,625,line,20);
         if(r<0) continue;
-        const val=numV(wsE,r,projC)/1e6;
-        const revAt=numV(wsE,REV_PRODUCT_ROWS.rcl,projC)/1e6 || 1;
-        out.rcl.variable[line]=revAt?val/revAt:0;
+        if(line==='Personal Costs'){
+          out.rcl.fixed[line]={};
+          for(let mo=1;mo<=12;mo++){
+            const ym='2026-'+String(mo).padStart(2,'0');
+            out.rcl.fixed[line][ym]=numV(wsE,r,ymCol(ym))/1e6;
+          }
+          let v=out.rcl.fixed[line]['2026-12']||0;
+          for(let yr=2027;yr<=2031;yr++){
+            for(let mo=1;mo<=12;mo++){
+              if(mo===3) v*=1.03;  // +3% jump only in March (hardcoded in Inputs!C4)
+              out.rcl.fixed[line][yr+'-'+String(mo).padStart(2,'0')]=v;
+            }
+          }
+        }else if(line==='Servers'){
+          out.rcl.fixed[line]={};
+          for(let mo=1;mo<=12;mo++){
+            const ym='2026-'+String(mo).padStart(2,'0');
+            out.rcl.fixed[line][ym]=numV(wsE,r,ymCol(ym))/1e6;
+          }
+          // 2027+ uses ratio × rev fallback in project()
+        }else{
+          const val=numV(wsE,r,projC)/1e6;
+          const revAt=numV(wsE,REV_PRODUCT_ROWS.rcl,projC)/1e6 || 1;
+          out.rcl.variable[line]=revAt?val/revAt:0;
+        }
       }
-      // Random Perú
+      // Random Perú: keep as % of revenue (no anchor analysis available; matches existing behavior)
       out.rpe={fixed:{},variable:{}};
       for(const line of RPE_COGS_LINES){
         const r=findLineRowInBlock(wsE,647,line,20);
@@ -1002,6 +1303,14 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     }
     function buildSgaParams(){
       const out={};
+      // Inputs efficiency ranges per product group (Excel XLOOKUP ranges).
+      // Non-listed standard products default to [39,50] (the Time/Flex/MgrPlus block).
+      const effRanges={
+        time:[39,50], flex:[53,64], mgrplus:[67,78],
+        einv:[39,50], ramaflex:[39,50], rex:[39,50], bnovus:[39,50],
+        gaxu:[39,50], geo:[39,50], otros:[39,50],
+        rcl:[81,90], rpe:[93,97],
+      };
       for(const [prod, anchor] of Object.entries(PROD_SGA_ANCHORS)){
         out[prod]={fixed:{},variable:{}};
         let useLines=SGA_LINES_STD;
@@ -1011,29 +1320,12 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
         for(const line of useLines){
           const r=findLineRowInBlock(wsE,anchor,line,18);
           if(r<0) continue;
-          const isMarketing=(line==='Marketing'&&prod!=='rcl'&&prod!=='rpe');
-          if(isMarketing){
-            out[prod].fixed[line]={};
-            let lastVal=0;
-            for(let mo=1;mo<=12;mo++){
-              const ym='2026-'+String(mo).padStart(2,'0');
-              out[prod].fixed[line][ym]=numV(wsE,r,ymCol(ym))/1e6;
-              lastVal=out[prod].fixed[line][ym];
-            }
-            const infl=0.03/12;
-            for(let yr=2027;yr<=2031;yr++){
-              for(let mo=1;mo<=12;mo++){
-                const ym=yr+'-'+String(mo).padStart(2,'0');
-                const monthsElapsed=(yr-2026)*12+(mo-12);
-                out[prod].fixed[line][ym]=lastVal*Math.pow(1+infl,monthsElapsed);
-              }
-            }
-          }else{
-            // Get eff from Inputs
+          // Marketing handled via same rolling path as other variable lines (eff from Inputs: 0.25 std, 0.5 rcl, 0 rpe)
+          {
             let eff=0;
-            const ranges={time:[39,50],flex:[53,64],mgrplus:[67,78]};
-            if(ranges[prod]){
-              const [lo,hi]=ranges[prod];
+            const range=effRanges[prod];
+            if(range){
+              const [lo,hi]=range;
               for(let rr=lo;rr<=hi;rr++){
                 const lbl=cellV(wsI,rr-1,1);
                 if(typeof lbl==='string'&&lbl.trim()===line){
@@ -1056,6 +1348,11 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
               const ym='2026-'+String(mo).padStart(2,'0');
               monthly_model[ym]=numV(wsE,r,ymCol(ym))/1e6;
             }
+            // Full projection range — needed for ratio-based SGA scaling
+            const monthly_model_full={};
+            for(const ym of projMonths){
+              monthly_model_full[ym]=numV(wsE,r,ymCol(ym))/1e6;
+            }
             // For fixed_growth lines, also store growth_row monthly values
             const growth_monthly_model={};
             if(growth_row!=null){
@@ -1064,7 +1361,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
                 growth_monthly_model[ym]=numV(wsE,growth_row,ymCol(ym));
               }
             }
-            out[prod].variable[line]={eff,seed,growth_row,growth_type,growth_product,has_if_dec,monthly_model,growth_monthly_model};
+            out[prod].variable[line]={eff,seed,growth_row,growth_type,growth_product,has_if_dec,monthly_model,monthly_model_full,growth_monthly_model};
           }
         }
       }
@@ -1073,8 +1370,57 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     const cogsParamsLine=buildCogsParams();
     const sgaParamsLine=buildSgaParams();
 
+    // ═══ HISTORICAL LINE-LEVEL breakdown (real Excel values, not projection params) ═══
+    // Used by EERR mensual L3 (actual months) y EERR anual L3 (años históricos)
+    // model.cogsLines[prod][line][ym] / model.sgaLines[prod][line][ym]   → para meses actuales
+    // annual.cogsLinesProd[prod][line][yr] / annual.sgaLinesProd[prod][line][yr]  → para años antes de "desde"
+    model.cogsLines={};model.sgaLines={};
+    annual.cogsLinesProd={};annual.sgaLinesProd={};
+    const _fillLine=(storeM,storeY,prod,line,r)=>{
+      if(r<0)return;
+      storeM[prod]=storeM[prod]||{};
+      storeY[prod]=storeY[prod]||{};
+      storeM[prod][line]={};
+      storeY[prod][line]={};
+      for(const m of allMonths){
+        storeM[prod][line][m]=numV(wsE,r,ymCol(m))/1e6;
+      }
+      for(const yr of _histBeforeDesdeYrs){
+        let s=0;
+        for(let mo=1;mo<=12;mo++) s+=numV(wsE,r,ymCol(yr+'-'+String(mo).padStart(2,'0')))/1e6;
+        storeY[prod][line][yr]=s;
+      }
+    };
+    // COGS — productos estándar
+    for(const [prod,anchor] of Object.entries(PROD_COGS_ANCHORS)){
+      for(const line of COGS_LINES_STD){
+        _fillLine(model.cogsLines,annual.cogsLinesProd,prod,line,findLineRowInBlock(wsE,anchor,line,22));
+      }
+    }
+    // COGS — Random CL (anchor 625, line list propio)
+    for(const line of RCL_COGS_LINES){
+      _fillLine(model.cogsLines,annual.cogsLinesProd,'rcl',line,findLineRowInBlock(wsE,625,line,20));
+    }
+    // COGS — Random Perú (anchor 647, line list propio)
+    for(const line of RPE_COGS_LINES){
+      _fillLine(model.cogsLines,annual.cogsLinesProd,'rpe',line,findLineRowInBlock(wsE,647,line,20));
+    }
+    // SG&A — todos los productos incluido corp/rcl/rpe
+    for(const [prod,anchor] of Object.entries(PROD_SGA_ANCHORS)){
+      let useLines=SGA_LINES_STD;
+      if(prod==='rcl') useLines=RCL_SGA_LINES;
+      else if(prod==='rpe') useLines=RPE_SGA_LINES;
+      else if(prod==='corp') useLines=SGA_CORP_LINES;
+      for(const line of useLines){
+        _fillLine(model.sgaLines,annual.sgaLinesProd,prod,line,findLineRowInBlock(wsE,anchor,line,18));
+      }
+    }
+
     // Prior year revenue total (for YoY growth calc)
-    const prevYear=+cutoffYM.slice(0,4)-1;
+    // getCurrYear() = cutoffYear if cutoffMo≠12, cutoffYear+1 if cutoffMo=12
+    const _cutoffMo=+cutoffYM.slice(5,7);
+    const _currYrForPrior=_cutoffMo===12?+cutoffYM.slice(0,4)+1:+cutoffYM.slice(0,4);
+    const prevYear=_currYrForPrior-1;
     let priorYearRev=0,priorYearEbitda=0;
     for(let mo=1;mo<=12;mo++){
       const ym=prevYear+'-'+(mo<10?'0':'')+mo;
@@ -1094,6 +1440,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       tax_rate:0.27,
       div_pct_base:0.5,
       priorYearRev,priorYearEbitda,
+      bs,bsDef:BS_ROWS,annual,annualYears:ANNUAL_YEARS,
     };
     MO=projMonths;AMO=[...actualMonths,...projMonths];lb=projMonths.map(fmtM);
 
@@ -1114,17 +1461,24 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
 // PROJECTION ENGINE
 // ═══════════════════════════════════════════════════════════════
 // Line-by-line projection engine. Replicates model formulas. Drift vs model ≈ 2-3%.
-function project(ov={}){
+function project(ov={}, _forceEngine=false){
   if(!P.months||!P.months.length)return null;
   const mrrGrowth={...P.mrr_growth_base,...(ov.mrr_growth||{})};
-  const divPct=ov.div_pct??P.div_pct_base;
+  // Snap to base if within rounding tolerance (slider initializes with toFixed(2) which introduces tiny drift)
+  for(const p of BRIDGE){
+    const base=P.mrr_growth_base?.[p]||0;
+    if(Math.abs((mrrGrowth[p]||0)-base)<0.0005)mrrGrowth[p]=base;
+  }
+  let divPct=ov.div_pct??P.div_pct_base;
+  if(Math.abs(divPct-(P.div_pct_base||0.5))<0.005)divPct=P.div_pct_base||0.5;
   const newDebt=ov.new_debt||[];
   const uf=m=>P.uf[m]||39000;
   const isAct=m=>P.actualMonths.includes(m);
   const MT=P.modelTot;
 
   // Check if scenario = base (no overrides) → return model values directly for exact parity
-  const isBase=(()=>{
+  // _forceEngine bypasses this shortcut (used internally for delta-reference computation)
+  const isBase=!_forceEngine&&(()=>{
     if(newDebt.length>0)return false;
     if(Math.abs(divPct-(P.div_pct_base||0.5))>0.0005)return false;
     for(const p of BRIDGE){
@@ -1135,7 +1489,7 @@ function project(ov={}){
   })();
   if(isBase){
     // Base scenario: read all values from model directly. ZERO drift.
-    const out={rev:{},cogs:{},sga:{},mrrUF:{},revT:{},revM:{},revS:{},cogsT:{},sgaT:{},sgaCorp:{},ajustes:{},ebitda:{},ni:{},cfop:{},cfin:{},cashEOP:{},dWC:{},divs:{},ndI:()=>0,ndA:()=>0,ndIn:()=>0};
+    const out={rev:{},cogs:{},sga:{},mrrUF:{},revT:{},revM:{},revS:{},cogsT:{},sgaT:{},sgaCorp:{},ajustes:{},ebitda:{},ni:{},cfop:{},cfin:{},cfinv:{},cashEOP:{},dWC:{},divs:{},ndI:()=>0,ndA:()=>0,ndIn:()=>0};
     for(const p of ALL_PRODS){out.rev[p]={};out.cogs[p]={};out.sga[p]={};}
     if(P.sgaParams) for(const p of Object.keys(P.sgaParams))if(!out.sga[p])out.sga[p]={};
     for(const p of BRIDGE){out.mrrUF[p]={};}
@@ -1160,6 +1514,7 @@ function project(ov={}){
       out.ni[m]=MT.ni[m]||0;
       out.cfop[m]=MT.cfop[m]||0;
       out.cfin[m]=MT.cffin[m]||0;
+      out.cfinv[m]=MT.cfinv[m]||0;
       out.cashEOP[m]=MT.cashEOP[m]||MT.cashBS[m]||0;
       out.dWC[m]=(MT.cfop[m]||0)-(MT.ni[m]||0)-(MT.dep[m]||0);
       out.divs[m]=MT.divs[m]||0;
@@ -1272,28 +1627,26 @@ function project(ov={}){
         }
         const eff=info.eff||0;
         let new_val;
-        if(i===0){
-          new_val=info.seed; // = model Apr value
-        }else{
-          const prev_val=sga_state[p][line];
-          // Compute growth based on growth_type
-          let growth=0;
-          const gt=info.growth_type||'fixed_growth';
-          if(gt==='rev_product'){
-            const gp=info.growth_product;
-            let rcurr=0,rprev=0;
-            if(gp==='sistemica'){
-              rcurr=(rev.rcl?.[m]||0)+(rev.rpe?.[m]||0);
-              rprev=(rev.rcl?.[prev_m]||0)+(rev.rpe?.[prev_m]||0);
-            }else{
-              rcurr=rev[gp]?.[m]||0;
-              rprev=rev[gp]?.[prev_m]||0;
-            }
-            growth=rprev?(rcurr/rprev-1):0;
-          }else if(info.growth_row!=null){
-            // Read model's growth row value at m (fixed_growth)
-            growth=info.growth_monthly_model?.[m]||0;
+        const gt=info.growth_type||'fixed_growth';
+        if(gt==='rev_product'){
+          // Ratio-based: scale model SGA line by scenario/base revenue ratio → cancels seeding errors
+          const gp=info.growth_product;
+          let rcurr=0,baseRevP=0;
+          if(gp==='sistemica'){
+            rcurr=(rev.rcl?.[m]||0)+(rev.rpe?.[m]||0);
+            baseRevP=(MT.rev.rcl?.[m]||0)+(MT.rev.rpe?.[m]||0);
+          }else{
+            rcurr=rev[gp]?.[m]||0;
+            baseRevP=MT.rev[gp]?.[m]||0;
           }
+          const revRatio=baseRevP>0?rcurr/baseRevP:1;
+          const baseVal=info.monthly_model_full?.[m]??info.monthly_model?.[m]??info.seed;
+          new_val=baseVal*(1+(revRatio-1)*(1-eff));
+        }else{
+          // fixed_growth / other: accumulative state
+          const prev_val=i===0?info.seed:sga_state[p][line];
+          let growth=0;
+          if(info.growth_row!=null) growth=info.growth_monthly_model?.[m]||0;
           new_val=prev_val*(1+growth*(1-eff));
         }
         sga_state[p][line]=new_val;
@@ -1331,35 +1684,114 @@ function project(ov={}){
     ni[m]=ebitda[m]+ndI(m)+tx;
   }
 
-  // Step 7: WC + Cash Flow (use model CFop/CFfin for actuals; project for proj months)
-  const cfop={},cfin={},cashEOP={},dWC={},divs={};
+  // Base engine reference: run engine with base params so SGA seeding errors cancel in the delta
+  const _bRef=!_forceEngine?project({},true):null;
+
+  // Step 7: WC + Cash Flow
+  const cfop={},cfin={},cfinv={},cashEOP={},dWC={},divs={};
   let cumDelta=0;
+  let _wcs=P.ar_days*(MT.rev[P.cutoff]||0)/30-P.ap_days*(MT.cogs[P.cutoff]||0)/30;
+  let _wcb=_wcs;
   for(const m of P.months){
     if(isAct(m)){
+      _wcs=P.ar_days*(MT.rev[m]||0)/30-P.ap_days*(MT.cogs[m]||0)/30;
+      _wcb=_wcs;
       cfop[m]=MT.cfop[m]||0;
       cfin[m]=MT.cffin[m]||0;
+      cfinv[m]=MT.cfinv[m]||0;
       divs[m]=MT.divs[m]||0;
       dWC[m]=(MT.cfop[m]||0)-(MT.ni[m]||0)-(MT.dep[m]||0);
       cashEOP[m]=MT.cashEOP[m]||0;
       continue;
     }
-    // Use model's projected base + apply scenario deltas via cum delta
-    const dNI=ni[m]-(MT.ni[m]||0);
+    const niRef=_bRef?(_bRef.ni[m]||0):(MT.ni[m]||0);
+    const dNI=ni[m]-niRef;
     const scenDivs=ni[m]>0?-divPct*ni[m]:0;
+    const baseDivs=_bRef?(niRef>0?-divPct*niRef:0):(MT.divs[m]||0);
     const modelDivs=MT.divs[m]||0;
-    const dDivs=scenDivs-modelDivs;
+    const dDivs=scenDivs-baseDivs;
     const newDebtCF=ndIn(m)+ndA(m);
-    const deltaMonth=dNI+dDivs+newDebtCF;
+    const wcS=P.ar_days*revT[m]/30-P.ap_days*cogsT[m]/30;
+    const wcB=_bRef
+      ?P.ar_days*(_bRef.revT[m]||0)/30-P.ap_days*(_bRef.cogsT[m]||0)/30
+      :P.ar_days*(MT.rev[m]||0)/30-P.ap_days*(MT.cogs[m]||0)/30;
+    const dWC_CF=_bRef?(-(wcS-_wcs)+(wcB-_wcb)):0;
+    _wcs=wcS;_wcb=wcB;
+    const deltaMonth=dNI+dDivs+dWC_CF+newDebtCF;
     cumDelta+=deltaMonth;
     divs[m]=scenDivs;
     cfop[m]=(MT.cfop[m]||0)+dNI;
     const modelCFfinNoDivDebt=(MT.cffin[m]||0)-modelDivs;
     cfin[m]=modelCFfinNoDivDebt+scenDivs+ndIn(m)+ndA(m);
+    cfinv[m]=MT.cfinv[m]||0;
     dWC[m]=(MT.cfop[m]||0)-(MT.ni[m]||0)-(MT.dep[m]||0);
     cashEOP[m]=(MT.cashEOP[m]||0)+cumDelta;
   }
 
-  return{rev,cogs,sga,mrrUF,revT,revM,revS,cogsT,sgaT,sgaCorp,ajustes,ebitda,ni,cfop,cfin,cashEOP,dWC,divs,ndI,ndA,ndIn};
+  return{rev,cogs,sga,mrrUF,revT,revM,revS,cogsT,sgaT,sgaCorp,ajustes,ebitda,ni,cfop,cfin,cfinv,cashEOP,dWC,divs,ndI,ndA,ndIn};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BALANCE SHEET ENGINE — delta-preserving (guarantees BS balance)
+// ═══════════════════════════════════════════════════════════════
+// Approach:
+//   Base  => copy Excel BS exactly (it already balances in the model)
+//   Scenario => Excel BS + scenario deltas applied ONLY to 3 dynamic lines:
+//     Cash  += ΔCF cumulative
+//     RE    += Δ(NI + Dividends) cumulative
+//     DebtLT += outstanding new-debt principal
+//   Since ΔCash ≡ ΔRE + ΔDebtLT by accounting identity (both sides of BS
+//   move by the same amount), the balance is preserved by construction.
+function projectBS(scen){
+  if(!P.bs||!P.months||!P.months.length)return null;
+  const out={};
+  for(const k of Object.keys(P.bsDef))out[k]={};
+  const MT=P.modelTot;
+  // Pre-compute cumulative deltas at each proj month
+  const cumCF={}, cumRE={};
+  let runningCF=0, runningRE=0;
+  for(const m of P.projMonths){
+    const dCFop=(scen.cfop[m]||0)-(MT.cfop[m]||0);
+    const dCFfin=(scen.cfin[m]||0)-(MT.cffin[m]||0);
+    const dCFinv=(scen.cfinv[m]||0)-(MT.cfinv[m]||0);
+    runningCF+=dCFop+dCFfin+dCFinv;
+    cumCF[m]=runningCF;
+    // Use cfop-delta as NI proxy so the NI baseline matches the one used in cumCF
+    // (project() computes cfop as MT.cfop + dNI_bRef, so cfop−MT.cfop = dNI_bRef).
+    // Using MT.ni would give dNI_MT ≠ dNI_bRef and the cumulative drift would
+    // break ΔCash = ΔDebtLT + ΔRE every projected month.
+    const dNI=(scen.cfop[m]||0)-(MT.cfop[m]||0);
+    const dDiv=(scen.divs[m]||0)-(MT.divs[m]||0);
+    runningRE+=dNI+dDiv;
+    cumRE[m]=runningRE;
+  }
+  const scheds=getDeudaScheds();
+  const newDebtBal=(m)=>scheds.reduce((s,sch)=>s+Math.abs(sch.sched[m]?.bal||0),0); // bal ya está en M CLP
+
+  for(const m of P.months){
+    // Start from the Excel BS values (always balanced in the model)
+    for(const k of Object.keys(P.bsDef))out[k][m]=P.bs[k]?.[m]||0;
+    if(P.actualMonths?.includes(m))continue; // actuals untouched
+
+    // Apply scenario deltas to the 3 dynamic lines
+    out.cash[m]             =(P.bs.cash?.[m]||0)+(cumCF[m]||0);
+    out.retainedEarnings[m] =(P.bs.retainedEarnings?.[m]||0)+(cumRE[m]||0);
+    out.debtLT[m]           =(P.bs.debtLT?.[m]||0)+newDebtBal(m);
+
+    // Re-compute the subtotals that reference the dynamic lines
+    const sumSec=(secs)=>Object.keys(P.bsDef)
+      .filter(k=>secs.includes(P.bsDef[k].section)&&!P.bsDef[k].subtotal)
+      .reduce((s,k)=>s+(out[k][m]||0),0);
+    out.totalCurrentA[m]    =sumSec(['ca']);
+    out.totalNonCurrentA[m] =sumSec(['nca']);
+    out.totalAssets[m]      =out.totalCurrentA[m]+out.totalNonCurrentA[m];
+    out.totalCurrentL[m]    =sumSec(['cl']);
+    out.totalNonCurrentL[m] =sumSec(['ncl']);
+    out.totalLiab[m]        =out.totalCurrentL[m]+out.totalNonCurrentL[m];
+    out.totalEquity[m]      =sumSec(['eq']);
+    out.checkEL[m]          =out.totalLiab[m]+out.totalEquity[m];
+  }
+  return out;
 }
 
 function compute(){
@@ -1388,6 +1820,48 @@ function compute(){
   });
   B=project();
   S=project({div_pct:divPct,mrr_growth:mrrR,new_debt:nd});
+  // Also compute the projected Balance Sheet for both scenarios
+  Bbs=projectBS(B);
+  Sbs=projectBS(S);
+  // Drift check: Base COGS/SGA engine vs Excel annual totals (2027/2028) to detect replication errors
+  if(P.annual && P.projMonths?.length){
+    const checkYr=(yr)=>{
+      const yms=P.projMonths.filter(m=>+m.slice(0,4)===yr);
+      if(!yms.length)return null;
+      const engCogs=yms.reduce((t,m)=>t+(B.cogsT[m]||0),0);
+      const engSga=yms.reduce((t,m)=>t+(B.sgaT[m]||0),0);
+      const excelCogs=(P.annual.cogs[yr]||0);
+      const excelSga=(P.annual.sga[yr]||0);
+      const dCogs=excelCogs?Math.abs(engCogs-excelCogs)/Math.abs(excelCogs)*100:0;
+      const dSga=excelSga?Math.abs(engSga-excelSga)/Math.abs(excelSga)*100:0;
+      return {yr,engCogs,excelCogs,dCogs,engSga,excelSga,dSga};
+    };
+    [2027,2028].forEach(yr=>{
+      const r=checkYr(yr);
+      if(!r)return;
+      console.log(`[Drift ${yr}] COGS eng=${r.engCogs.toFixed(0)} excel=${r.excelCogs.toFixed(0)} Δ=${r.dCogs.toFixed(2)}% | SGA eng=${r.engSga.toFixed(0)} excel=${r.excelSga.toFixed(0)} Δ=${r.dSga.toFixed(2)}%`);
+    });
+  }
+  // Balance check: Assets == Liab + Equity (should always cuadrar by construction)
+  if(Sbs&&P.projMonths?.length){
+    const sampleM=P.projMonths[Math.min(3,P.projMonths.length-1)];
+    const ta=Sbs.totalAssets[sampleM]||0;
+    const teL=Sbs.checkEL[sampleM]||0;
+    const diff=ta-teL;
+    const pct=ta?Math.abs(diff/ta*100):0;
+    console.log(`[BS check @${sampleM}] Activos=${ta.toFixed(1)} | Pas+Eq=${teL.toFixed(1)} | Δ=${diff.toFixed(2)} (${pct.toFixed(3)}%)`);
+  }
+  // Diagnostic: why B != S?
+  console.log('[compute] divPct=',divPct,'base=',P.div_pct_base);
+  console.log('[compute] mrrR=',mrrR);
+  console.log('[compute] base=',P.mrr_growth_base);
+  console.log('[compute] new_debt count=',nd.length);
+  const anyDiff=Object.keys(mrrR).some(p=>Math.abs((mrrR[p]||0)-(P.mrr_growth_base?.[p]||0))>0.0001);
+  console.log('[compute] mrr sliders diverge from base:',anyDiff);
+  const mSample='2026-04';
+  console.log('[B vs S] Abr-26 EBITDA  B=',B.ebitda[mSample]?.toFixed(4),'S=',S.ebitda[mSample]?.toFixed(4),'Δ=',((S.ebitda[mSample]||0)-(B.ebitda[mSample]||0)).toFixed(6));
+  console.log('[B vs S] Ago-26 EBITDA  B=',B.ebitda['2026-08']?.toFixed(4),'S=',S.ebitda['2026-08']?.toFixed(4));
+  console.log('[B vs S] Dic-26 EBITDA  B=',B.ebitda['2026-12']?.toFixed(4),'S=',S.ebitda['2026-12']?.toFixed(4));
   // ─ DIAGNOSTIC ─
   if(P.modelTot){
     const sumEng = AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:(S.ebitda[m]||0)),0);
@@ -1413,17 +1887,54 @@ function renderAll(){
   if(!P.months||!B||!S)return;
   renderKPIs();
   renderTab('dash');
-  ['ing','eerr','fc','deuda'].forEach(id=>{
+  ['ing','eerr','fc','bs','deuda'].forEach(id=>{
     if(document.getElementById('pg-'+id)?.classList.contains('on'))renderTab(id);
   });
 }
 function renderTab(id){
   if(!B||!S)return;
-  if(id==='dash'){renderKPIs();chartRevProd();chartWaterfall();chartEBIT();chartARR();chartCash();chartClients();chartARPA();tableMetrics();}
-  else if(id==='ing'){chartRevByProd();chartBridge();tableMRR();}
-  else if(id==='eerr'){renderEERRKPIs();chartMargins();chartCostos();tableEERR();}
-  else if(id==='fc'){renderCFKPIs();chartCF();chartCF2();chartCFin();tableFC();}
+  if(id==='dash'){renderKPIs();chartRevProd();chartWaterfall();chartEBIT();chartCash();tableMetrics();}
+  else if(id==='ing'){tableRevAnnual();chartRevByProd();chartBridge();tableBridge();tableMRR();}
+  else if(id==='eerr'){renderEERRKPIs();chartMargins();chartCostos();tableEERRAnnual();chartEERRAnnual();tableEERR();}
+  else if(id==='fc'){renderCFKPIs();chartCashFC();chartCashFCAnual();tableFCAnnual();chartGFinAnual();chartGFinMensual();tableFC();}
+  else if(id==='bs'){renderBSKPIs();tableBSAnnual();tableBS();}
   else if(id==='deuda'){renderDeudaKPIs();chartSaldo();chartCuota();tableAmort();}
+}
+
+// ═══ Display periods: monthly until Dec-2026, annual for 2027+ ═══
+function getDisplayPeriods(months){
+  const monthly=months.filter(m=>+m.slice(0,4)<=2026);
+  const years=[...new Set(months.filter(m=>+m.slice(0,4)>=2027).map(m=>m.slice(0,4)))].sort();
+  const annual=years.map(y=>({
+    label:y,
+    months:months.filter(m=>m.slice(0,4)===y),
+    isAnnual:true,
+  }));
+  return {monthly,annual};
+}
+
+// ═══ Current year helper ═══
+// "año en curso": year that contains the cutoff month (if cutoff ≠ Dec) or cutoff+1 (if Dec)
+function getCurrYear(){
+  if(!P||!P.cutoff)return new Date().getFullYear();
+  const [y,mo]=P.cutoff.split('-').map(Number);
+  return mo===12?y+1:y;
+}
+function getCurrYrMo(){
+  const cy=getCurrYear();
+  return AMO.filter(m=>+m.slice(0,4)===cy);
+}
+
+// ═══ Money formatters (respect CURR toggle) ═══
+function fmtMoney(vMM_CLP, m, decimals){
+  const v=convV(vMM_CLP, m);
+  if(v==null||isNaN(v))return '-';
+  return (decimals>0?f1(v,decimals):f0(v));
+}
+function fmtMoneyY(sumMM_CLP, months, decimals){
+  const v=convYearly(sumMM_CLP, months);
+  if(v==null||isNaN(v))return '-';
+  return (decimals>0?f1(v,decimals):f0(v));
 }
 
 // Inline SVG sparkline helper
@@ -1441,20 +1952,24 @@ function sparkline(values,w=90,h=26,color='#2563eb',fill=true){
 }
 
 function renderKPIs(){
-  // ── Totales escenario ──
-  const revS=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.rev[m]:S.revT[m])||0,0);
-  const ebS=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:S.ebitda[m])||0,0);
-  const ajTot=AMO.reduce((t,m)=>t+(P.modelTot.ajustes[m]||0),0);
+  // ── Filtrar al año en curso ──
+  const _cyrMo=getCurrYrMo();
+  const _cyrLast=_cyrMo[_cyrMo.length-1]||AMO[AMO.length-1];
+
+  // ── Totales escenario (año en curso) ──
+  const revS=_cyrMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.rev[m]:S.revT[m])||0,0);
+  const ebS=_cyrMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:S.ebitda[m])||0,0);
+  const ajTot=_cyrMo.reduce((t,m)=>t+(P.modelTot.ajustes[m]||0),0);
   const ebAdjS=ebS+ajTot;
-  const niS=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.ni[m]:S.ni[m])||0,0);
-  const lastM=MO[MO.length-1]||AMO[AMO.length-1];
+  const niS=_cyrMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.ni[m]:S.ni[m])||0,0);
+  const lastM=_cyrLast;
   const cashEndS=S.cashEOP[lastM]||P.modelTot.cashEOP[lastM]||0;
 
-  // ── Totales base ──
-  const revB=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.rev[m]:B.revT[m])||0,0);
-  const ebB=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:B.ebitda[m])||0,0);
+  // ── Totales base (año en curso) ──
+  const revB=_cyrMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.rev[m]:B.revT[m])||0,0);
+  const ebB=_cyrMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:B.ebitda[m])||0,0);
   const ebAdjB=ebB+ajTot;
-  const niB=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.ni[m]:B.ni[m])||0,0);
+  const niB=_cyrMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.ni[m]:B.ni[m])||0,0);
   const cashEndB=B.cashEOP[lastM]||P.modelTot.cashEOP[lastM]||0;
 
   // ── KPIs derivados ──
@@ -1473,21 +1988,22 @@ function renderKPIs(){
   const ruleS=(growthYoY||0)+ebMarginS;
   const ruleB=(growthYoYBase||0)+ebMarginB;
 
-  // ── Series para sparklines ──
-  const revSeries=AMO.map(m=>isActM(m)?P.modelTot.rev[m]:(S.revT[m]||0));
-  const ebSeries=AMO.map(m=>{const e=isActM(m)?P.modelTot.ebitda[m]:(S.ebitda[m]||0);return e+(P.modelTot.ajustes[m]||0);});
-  const niSeries=AMO.map(m=>isActM(m)?P.modelTot.ni[m]:(S.ni[m]||0));
-  const cashSeries=AMO.map(m=>isActM(m)?(P.modelTot.cashBS[m]||P.modelTot.cashEOP[m]||0):(S.cashEOP[m]||0));
-  const arrSeries=AMO.map(m=>BRIDGE.filter(p=>p!=='ramaflex').reduce((s,p)=>{
+  // ── Series para sparklines (año en curso) ──
+  const revSeries=_cyrMo.map(m=>isActM(m)?P.modelTot.rev[m]:(S.revT[m]||0));
+  const ebSeries=_cyrMo.map(m=>{const e=isActM(m)?P.modelTot.ebitda[m]:(S.ebitda[m]||0);return e+(P.modelTot.ajustes[m]||0);});
+  const niSeries=_cyrMo.map(m=>isActM(m)?P.modelTot.ni[m]:(S.ni[m]||0));
+  const cashSeries=_cyrMo.map(m=>isActM(m)?(P.modelTot.cashBS[m]||P.modelTot.cashEOP[m]||0):(S.cashEOP[m]||0));
+  const arrSeries=_cyrMo.map(m=>BRIDGE.filter(p=>p!=='ramaflex').reduce((s,p)=>{
     const mrr=isActM(m)?(P.model.mrrUF[p]?.[m]||0):(S.mrrUF[p]?.[m]||0);
     return s+mrr*(P.uf[m]||0)/1e6*12;
   },0));
-  const marginSeries=AMO.map((m,i)=>revSeries[i]?ebSeries[i]/revSeries[i]*100:0);
+  const marginSeries=_cyrMo.map((m,i)=>revSeries[i]?ebSeries[i]/revSeries[i]*100:0);
 
   // ── Delta formatters ──
-  const deltaEl=(sv,bv,unit='M',dec=0)=>{
+  const curUnit=currUnitLbl();
+  const deltaEl=(sv,bv,unit=curUnit,dec=0)=>{
     const d=sv-bv;
-    if(Math.abs(d)<0.05)return `<span class="kpi-delta fl">— base</span>`;
+    if(Math.abs(d)<0.05)return `<span class="kpi-delta fl">— sin ajustes</span>`;
     const cls=d>0?'up':'dn';const sg=d>0?'+':'';
     const pct=bv&&Math.abs(bv)>0.01?(d/Math.abs(bv)*100):0;
     const arr=d>0?'↑':'↓';
@@ -1495,7 +2011,7 @@ function renderKPIs(){
   };
   const deltaPct=(sv,bv)=>{
     const d=(sv??0)-(bv??0);
-    if(Math.abs(d)<0.05)return `<span class="kpi-delta fl">— base</span>`;
+    if(Math.abs(d)<0.05)return `<span class="kpi-delta fl">— sin ajustes</span>`;
     const cls=d>0?'up':'dn';const sg=d>0?'+':'';
     const arr=d>0?'↑':'↓';
     return `<span class="kpi-delta ${cls}"><span class="arr">${arr}</span> ${sg}${d.toFixed(1)} pp</span>`;
@@ -1509,37 +2025,56 @@ function renderKPIs(){
       <div class="kpi-val2">${v}</div>
       <div class="kpi-foot">${delta||'<span class="kpi-delta fl"></span>'}${spark||''}</div>
     </div>`;
+  // Convert sums to current currency
+  const revSc=convYearly(revS,_cyrMo),revBc=convYearly(revB,_cyrMo);
+  const ebAdjSc=convYearly(ebAdjS,_cyrMo),ebAdjBc=convYearly(ebAdjB,_cyrMo);
+  const niSc=convYearly(niS,_cyrMo),niBc=convYearly(niB,_cyrMo);
+  const cashEndSc=convV(cashEndS,lastM),cashEndBc=convV(cashEndB,lastM);
+  const arrLastC=convV(arrLast,lastM),arrBaseC=convV(arrBase,lastM);
   const row1=[
-    {l:'Revenue anual',v:`${f0(revS)}<span class="unit">M CLP</span>`,c:'',icon:'$',delta:deltaEl(revS,revB),spark:sparkline(revSeries,90,26,'#2563eb')},
-    {l:'EBITDA Ajustado',v:`${f0(ebAdjS)}<span class="unit">M CLP</span>`,c:'grn',icon:'∎',delta:deltaEl(ebAdjS,ebAdjB),spark:sparkline(ebSeries,90,26,'#059669')},
-    {l:'Net Income',v:`${f0(niS)}<span class="unit">M CLP</span>`,c:'grn',icon:'▲',delta:deltaEl(niS,niB),spark:sparkline(niSeries,90,26,'#10b981')},
-    {l:'Caja '+fmtM(lastM),v:`${f0(cashEndS)}<span class="unit">M CLP</span>`,c:'amb',icon:'◆',delta:deltaEl(cashEndS,cashEndB),spark:sparkline(cashSeries,90,26,'#d97706')},
+    {l:`Revenue ${getCurrYear()}`,v:`${f0(revSc)}<span class="unit">${curUnit}</span>`,c:'',icon:'$',delta:deltaEl(revSc,revBc),spark:sparkline(revSeries,90,26,'#2563eb')},
+    {l:`EBITDA Adj. ${getCurrYear()}`,v:`${f0(ebAdjSc)}<span class="unit">${curUnit}</span>`,c:'grn',icon:'∎',delta:deltaEl(ebAdjSc,ebAdjBc),spark:sparkline(ebSeries,90,26,'#059669')},
+    {l:`Net Income ${getCurrYear()}`,v:`${f0(niSc)}<span class="unit">${curUnit}</span>`,c:'grn',icon:'▲',delta:deltaEl(niSc,niBc),spark:sparkline(niSeries,90,26,'#10b981')},
+    {l:'Caja '+fmtM(lastM),v:`${f0(cashEndSc)}<span class="unit">${curUnit}</span>`,c:'amb',icon:'◆',delta:deltaEl(cashEndSc,cashEndBc),spark:sparkline(cashSeries,90,26,'#d97706')},
   ];
   // ── Row 2: ARR, Rule of 40 (con gauge), Growth YoY, Margen ──
   const ruleClass=ruleS>=40?'ok':ruleS>=20?'warn':'bad';
   const rulePct=Math.max(0,Math.min(100,ruleS*1.5)); // visual scale (40 ≈ 60%)
   const row2=[
-    {l:'ARR Anualizado',v:`${f0(arrLast)}<span class="unit">M CLP</span>`,c:'',icon:'∞',delta:deltaEl(arrLast,arrBase),spark:sparkline(arrSeries,90,26,'#3b82f6')},
-    {l:'Rule of 40',v:`${ruleS.toFixed(0)}<span class="unit">%</span>`,c:ruleS>=40?'grn':ruleS>=20?'amb':'red',icon:'⟁',delta:deltaPct(ruleS,ruleB),spark:`<div class="kpi-gauge ${ruleClass}"><div class="kpi-gauge-fill" style="width:${rulePct}%"></div></div>`},
-    {l:'Growth YoY',v:growthYoY!=null?`${growthYoY.toFixed(1)}<span class="unit">%</span>`:'—',c:'purp',icon:'↗',delta:growthYoY!=null?deltaPct(growthYoY,growthYoYBase):'',spark:''},
-    {l:'Margen EBITDA Adj',v:`${ebMarginS.toFixed(1)}<span class="unit">%</span>`,c:ebMarginS>=25?'grn':'amb',icon:'%',delta:deltaPct(ebMarginS,ebMarginB),spark:sparkline(marginSeries,90,26,'#7c3aed')},
+    {l:`ARR Anualizado ${getCurrYear()}`,v:`${f0(arrLastC)}<span class="unit">${curUnit}</span>`,c:'',icon:'∞',delta:deltaEl(arrLastC,arrBaseC),spark:sparkline(arrSeries,90,26,'#3b82f6')},
+    {l:`Rule of 40 ${getCurrYear()}`,v:`${ruleS.toFixed(0)}<span class="unit">%</span>`,c:ruleS>=40?'grn':ruleS>=20?'amb':'red',icon:'⟁',delta:deltaPct(ruleS,ruleB),spark:`<div class="kpi-gauge ${ruleClass}"><div class="kpi-gauge-fill" style="width:${rulePct}%"></div></div>`},
+    {l:`Growth YoY ${getCurrYear()}`,v:growthYoY!=null?`${growthYoY.toFixed(1)}<span class="unit">%</span>`:'—',c:'purp',icon:'↗',delta:growthYoY!=null?deltaPct(growthYoY,growthYoYBase):'',spark:''},
+    {l:`Margen EBITDA Adj ${getCurrYear()}`,v:`${ebMarginS.toFixed(1)}<span class="unit">%</span>`,c:ebMarginS>=25?'grn':'amb',icon:'%',delta:deltaPct(ebMarginS,ebMarginB),spark:sparkline(marginSeries,90,26,'#7c3aed')},
   ];
   document.getElementById('kpis').innerHTML=row1.map(mkKPI).join('');
   document.getElementById('kpis2').innerHTML=row2.map(mkKPI).join('');
+
+  // Update dashboard chart titles with current year
+  const _cy=getCurrYear();
+  [
+    ['dash-title-rev',`Revenue mensual por producto · ${_cy}`],
+    ['dash-title-ebit',`EBITDA mensual · margen % · ${_cy}`],
+    ['dash-title-cash',`Saldo caja EOP · ${_cy}`],
+  ].forEach(([id,txt])=>{const el=document.getElementById(id);if(el)el.textContent=txt;});
 }
 
 function renderEERRKPIs(){
-  const revTot=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.rev[m]:S.revT[m])||0,0);
-  const cogsTot=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.cogs[m]:S.cogsT[m])||0,0);
-  const sgaTot=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.sga[m]:S.sgaT[m])||0,0);
-  const ebTot=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:S.ebitda[m])||0,0);
-  const ajTot=AMO.reduce((t,m)=>t+(P.modelTot.ajustes[m]||0),0);
+  const cy=getCurrYear();
+  const MM=getCurrYrMo();
+  const revTot=MM.reduce((t,m)=>t+(isActM(m)?P.modelTot.rev[m]:S.revT[m])||0,0);
+  const cogsTot=MM.reduce((t,m)=>t+(isActM(m)?P.modelTot.cogs[m]:S.cogsT[m])||0,0);
+  const sgaTot=MM.reduce((t,m)=>t+(isActM(m)?P.modelTot.sga[m]:S.sgaT[m])||0,0);
+  const ebTot=MM.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:S.ebitda[m])||0,0);
+  const ajTot=MM.reduce((t,m)=>t+(P.modelTot.ajustes[m]||0),0);
   const ebAdj=ebTot+ajTot;
-  const niTot=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.ni[m]:S.ni[m])||0,0);
+  const niTot=MM.reduce((t,m)=>t+(isActM(m)?P.modelTot.ni[m]:S.ni[m])||0,0);
+  const u=currUnitLbl();
   const items=[
-    {l:'Revenue',v:revTot,c:'blu'},{l:'COGS',v:cogsTot},{l:'SG&A',v:sgaTot},
-    {l:'EBITDA Adj. '+(revTot?(ebAdj/revTot*100).toFixed(1):'0')+'%',v:ebAdj,c:'grn'},
-    {l:'NI '+(revTot?(niTot/revTot*100).toFixed(1):'0')+'%',v:niTot,c:'grn'},
+    {l:`Revenue ${cy} (${u})`,v:convYearly(revTot,MM),c:'blu'},
+    {l:`COGS ${cy} (${u})`,v:convYearly(cogsTot,MM)},
+    {l:`SG&A ${cy} (${u})`,v:convYearly(sgaTot,MM)},
+    {l:`EBITDA Adj. ${cy} · `+(revTot?(ebAdj/revTot*100).toFixed(1):'0')+'%',v:convYearly(ebAdj,MM),c:'grn'},
+    {l:`NI ${cy} · `+(revTot?(niTot/revTot*100).toFixed(1):'0')+'%',v:convYearly(niTot,MM),c:'grn'},
   ];
   document.getElementById('eerr-kpis').innerHTML=items.map(k=>
     `<div class="kpi ${k.c||''}"><div class="kl">${k.l}</div><div class="kv" style="font-size:18px">${f0(k.v)}</div></div>`
@@ -1547,25 +2082,33 @@ function renderEERRKPIs(){
 }
 
 function renderCFKPIs(){
-  const cfopTot=MO.reduce((t,m)=>t+(S.cfop[m]||0),0);
-  const cfinTot=MO.reduce((t,m)=>t+(S.cfin[m]||0),0);
-  const cashEnd=S.cashEOP[MO[MO.length-1]]||0;
-  const dCash=cashEnd-(P.cashStart||0);
+  // Métricas restringidas al año en curso (típicamente 2026)
+  const cy=getCurrYear();
+  const MM=AMO.filter(m=>+m.slice(0,4)===cy);
+  const getCFop= m=>isActM(m)?(P.modelTot.cfop[m]||0):(S.cfop[m]||0);
+  const getCFinv=m=>isActM(m)?(P.modelTot.cfinv[m]||0):(S.cfinv[m]||0);
+  const getCFfin=m=>isActM(m)?(P.modelTot.cffin[m]||0):(S.cfin[m]||0);
+  const cfopTot=MM.reduce((t,m)=>t+getCFop(m),0);
+  const cfinTot=MM.reduce((t,m)=>t+getCFfin(m),0);
+  const cfinvTot=MM.reduce((t,m)=>t+getCFinv(m),0);
+  const lastM=MM.length?MM[MM.length-1]:MO[MO.length-1];
+  const cashEnd=(isActM(lastM)?(P.modelTot.cashBS?.[lastM]||P.modelTot.cashEOP?.[lastM]):S.cashEOP[lastM])||0;
+  const u=currUnitLbl();
   const items=[
-    {l:'CFop proyección',v:cfopTot,c:'blu'},
-    {l:'CFin proyección',v:cfinTot},
-    {l:'Caja final',v:cashEnd,c:'grn'},
-    {l:'Δ Caja',v:dCash,c:dCash>=0?'grn':'red'},
+    {l:`CFop ${cy} (${u})`,v:convYearly(cfopTot,MM),c:'blu'},
+    {l:`CFinv ${cy} (${u})`,v:convYearly(cfinvTot,MM)},
+    {l:`CFfin ${cy} (${u})`,v:convYearly(cfinTot,MM)},
+    {l:`Caja final ${cy} (${u})`,v:convV(cashEnd,lastM),c:'grn'},
   ];
   document.getElementById('cf-kpis').innerHTML=items.map(k=>
-    `<div class="kpi ${k.c||''}"><div class="kl">${k.l}</div><div class="kv" style="font-size:18px">${f0(k.v)} M</div></div>`
+    `<div class="kpi ${k.c||''}"><div class="kl">${k.l}</div><div class="kv" style="font-size:18px">${f0(k.v)}</div></div>`
   ).join('');
 }
 
 function renderDeudaKPIs(){
   const scheds=getDeudaScheds();
   if(!scheds.length){
-    document.getElementById('deuda-kpis').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:24px;font-size:12px">Agrega tramos de deuda en el panel izquierdo</div>';
+    document.getElementById('deuda-kpis').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:24px;font-size:12px">Agrega tramos de deuda con el botón de arriba</div>';
     return;
   }
   const tot=scheds.reduce((t,s)=>t+s.amount/1e6,0);
@@ -1574,10 +2117,11 @@ function renderDeudaKPIs(){
   const ebAn=MO.reduce((t,m)=>t+S.ebitda[m],0);
   const ds=totInt+totAm;
   const dscr=ds>0?ebAn/ds:0;
+  const u=currUnitLbl();
   const items=[
-    {l:'Deuda total',v:f0(tot)+' M',c:'blu'},
-    {l:'Intereses',v:'-'+f0(totInt)+' M'},
-    {l:'Amortización',v:'-'+f0(totAm)+' M'},
+    {l:'Deuda total ('+u+')',v:f0(convYearly(tot,MO)),c:'blu'},
+    {l:'Intereses ('+u+')',v:'-'+f0(convYearly(totInt,MO))},
+    {l:'Amortización ('+u+')',v:'-'+f0(convYearly(totAm,MO))},
     {l:'DSCR',v:dscr.toFixed(2)+'x',c:dscr>=1.2?'grn':dscr>=1?'amb':'red'},
   ];
   document.getElementById('deuda-kpis').innerHTML=items.map(k=>
@@ -1588,108 +2132,175 @@ function renderDeudaKPIs(){
 // Charts
 function chartRevProd(){
   const prods=['time','flex','mgrplus','einv','ramaflex','rcl','rpe','rex','bnovus','geo','gaxu','otros'];
-  const allLb=AMO.map(fmtM);
+  const MM=getCurrYrMo();
+  const allLb=MM.map(fmtM);
+  const unit=currUnitLbl();
+  const conv=(v,m)=>convV(v,m);
   const traces=prods.map(p=>({
     x:allLb,
-    y:AMO.map(m=>isActM(m)?(P.model.rev[p][m]||0):(S.rev[p][m]||0)),
-    name:PRODS[p],type:'bar',marker:{color:PCOL[p]}
+    y:MM.map(m=>conv(isActM(m)?(P.model.rev[p][m]||0):(S.rev[p][m]||0),m)),
+    name:PRODS[p],type:'bar',marker:{color:PCOL[p]},
+    hovertemplate:`<b>%{x}</b><br>${PRODS[p]}: %{y:,.1f} ${unit}<extra></extra>`,
   }));
+  const totArr=MM.map(m=>conv(isActM(m)?(P.modelTot.rev[m]||0):(S.revT[m]||0),m));
   // Base total line (dotted) for comparison when scenario diverges
-  const baseTotal=AMO.map(m=>isActM(m)?(P.modelTot.rev[m]||0):(B.revT[m]||0));
-  traces.push({x:allLb,y:baseTotal,type:'scatter',mode:'lines',name:'Base (total)',line:{color:'#94a3b8',width:1.5,dash:'dot'}});
-  const actIdx=P.actualMonths.length-0.5;
-  const shapes=P.actualMonths.length?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
-  Plotly.react('ch-rev',traces,{...LO,barmode:'stack',shapes},cfg);
+  const baseTotal=MM.map(m=>conv(isActM(m)?(P.modelTot.rev[m]||0):(B.revT[m]||0),m));
+  traces.push({x:allLb,y:baseTotal,type:'scatter',mode:'lines',name:'Modelo · sin ajustes (total)',line:{color:'#94a3b8',width:1.5,dash:'dot'}});
+  const actCount=MM.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  Plotly.react('ch-rev',traces,{...LO,barmode:'stack',shapes,yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
 }
 function chartWaterfall(){
-  const tRev=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.rev[m]:S.revT[m])||0,0);
-  const tCOGS=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.cogs[m]:S.cogsT[m])||0,0);
-  const tSGA=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.sga[m]:S.sgaT[m])||0,0);
-  const tEB=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:S.ebitda[m])||0,0);
-  const tAj=AMO.reduce((t,m)=>t+(P.modelTot.ajustes[m]||0),0);
+  const _wfMo=getCurrYrMo();
+  const tRev=_wfMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.rev[m]:S.revT[m])||0,0);
+  const tCOGS=_wfMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.cogs[m]:S.cogsT[m])||0,0);
+  const tSGA=_wfMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.sga[m]:S.sgaT[m])||0,0);
+  const tEB=_wfMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:S.ebitda[m])||0,0);
+  const tAj=_wfMo.reduce((t,m)=>t+(P.modelTot.ajustes[m]||0),0);
   const tEBAdj=tEB+tAj;
-  const tNI=AMO.reduce((t,m)=>t+(isActM(m)?P.modelTot.ni[m]:S.ni[m])||0,0);
+  const tNI=_wfMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.ni[m]:S.ni[m])||0,0);
   const grossV=tRev+tCOGS;
-  const names=['Ingresos','− COGS','= Mg.Bruto','− SG&A','= EBITDA','+ Ajustes','= EBITDA Adj','Tax+Int','= NI'];
-  const absVals=[tRev,Math.abs(tCOGS),grossV,Math.abs(tSGA),tEB,Math.abs(tAj),tEBAdj,Math.abs(tNI-tEBAdj),tNI];
-  const bases=[0,grossV,0,tEB,0,tAj>=0?tEB:tEBAdj,0,Math.min(tEBAdj,tNI),0];
+  // Convert all to current currency
+  const c=v=>convYearly(v,_wfMo);
+  const unit=currUnitLbl();
+  const names=[`Ingresos`,'− COGS','= Mg.Bruto','− SG&A','= EBITDA','+ Ajustes','= EBITDA Adj','Tax+Int','= NI'];
+  const absVals=[c(tRev),c(Math.abs(tCOGS)),c(grossV),c(Math.abs(tSGA)),c(tEB),c(Math.abs(tAj)),c(tEBAdj),c(Math.abs(tNI-tEBAdj)),c(tNI)];
+  const bases=[0,c(grossV),0,c(tEB),0,tAj>=0?c(tEB):c(tEBAdj),0,c(Math.min(tEBAdj,tNI)),0];
   const colors=['#3b82f6','#fca5a5','#93c5fd','#fca5a5','#86efac','#c4b5fd','#059669','#fca5a5','#86efac'];
-  const dispV=[tRev,tCOGS,grossV,tSGA,tEB,tAj,tEBAdj,tNI-tEBAdj,tNI];
-  Plotly.react('ch-wf',[{type:'bar',x:names,y:absVals,base:bases,marker:{color:colors,opacity:.9},text:dispV.map(f0),textposition:'inside',insidetextanchor:'middle',textfont:{size:10,color:'#1a202c',family:"'DM Mono',monospace"}}],{...LO,showlegend:false,bargap:0.35},cfg);
+  const dispV=[c(tRev),c(tCOGS),c(grossV),c(tSGA),c(tEB),c(tAj),c(tEBAdj),c(tNI-tEBAdj),c(tNI)];
+  Plotly.react('ch-wf',[{type:'bar',x:names,y:absVals,base:bases,marker:{color:colors,opacity:.9},text:dispV.map(f0),textposition:'inside',insidetextanchor:'middle',textfont:{size:10,color:'#1a202c',family:"'DM Mono',monospace"},hovertemplate:`%{x}: %{text} ${unit}<extra></extra>`}],{...LO,showlegend:false,bargap:0.35,yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
 }
 function chartEBIT(){
-  const allLb=AMO.map(fmtM);
-  const eArrS=AMO.map(m=>isActM(m)?(P.modelTot.ebitda[m]||0):(S.ebitda[m]||0));
-  const eArrB=AMO.map(m=>isActM(m)?(P.modelTot.ebitda[m]||0):(B.ebitda[m]||0));
-  const rArr=AMO.map(m=>isActM(m)?(P.modelTot.rev[m]||0):(S.revT[m]||0));
-  const mrgArr=AMO.map((m,i)=>rArr[i]?eArrS[i]/rArr[i]*100:0);
-  const barColors=AMO.map(m=>isActM(m)?'#2563eb':'rgba(37,99,235,.4)');
-  const actIdx=P.actualMonths.length-0.5;
-  const shapes=P.actualMonths.length?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
-  Plotly.react('ch-ebit',[
-    {x:allLb,y:eArrS,type:'bar',name:'EBITDA Escenario',marker:{color:barColors}},
-    {x:allLb,y:eArrB,type:'scatter',mode:'lines',name:'EBITDA Base',line:{color:'#94a3b8',width:1.5,dash:'dot'}},
-    {x:allLb,y:mrgArr,type:'scatter',mode:'lines+markers',name:'Margen %',yaxis:'y2',line:{color:'#059669',width:2.5},marker:{size:4}},
-  ],{...LO,shapes,yaxis2:{overlaying:'y',side:'right',gridcolor:'transparent',tickfont:{size:9},ticksuffix:'%',color:'#059669'},margin:{...LO.margin,r:48}},cfg);
+  const MM=getCurrYrMo();
+  const allLb=MM.map(fmtM);
+  const unit=currUnitLbl();
+  const eArrS=MM.map(m=>convV(isActM(m)?(P.modelTot.ebitda[m]||0):(S.ebitda[m]||0),m));
+  const eArrB=MM.map(m=>convV(isActM(m)?(P.modelTot.ebitda[m]||0):(B.ebitda[m]||0),m));
+  const rArr=MM.map(m=>isActM(m)?(P.modelTot.rev[m]||0):(S.revT[m]||0));
+  const eArrRaw=MM.map(m=>isActM(m)?(P.modelTot.ebitda[m]||0):(S.ebitda[m]||0));
+  const mrgArr=MM.map((m,i)=>rArr[i]?eArrRaw[i]/rArr[i]*100:0);
+  const barColors=MM.map(m=>isActM(m)?'#2563eb':'rgba(37,99,235,.4)');
+  const actCount=MM.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  const diverges=eArrS.some((v,i)=>Math.abs(v-eArrB[i])>0.5);
+  const traces=[
+    {x:allLb,y:eArrS,type:'bar',name:'EBITDA',marker:{color:barColors},hovertemplate:`<b>%{x}</b><br>EBITDA: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:allLb,y:mrgArr,type:'scatter',mode:'lines+markers',name:'Margen %',yaxis:'y2',line:{color:'#059669',width:2.5},marker:{size:4},hovertemplate:'<b>%{x}</b><br>Margen: %{y:.1f}%<extra></extra>'},
+  ];
+  if(diverges) traces.splice(1,0,{x:allLb,y:eArrB,type:'scatter',mode:'lines',name:'EBITDA · sin ajustes',line:{color:'#94a3b8',width:1.5,dash:'dot'}});
+  Plotly.react('ch-ebit',traces,{...LO,shapes,xaxis:{...LO.xaxis,hoverformat:''},yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}},yaxis2:{overlaying:'y',side:'right',gridcolor:'transparent',tickfont:{size:9},ticksuffix:'%',color:'#059669'},margin:{...LO.margin,r:48},hovermode:'x unified'},cfg);
 }
 function chartARR(){
-  const allLb=AMO.map(fmtM);
+  const MM=getCurrYrMo();
+  const allLb=MM.map(fmtM);
   const prods=['time','flex','mgrplus','einv','ramaflex','rcl'];
+  const unit=currUnitLbl();
   const traces=prods.map(p=>({
     x:allLb,
-    y:AMO.map(m=>{const mrr=isActM(m)?P.model.mrrUF[p]?.[m]:S.mrrUF[p]?.[m];return (mrr||0)*(P.uf[m]||0)/1e6;}),
+    y:MM.map(m=>{const mrr=isActM(m)?P.model.mrrUF[p]?.[m]:S.mrrUF[p]?.[m];const mrrCLP=(mrr||0)*(P.uf[m]||0)/1e6;return convV(mrrCLP,m);}),
     name:PRODS[p],type:'bar',marker:{color:PCOL[p]}
   }));
   // Base total line
-  const baseTotal=AMO.map(m=>prods.reduce((s,p)=>{const mrr=isActM(m)?P.model.mrrUF[p]?.[m]:B.mrrUF[p]?.[m];return s+(mrr||0)*(P.uf[m]||0)/1e6;},0));
-  traces.push({x:allLb,y:baseTotal,type:'scatter',mode:'lines',name:'Base (total)',line:{color:'#94a3b8',width:1.5,dash:'dot'}});
-  const actIdx=P.actualMonths.length-0.5;
-  const shapes=P.actualMonths.length?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
-  Plotly.react('ch-arr',traces,{...LO,barmode:'stack',shapes},cfg);
+  const baseTotal=MM.map(m=>prods.reduce((s,p)=>{const mrr=isActM(m)?P.model.mrrUF[p]?.[m]:B.mrrUF[p]?.[m];return s+(mrr||0)*(P.uf[m]||0)/1e6;},0)).map((v,i)=>convV(v,MM[i]));
+  traces.push({x:allLb,y:baseTotal,type:'scatter',mode:'lines',name:'Modelo · sin ajustes (total)',line:{color:'#94a3b8',width:1.5,dash:'dot'}});
+  const actCount=MM.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  Plotly.react('ch-arr',traces,{...LO,barmode:'stack',shapes,yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
 }
 function chartCash(){
-  const allLb=AMO.map(fmtM);
+  const MM=getCurrYrMo();
+  const allLb=MM.map(fmtM);
+  const unit=currUnitLbl();
   // Use Balance Sheet cash for actuals (CF row is null for actual months)
   const getCash=(m,src)=>{
     if(isActM(m))return P.modelTot.cashBS[m]||P.modelTot.cashEOP[m]||0;
     return (src==='base'?B.cashEOP[m]:S.cashEOP[m])||0;
   };
-  const base=AMO.map(m=>getCash(m,'base'));
-  const scen=AMO.map(m=>getCash(m,'scen'));
-  // Shape: shade actuals area
-  const actIdx=P.actualMonths.length-0.5;
-  const shapes=P.actualMonths.length?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  const base=MM.map(m=>convV(getCash(m,'base'),m));
+  const scen=MM.map(m=>convV(getCash(m,'scen'),m));
+  const actCount=MM.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
   Plotly.react('ch-cash',[
-    {x:allLb,y:base,name:'Base',line:{color:'#d0d5dd',width:2},mode:'lines+markers',marker:{size:3}},
-    {x:allLb,y:scen,name:'Escenario',line:{color:'#2563eb',width:2},mode:'lines+markers',fill:'tonexty',fillcolor:'rgba(37,99,235,.06)',marker:{size:3}},
-  ],{...LO,shapes,annotations:P.actualMonths.length?[{x:allLb[P.actualMonths.length-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[]},cfg);
+    {x:allLb,y:base,name:'Modelo · sin ajustes',   line:{color:'#d0d5dd',width:2},mode:'lines+markers',marker:{size:3},hovertemplate:`<b>%{x}</b><br>Sin ajustes: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:allLb,y:scen,name:'Con ajustes en inputs',line:{color:'#2563eb',width:2},mode:'lines+markers',fill:'tonexty',fillcolor:'rgba(37,99,235,.06)',marker:{size:3},hovertemplate:`<b>%{x}</b><br>Con ajustes: %{y:,.0f} ${unit}<extra></extra>`},
+  ],{...LO,shapes,yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}},annotations:actCount?[{x:allLb[actCount-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[]},cfg);
 }
 
+function chartCashFC(){
+  const MM=getCurrYrMo();
+  const cy=getCurrYear();
+  const allLb=MM.map(fmtM);
+  const unit=currUnitLbl();
+  const getCash=(m,src)=>{
+    if(isActM(m))return P.modelTot.cashBS[m]||P.modelTot.cashEOP[m]||0;
+    return (src==='base'?B.cashEOP[m]:S.cashEOP[m])||0;
+  };
+  const base=MM.map(m=>convV(getCash(m,'base'),m));
+  const scen=MM.map(m=>convV(getCash(m,'scen'),m));
+  const actCount=MM.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  document.getElementById('cash-fc-title').textContent=`Saldo caja EOP · ${cy}`;
+  Plotly.react('ch-cash-fc',[
+    {x:allLb,y:base,name:'Modelo · sin ajustes',line:{color:'#c8d3e8',width:1.5},mode:'lines+markers',fill:'tozeroy',fillcolor:'rgba(203,213,225,0.18)',marker:{size:3},hovertemplate:`<b>%{x}</b><br>Sin ajustes: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:allLb,y:scen,name:'Con ajustes en inputs',line:{color:'#2563eb',width:2},mode:'lines+markers',fill:'tozeroy',fillcolor:'rgba(37,99,235,0.10)',marker:{size:3},hovertemplate:`<b>%{x}</b><br>Con ajustes: %{y:,.0f} ${unit}<extra></extra>`},
+  ],{...LO,shapes,yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:unit,font:{size:10}}},annotations:actCount?[{x:allLb[actCount-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[]},cfg);
+}
+function chartCashFCAnual(){
+  const earliestAMOYr=+AMO[0].slice(0,4);
+  const years=[...new Set([...P.annualYears,...AMO.map(m=>+m.slice(0,4))])].filter(y=>!isNaN(y)&&y>=earliestAMOYr).sort((a,b)=>a-b);
+  const unit=currUnitLbl();
+  const getDec=(yr,src)=>{
+    const dec=yr+'-12';
+    if(yr<earliestAMOYr) return convV(P.bs?.cash?.[dec]||0,dec);
+    if(isActM(dec)) return convV(P.modelTot.cashBS[dec]||P.modelTot.cashEOP[dec]||0,dec);
+    return convV((src==='base'?B.cashEOP[dec]:S.cashEOP[dec])||0,dec);
+  };
+  const lbYrs=years.map(y=>`${y}`);
+  const baseVals=years.map(yr=>getDec(yr,'base'));
+  const scenVals=years.map(yr=>getDec(yr,'scen'));
+  // Boundary between actuals and projected (last actual year index)
+  const lastActIdx=years.reduce((last,yr,i)=>{const dec=yr+'-12';return(yr<earliestAMOYr||isActM(dec))?i:last;},-1);
+  const shapes=lastActIdx>=0?[{type:'rect',x0:-.5,x1:lastActIdx+0.5,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  const annot=lastActIdx>=0?[{x:lbYrs[lastActIdx],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[];
+  Plotly.react('ch-cash-fc-an',[
+    {x:lbYrs,y:baseVals,name:'Modelo · sin ajustes',mode:'lines+markers',line:{color:'#c8d3e8',width:1.5},fill:'tozeroy',fillcolor:'rgba(203,213,225,0.18)',marker:{size:5},hovertemplate:`<b>%{x}</b><br>Sin ajustes: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbYrs,y:scenVals,name:'Con ajustes en inputs',mode:'lines+markers',line:{color:'#2563eb',width:2},fill:'tozeroy',fillcolor:'rgba(37,99,235,0.10)',marker:{size:5},hovertemplate:`<b>%{x}</b><br>Con ajustes: %{y:,.0f} ${unit}<extra></extra>`},
+  ],{...LO,shapes,yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:unit,font:{size:10}}},annotations:annot},cfg);
+}
 function chartClients(){
   if(!P.model.clients)return;
-  const allLb=AMO.map(fmtM);
+  const MM=getCurrYrMo();
+  const allLb=MM.map(fmtM);
   const traces=BRIDGE.filter(p=>p!=='ramaflex').map(p=>({
     x:allLb,
-    y:AMO.map(m=>P.model.clients[p]?.[m]?.eop||null),
+    y:MM.map(m=>P.model.clients[p]?.[m]?.eop||null),
     name:PRODS[p],type:'scatter',mode:'lines+markers',
     line:{color:PCOL[p],width:2},marker:{size:4}
   }));
-  const actIdx=P.actualMonths.length-0.5;
-  const shapes=P.actualMonths.length?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  const actCount=MM.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
   Plotly.react('ch-clients',traces,{...LO,shapes,yaxis:{...LO.yaxis,rangemode:'tozero'}},cfg);
 }
 
 function chartARPA(){
   if(!P.model.arpa)return;
-  const allLb=AMO.map(fmtM);
+  const MM=getCurrYrMo();
+  const allLb=MM.map(fmtM);
   const traces=BRIDGE.filter(p=>p!=='ramaflex').map(p=>({
     x:allLb,
-    y:AMO.map(m=>{const a=P.model.arpa[p]?.[m]?.total||0;return a||null;}),
+    y:MM.map(m=>{const a=P.model.arpa[p]?.[m]?.total||0;return a||null;}),
     name:PRODS[p],type:'scatter',mode:'lines+markers',
     line:{color:PCOL[p],width:2},marker:{size:4}
   }));
-  const actIdx=P.actualMonths.length-0.5;
-  const shapes=P.actualMonths.length?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  const actCount=MM.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
   Plotly.react('ch-arpa',traces,{...LO,shapes,yaxis:{...LO.yaxis,rangemode:'tozero',ticksuffix:' UF'}},cfg);
 }
 
@@ -1723,12 +2334,14 @@ function tableMetrics(){
 function chartRevByProd(){
   const prods=['time','flex','mgrplus','einv','ramaflex','rcl','rpe','rex','bnovus','geo','gaxu','otros'];
   const allLb=AMO.map(fmtM);
+  const unit=currUnitLbl();
   const traces=prods.map(p=>({
     x:allLb,
-    y:AMO.map(m=>isActM(m)?(P.model.rev[p][m]||0):(S.rev[p][m]||0)),
-    name:PRODS[p],type:'bar',marker:{color:PCOL[p]}
+    y:AMO.map(m=>convV(isActM(m)?(P.model.rev[p][m]||0):(S.rev[p][m]||0),m)),
+    name:PRODS[p],type:'bar',marker:{color:PCOL[p]},
+    hovertemplate:`<b>%{x}</b><br>${PRODS[p]}: %{y:,.1f} ${unit}<extra></extra>`,
   }));
-  Plotly.react('ch-rprod',traces,{...LO,barmode:'stack'},cfg);
+  Plotly.react('ch-rprod',traces,{...LO,barmode:'stack',yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
 }
 
 // Populate bridge desde/hasta selectors from AMO
@@ -1746,6 +2359,21 @@ function getBridgeData(prod,desde,hasta){
   // Use scenario MRR (S.mrrUF) for all months; fall back to model for actuals
   const months=AMO.filter(m=>m>=desde&&m<=hasta);
   if(!months.length)return null;
+  // 'all' → aggregate across BRIDGE products
+  if(prod==='all'){
+    const data={};
+    for(const m of months){
+      let bop=0,ch=0,ds=0,up=0,nw=0,eop=0;
+      for(const p of BRIDGE){
+        const sub=getBridgeData(p,desde,hasta);
+        if(!sub||!sub.data[m])continue;
+        const d=sub.data[m];
+        bop+=d.bop||0;ch+=d.ch||0;ds+=d.ds||0;up+=d.up||0;nw+=d.new||0;eop+=d.eop||0;
+      }
+      data[m]={bop,ch,ds,up,new:nw,eop};
+    }
+    return {months,data};
+  }
   const data={};
   for(const m of months){
     const eop=isActM(m)?(P.model.mrrUF[prod]?.[m]||0):(S.mrrUF[prod]?.[m]||0);
@@ -1775,11 +2403,23 @@ function chartBridge(){
   const bd=getBridgeData(prod,desde,hasta);
   if(!bd||!bd.months.length){Plotly.purge('ch-bridge');return;}
   const{months,data}=bd;
-  const bopV=data[months[0]].bop;
+  const useClp=MRR_UNIT==='CLP';
+  const ufM=m=>P.uf?.[m]||0;
+  // Convert a UF value at a specific month to the display unit
+  const cv=(v,m)=>useClp?v*ufM(m)/1e6:v;
+  // BoP uses the first month's UF; EoP uses the last month's
+  const bopV=cv(data[months[0]].bop, months[0]);
+  const eopV=cv(data[months[months.length-1]].eop, months[months.length-1]);
+  // Components accumulated with per-month UF conversion
   let chT=0,dsT=0,upT=0,nwT=0;
-  for(const m of months){chT+=Math.abs(data[m].ch);dsT+=Math.abs(data[m].ds);upT+=data[m].up;nwT+=data[m].new;}
-  const eopV=data[months[months.length-1]].eop;
+  for(const m of months){
+    chT+=useClp?Math.abs(data[m].ch)*ufM(m)/1e6:Math.abs(data[m].ch);
+    dsT+=useClp?Math.abs(data[m].ds)*ufM(m)/1e6:Math.abs(data[m].ds);
+    upT+=useClp?data[m].up*ufM(m)/1e6:data[m].up;
+    nwT+=useClp?data[m].new*ufM(m)/1e6:data[m].new;
+  }
   const grossV=bopV-chT-dsT,netV=grossV+upT;
+  const unit=useClp?currUnitLbl():'UF';
   const isMobile=window.innerWidth<=480;
   const names=isMobile
     ?['BoP','Churn','Dnsell','Upsell','Nuevos','EoP']
@@ -1804,7 +2444,7 @@ function chartBridge(){
     bargap:isMobile?0.2:0.38,
     margin:isMobile?{t:24,b:40,l:36,r:8}:LO.margin,
     xaxis:{...LO.xaxis,tickfont:{size:isMobile?9:10},tickangle:0,automargin:true},
-    yaxis:{...LO.yaxis,tickfont:{size:isMobile?8:9},automargin:true},
+    yaxis:{...LO.yaxis,tickfont:{size:isMobile?8:9},automargin:true,title:{text:unit,font:{size:9}}},
   },cfg);
   tableRetention();
 }
@@ -1816,7 +2456,25 @@ function tableRetention(){
   if(!desde||!hasta){return;}
   const bd=getBridgeData(prod,desde,hasta);if(!bd)return;
   const{months,data}=bd;
-  const gv=(m,k)=>{const b=data[m];if(!b)return 0;
+  // Group by year when range > 18 months
+  const useAnnual=months.length>18;
+  const periods=useAnnual
+    ?[...new Set(months.map(m=>m.slice(0,4)))].map(y=>({label:y,months:months.filter(m=>m.slice(0,4)===y)}))
+    :months.map(m=>({label:fmtM(m),months:[m]}));
+  const periodData={};
+  for(const per of periods){
+    const ms=per.months;
+    const first=data[ms[0]]||{bop:0,ch:0,ds:0,up:0,new:0,eop:0};
+    const last=data[ms[ms.length-1]]||first;
+    let ch=0,ds=0,up=0,nw=0;
+    for(const mm of ms){const d=data[mm]||{};ch+=d.ch||0;ds+=d.ds||0;up+=d.up||0;nw+=d.new||0;}
+    periodData[per.label]={bop:first.bop,ch,ds,up,new:nw,eop:last.eop,lastMonth:ms[ms.length-1]};
+  }
+  // Fix title
+  const titleEl=document.getElementById('ret-title');
+  if(titleEl)titleEl.textContent=`Tabla de retención ${useAnnual?'anual':'mensual'}`;
+
+  const gv=(label,k)=>{const b=periodData[label];if(!b)return 0;
     if(k==='gr')return b.bop+b.ch+b.ds;
     if(k==='nr')return b.bop+b.ch+b.ds+b.up;
     if(k==='grp')return b.bop?(b.bop+b.ch+b.ds)/b.bop*100:0;
@@ -1830,191 +2488,1319 @@ function tableRetention(){
     {l:'(+) Nuevos',k:'nw',cls:'pos'},{l:'EoP MRR',k:'eop',bold:true},
     {l:'Gross Ret. %',k:'grp',pct:true},{l:'Net Ret. %',k:'nrp',pct:true},
   ];
-  let h='<thead><tr><th>Métrica</th>'+months.map(m=>'<th>'+fmtM(m)+'</th>').join('')+'</tr></thead><tbody>';
+  const periodLabels=periods.map(p=>p.label);
+  const colHdr=useAnnual?'Año':'Mes';
+
+  // ── Helper: build delta columns (last period only) ──
+  const prodSel=document.getElementById('bp-prod')?.value||'time';
+  const _mrrOne=(p,m)=>isActM(m)?(P.model.mrrUF[p]?.[m]||0):(S.mrrUF[p]?.[m]||0);
+  const mrr=m=>{if(!m)return 0;if(prodSel==='all')return BRIDGE.reduce((s,p)=>s+_mrrOne(p,m),0);return _mrrOne(prodSel,m);};
+  const lastLabel=periodLabels[periodLabels.length-1];
+  const lastPeriod=periodData[lastLabel];
+  const lastM=lastPeriod?.lastMonth||(months.length?months[months.length-1]:null);
+  const getDelta=(k,pct)=>{
+    if(pct)return{mom:'-',yoy:'-',c1:'',c2:''};
+    if(k!=='eop'&&k!=='bop')return{mom:'-',yoy:'-',c1:'',c2:''};
+    const pm=addM(lastM,-1),py=addM(lastM,-12);
+    const mv=mrr(pm),yv=mrr(py),cv=mrr(lastM);
+    const mom=mv?(g=>(g>0?'+':'')+g.toFixed(1)+'%')((cv/mv-1)*100):'-';
+    const yoy=yv?(g=>(g>0?'+':'')+g.toFixed(1)+'%')((cv/yv-1)*100):'-';
+    return{mom,yoy,c1:mom.startsWith('+')?'pos':mom.startsWith('-')&&mom!=='-'?'neg':'',c2:yoy.startsWith('+')?'pos':yoy.startsWith('-')&&yoy!=='-'?'neg':''};
+  };
+
+  const totalCols=periodLabels.length+3; // label + periods + 2 delta
+
+  // ── Main rows ──
+  let h=`<thead><tr><th>Métrica · ${colHdr}</th>`+periodLabels.map(l=>'<th>'+l+'</th>').join('')+'<th>Δ vs per. ant.</th><th>Δ vs año ant.</th></tr></thead><tbody>';
   for(const r of rows){
     const bs=r.bold?'style="font-weight:600;color:var(--text)"':'';
-    h+=`<tr><td ${bs}>${r.l}</td>`+months.map(m=>{
-      const v=gv(m,r.k);
+    h+=`<tr><td ${bs}>${r.l}</td>`+periodLabels.map(l=>{
+      const v=gv(l,r.k);
       const cls=r.pct?(v>=100?'pos':v<95?'neg':''):(r.cls==='neg'&&v<0?'neg':r.cls==='pos'&&v>0?'pos':'');
       return `<td class="${cls}" ${bs}>${r.pct?v.toFixed(1)+'%':f0(v)}</td>`;
-    }).join('')+'</tr>';
+    }).join('');
+    const{mom,yoy,c1,c2}=getDelta(r.k,r.pct);
+    h+=`<td class="${c1}" ${bs}>${mom}</td><td class="${c2}" ${bs}>${yoy}</td></tr>`;
+  }
+
+  // ── Separator + % de BoP rows (same table = perfect column alignment) ──
+  const pctRows=[
+    {l:'Churn % BoP',    fn:b=>b.bop?-b.ch/b.bop*100:0,  neg:true},
+    {l:'Downsell % BoP', fn:b=>b.bop?-b.ds/b.bop*100:0,  neg:true},
+    {l:'Gross Ret. %',   fn:b=>b.bop?(b.bop+b.ch+b.ds)/b.bop*100:0, thr:true, bold:true},
+    {l:'Upsell % BoP',   fn:b=>b.bop?b.up/b.bop*100:0,   pos:true},
+    {l:'Net Ret. %',     fn:b=>b.bop?(b.bop+b.ch+b.ds+b.up)/b.bop*100:0, thr:true, bold:true},
+    {l:'Nuevos % BoP',   fn:b=>b.bop?b.new/b.bop*100:0,  pos:true},
+    {l:'EoP / BoP %',    fn:b=>b.bop?b.eop/b.bop*100:0,  thr:true},
+  ];
+  h+=`<tr style="background:var(--bg2);border-top:2px solid var(--line)"><td colspan="${totalCols}" style="font-size:10px;letter-spacing:.07em;color:var(--text3);padding:7px 10px 4px;font-weight:600">INDICADORES COMO % DE BOP</td></tr>`;
+  for(const r of pctRows){
+    const bs=r.bold?'style="font-weight:600;color:var(--text)"':'';
+    h+=`<tr><td ${bs}>${r.l}</td>`+periodLabels.map(l=>{
+      const b=periodData[l]||{bop:0,ch:0,ds:0,up:0,new:0,eop:0};
+      const v=r.fn(b);
+      let cls='';
+      if(r.thr) cls=v>=100?'pos':v<95?'neg':'';
+      else if(r.neg) cls=v>0?'neg':'';
+      else if(r.pos) cls=v>0?'pos':'';
+      const disp=r.neg?`${(-v).toFixed(1)}%`:`${r.pos&&v>0?'+':''}${v.toFixed(1)}%`;
+      return `<td class="${cls}" ${bs}>${disp}</td>`;
+    }).join('')+'<td></td><td></td></tr>';
   }
   document.getElementById('t-ret').innerHTML=h+'</tbody>';
 }
+// ─── Bridge unit toggle ───────────────────────────────────────────────
+let MRR_UNIT='UF';
+function setBridgeUnit(u){
+  MRR_UNIT=u;
+  document.getElementById('bridge-unit-lbl').textContent=u==='CLP'?'M CLP':'UF';
+  const btnUF=document.getElementById('btn-bridge-uf'),btnCLP=document.getElementById('btn-bridge-clp');
+  if(btnUF){btnUF.style.background=u==='UF'?'var(--acc)':'';btnUF.style.color=u==='UF'?'#fff':'';btnUF.style.borderColor=u==='UF'?'var(--acc)':'';}
+  if(btnCLP){btnCLP.style.background=u==='CLP'?'var(--acc)':'';btnCLP.style.color=u==='CLP'?'#fff':'';btnCLP.style.borderColor=u==='CLP'?'var(--acc)':'';}
+  chartBridge();
+  tableBridge();
+}
+
+// ─── Annual revenue table ────────────────────────────────────────────
+function tableRevAnnual(){
+  if(!P.annual){document.getElementById('t-rev-annual').innerHTML='';return;}
+  const earliestAMOYr=+AMO[0].slice(0,4);
+  const years=[...new Set([...P.annualYears,...AMO.map(m=>+m.slice(0,4))])].filter(y=>!isNaN(y)).sort((a,b)=>a-b);
+  const isHist=yr=>yr<earliestAMOYr;
+  const msOfYr=yr=>AMO.filter(m=>+m.slice(0,4)===yr);
+  const unit=currUnitLbl();
+  const refMs=yr=>{const ms=msOfYr(yr);return ms.length?ms:[yr+'-06'];};
+  const cell=(v,yr,isDetail=false)=>{
+    if(v===null||v===undefined)return`<td class="ac">-</td>`;
+    if(isHist(yr)&&v===0)return`<td class="ac">-</td>`;
+    return`<td class="${v<0?'neg':''} ${isHist(yr)?'ac':''}">${fmtMoneyY(v,refMs(yr),1)}</td>`;
+  };
+  const revPY=(yr,p)=>{
+    if(isHist(yr)){const v=P.annual?.revProd?.[p]?.[yr];return v!==undefined?v:null;}
+    return msOfYr(yr).reduce((t,m)=>t+(isActM(m)?(P.model.rev[p]?.[m]||0):(S.rev[p]?.[m]||0)),0);
+  };
+  const revMgrY=yr=>{
+    if(isHist(yr)){const vals=MGR_PRODS.map(p=>revPY(yr,p));return vals.some(v=>v!==null)?vals.reduce((s,v)=>s+(v||0),0):0;}
+    return MGR_PRODS.reduce((t,p)=>t+revPY(yr,p),0);
+  };
+  const revSisY=yr=>{
+    if(isHist(yr)){const vals=SIS_PRODS.map(p=>revPY(yr,p));return vals.some(v=>v!==null)?vals.reduce((s,v)=>s+(v||0),0):0;}
+    return SIS_PRODS.reduce((t,p)=>t+revPY(yr,p),0);
+  };
+  const revTotY=yr=>isHist(yr)?(P.annual.rev[yr]||0):[...MGR_PRODS,...SIS_PRODS].reduce((t,p)=>t+revPY(yr,p),0);
+  let h=`<table><thead><tr><th>Segmento / Producto (${unit})</th>`;
+  for(const yr of years)h+=`<th class="${isHist(yr)?'act-h':''}">${yr}${isHist(yr)?' <span class="act-badge">Real</span>':' <span class="fc-badge">F</span>'}</th>`;
+  h+='</tr></thead><tbody>';
+  // L1 Manager
+  h+=`<tr class="exp-hdr" data-exp-tag="rva-mgr" onclick="window.expRow(this,'rva-mgr')"><td>Ingresos Manager <span style="color:var(--text3);font-size:10px">▸</span></td>`;
+  for(const yr of years)h+=cell(revMgrY(yr),yr);
+  h+='</tr>';
+  for(const p of MGR_PRODS){
+    if(!years.some(yr=>revPY(yr,p)!==null&&Math.abs(revPY(yr,p))>0.05))continue;
+    h+=`<tr class="exp-row hide" data-exp="rva-mgr"><td style="padding-left:14px">${PRODS[p]||p}</td>`;
+    for(const yr of years)h+=cell(revPY(yr,p),yr);
+    h+='</tr>';
+  }
+  // L1 Sistemica
+  h+=`<tr class="exp-hdr" data-exp-tag="rva-sis" onclick="window.expRow(this,'rva-sis')"><td>Ingresos Sistemica <span style="color:var(--text3);font-size:10px">▸</span></td>`;
+  for(const yr of years)h+=cell(revSisY(yr),yr);
+  h+='</tr>';
+  for(const p of SIS_PRODS){
+    if(!years.some(yr=>revPY(yr,p)!==null&&Math.abs(revPY(yr,p))>0.05))continue;
+    h+=`<tr class="exp-row hide" data-exp="rva-sis"><td style="padding-left:14px">${PRODS[p]||p}</td>`;
+    for(const yr of years)h+=cell(revPY(yr,p),yr,true);
+    h+='</tr>';
+  }
+  // Total + YoY
+  h+=`<tr class="tot"><td><strong>Ingresos Totales</strong></td>`;
+  for(const yr of years)h+=cell(revTotY(yr),yr);
+  h+='</tr>';
+  h+=`<tr class="sub"><td>· YoY %</td>`;
+  for(let i=0;i<years.length;i++){
+    if(i===0){h+=`<td>-</td>`;continue;}
+    const cur=revTotY(years[i]),prev=revTotY(years[i-1]);
+    const g=prev?(cur/prev-1)*100:0;
+    h+=`<td class="${g>0?'pos':g<0?'neg':''} ${isHist(years[i])?'ac':''}">${(g>0?'+':'')+g.toFixed(1)}%</td>`;
+  }
+  h+='</tr>';
+  document.getElementById('t-rev-annual').innerHTML=h+'</tbody></table>';
+}
+
+// ─── Bridge table (año en curso, con toggle UF / M CLP) ─────────────
+function tableBridge(){
+  const el=document.getElementById('t-bridge');
+  if(!el||!P.model)return;
+  const prod=document.getElementById('bp-prod')?.value||'time';
+  const months=AMO; // full range actuals + projected to 2028
+  if(!months.length)return;
+  const useClp=MRR_UNIT==='CLP';
+  const ufV=m=>P.uf?.[m]||0;
+  const fmtV=(v,m)=>useClp?fmtMoney(v*ufV(m)/1e6,m,1):f0(v);
+  const _getOne=(p,m)=>{
+    if(isActM(m)&&P.model.bridge?.[p]){
+      const bd=P.model.bridge[p][m]||{};
+      return{bop:bd.bop||0,ch:bd.ch||0,ds:bd.ds||0,up:bd.up||0,nw:bd.new||0,eop:bd.eop||0};
+    }
+    const eop=isActM(m)?(P.model.mrrUF[p]?.[m]||0):(S.mrrUF[p]?.[m]||0);
+    const prevM=addM(m,-1);
+    const bop=(P.model.mrrUF[p]?.[prevM]||S.mrrUF[p]?.[prevM]||0);
+    const rates=P.bridgeRates?.[p]||{ch:0,ds:0,up:0};
+    const ch=bop*rates.ch,ds=bop*rates.ds,up=bop*rates.up;
+    return{bop,ch,ds,up,nw:eop-(bop+ch+ds+up),eop};
+  };
+  const getData=m=>{
+    if(prod!=='all')return _getOne(prod,m);
+    let bop=0,ch=0,ds=0,up=0,nw=0,eop=0;
+    for(const p of BRIDGE){const d=_getOne(p,m);bop+=d.bop;ch+=d.ch;ds+=d.ds;up+=d.up;nw+=d.nw;eop+=d.eop;}
+    return{bop,ch,ds,up,nw,eop};
+  };
+  const badge='<span class="act-badge">Real</span>';
+  const unit=useClp?currUnitLbl():'UF';
+  // Shared colgroup: first col fixed, month cols equal
+  const n=months.length;
+  const mhdrs=months.map(m=>`<th ${isActM(m)?'class="act-h"':''}>${fmtM(m)}${isActM(m)?' '+badge:''}</th>`).join('');
+
+  // ── Main table ──
+  let h=`<thead><tr><th>Componente (${unit})</th>${mhdrs}</tr></thead><tbody>`;
+  const rows=[
+    {l:'BoP MRR',k:'bop',bold:true},
+    {l:'(+) Nuevos',k:'nw',pos:true},
+    {l:'(−) Churn',k:'ch',neg:true},
+    {l:'(−) Downsell',k:'ds',neg:true},
+    {l:'(+) Upsell',k:'up',pos:true},
+    {l:'EoP MRR',k:'eop',bold:true},
+  ];
+  for(const r of rows){
+    h+=`<tr${r.bold?' class="tot"':''}>`;
+    h+=`<td>${r.bold?'<strong>'+r.l+'</strong>':r.l}</td>`;
+    for(const m of months){
+      const d=getData(m),v=d[r.k]||0;
+      const cls=[r.neg&&v<0?'neg':'',r.pos&&v>0?'pos':'',isActM(m)?'ac':''].filter(Boolean).join(' ');
+      h+=`<td class="${cls}">${fmtV(v,m)}</td>`;
+    }
+    h+='</tr>';
+  }
+  // ── % de BoP section — same table, separator row ──
+  const pctRowsBr=[
+    {l:'Churn % BoP',    fn:d=>d.bop?-d.ch/d.bop*100:0,  neg:true},
+    {l:'Downsell % BoP', fn:d=>d.bop?-d.ds/d.bop*100:0,  neg:true},
+    {l:'Gross Ret. %',   fn:d=>d.bop?(d.bop+d.ch+d.ds)/d.bop*100:0, thr:true, bold:true},
+    {l:'Upsell % BoP',   fn:d=>d.bop?d.up/d.bop*100:0,   pos:true},
+    {l:'Net Ret. %',     fn:d=>d.bop?(d.bop+d.ch+d.ds+d.up)/d.bop*100:0, thr:true, bold:true},
+    {l:'Nuevos % BoP',   fn:d=>d.bop?d.nw/d.bop*100:0,   pos:true},
+  ];
+  h+=`<tr style="background:var(--bg2);border-top:2px solid var(--line)"><td colspan="${n+1}" style="font-size:10px;letter-spacing:.07em;color:var(--text3);padding:7px 10px 4px;font-weight:600">INDICADORES COMO % DE BOP</td></tr>`;
+  for(const r of pctRowsBr){
+    const bs=r.bold?'class="tot"':'';
+    h+=`<tr ${bs}><td>${r.bold?'<strong>'+r.l+'</strong>':r.l}</td>`;
+    for(const m of months){
+      const d=getData(m),v=r.fn(d);
+      let cls=isActM(m)?'ac':'';
+      if(r.thr) cls+=(v>=100?' pos':v<95?' neg':'');
+      else if(r.neg) cls+=(v>0?' neg':'');
+      else if(r.pos) cls+=(v>0?' pos':'');
+      const disp=r.neg?`${(-v).toFixed(1)}%`:`${r.pos&&v>0?'+':''}${v.toFixed(1)}%`;
+      h+=`<td class="${cls.trim()}">${disp}</td>`;
+    }
+    h+='</tr>';
+  }
+  el.innerHTML=h+'</tbody>';
+}
+
 function tableMRR(){
-  const allLb=AMO.map(fmtM);
+  // Vista anual: valor Dec EOP por año + YoY (Dec/Dec)
+  const months=AMO;
+  if(!months.length){document.getElementById('t-mrr').innerHTML='';return;}
+  const years=[...new Set(months.map(m=>+m.slice(0,4)))].sort((a,b)=>a-b);
   const uf=m=>P.uf[m]||0;
-  let h='<thead><tr><th>Producto</th>'+allLb.map(l=>'<th>'+l+'</th>').join('')+'</tr></thead><tbody>';
+  const getUF=(p,m)=>isActM(m)?(P.model.mrrUF[p]?.[m]||0):(S.mrrUF[p]?.[m]||0);
+  const getCLP=(p,m)=>getUF(p,m)*uf(m)/1e6;
+  // Mes de cierre de cada año (Dic si hay, si no el último mes disponible)
+  const closeM=yr=>{
+    const yms=months.filter(m=>+m.slice(0,4)===yr);
+    if(!yms.length)return null;
+    const dec=yr+'-12';
+    return yms.includes(dec)?dec:yms[yms.length-1];
+  };
+  const yrCells=years.map(yr=>{const m=closeM(yr);return{yr,m,lbl:yr.toString()};});
+  let h='<thead><tr><th>Producto / Métrica</th>'+yrCells.map(c=>`<th>${c.lbl}</th>`).join('')+'</tr></thead><tbody>';
   for(const p of BRIDGE){
-    h+=`<tr class="sub"><td>${PRODS[p]} (UF)</td>`+AMO.map(m=>{const v=isActM(m)?P.model.mrrUF[p]?.[m]:S.mrrUF[p]?.[m];return `<td>${f0(v||0)}</td>`;}).join('')+'</tr>';
-    h+=`<tr><td>${PRODS[p]} (M CLP)</td>`+AMO.map(m=>{const v=isActM(m)?P.model.mrrUF[p]?.[m]:S.mrrUF[p]?.[m];return `<td>${f1((v||0)*uf(m)/1e6)}</td>`;}).join('')+'</tr>';
+    // UF (real - EOP Dic)
+    h+=`<tr><td><strong>${PRODS[p]}</strong> · MRR UF (EoP Dic)</td>`+yrCells.map(c=>{
+      const v=c.m?getUF(p,c.m):0;
+      return `<td>${f0(v)}</td>`;
+    }).join('')+'</tr>';
+    // YoY UF %
+    h+=`<tr class="sub"><td>· YoY real %</td>`+yrCells.map((c,i)=>{
+      if(!c.m)return '<td>-</td>';
+      const prevYr=c.yr-1;
+      const prevDec=prevYr+'-12';
+      const cur=getUF(p,c.m);
+      // Use prev Dec from model if not in projection range
+      const prev=getUF(p,prevDec)||P.model.mrrUF[p]?.[prevDec]||0;
+      if(!prev)return '<td>-</td>';
+      const g=(cur/prev-1)*100;
+      const cls=g>0?'pos':g<0?'neg':'';
+      return `<td class="${cls}">${(g>0?'+':'')}${g.toFixed(1)}%</td>`;
+    }).join('')+'</tr>';
+    // MRR M CLP (nominal - EOP Dic)
+    h+=`<tr><td>· MRR ${currUnitLbl()} (nominal · EoP Dic)</td>`+yrCells.map(c=>{
+      const v=c.m?getCLP(p,c.m):0;
+      return `<td>${fmtMoney(v,c.m||months[months.length-1],1)}</td>`;
+    }).join('')+'</tr>';
+    // YoY nominal %
+    h+=`<tr class="sub"><td>· YoY nominal %</td>`+yrCells.map((c)=>{
+      if(!c.m)return '<td>-</td>';
+      const prevDec=(c.yr-1)+'-12';
+      const cur=getCLP(p,c.m);
+      const prev=getCLP(p,prevDec);
+      if(!prev)return '<td>-</td>';
+      const g=(cur/prev-1)*100;
+      const cls=g>0?'pos':g<0?'neg':'';
+      return `<td class="${cls}">${(g>0?'+':'')}${g.toFixed(1)}%</td>`;
+    }).join('')+'</tr>';
   }
   document.getElementById('t-mrr').innerHTML=h+'</tbody>';
 }
 
+function chartEERRAnnual(){
+  if(!P.annual)return;
+  const earliestAMOYr=+AMO[0].slice(0,4);
+  const years=[...new Set([...P.annualYears, ...AMO.map(m=>+m.slice(0,4))])].filter(y=>!isNaN(y)).sort((a,b)=>a-b);
+  const sumYr=(yr,k)=>{
+    if(yr<earliestAMOYr){return P.annual[k==='ebadj'?'ebitdaAdj':k]?.[yr]||0;}
+    const ms=AMO.filter(m=>+m.slice(0,4)===yr);
+    if(!ms.length)return P.annual[k==='ebadj'?'ebitdaAdj':k]?.[yr]||0;
+    const fn=m=>{
+      const useModel=isActM(m);
+      if(k==='rev')return useModel?P.modelTot.rev[m]:S.revT[m];
+      if(k==='ebitda')return useModel?P.modelTot.ebitda[m]:S.ebitda[m];
+      if(k==='ebadj')return (useModel?P.modelTot.ebitda[m]:S.ebitda[m])+(P.modelTot.ajustes[m]||0);
+      if(k==='ni')return useModel?P.modelTot.ni[m]:S.ni[m];
+      return 0;
+    };
+    return ms.reduce((t,m)=>t+(fn(m)||0),0);
+  };
+  const monthsOfYr=yr=>{
+    if(yr<earliestAMOYr){const a=[];for(let mo=1;mo<=12;mo++)a.push(yr+'-'+String(mo).padStart(2,'0'));return a;}
+    return AMO.filter(m=>+m.slice(0,4)===yr);
+  };
+  const lbls=years.map(String);
+  const unit=currUnitLbl();
+  const revArr=years.map(y=>convYearly(sumYr(y,'rev'),monthsOfYr(y)));
+  const ebArr=years.map(y=>convYearly(sumYr(y,'ebadj'),monthsOfYr(y)));
+  const niArr=years.map(y=>convYearly(sumYr(y,'ni'),monthsOfYr(y)));
+  // Margen EBITDA Adj %
+  const mgArr=years.map(y=>{const r=sumYr(y,'rev')||0;return r?sumYr(y,'ebadj')/r*100:0;});
+  Plotly.react('ch-eerr-annual',[
+    {x:lbls,y:revArr,name:'Revenue',type:'bar',marker:{color:'#2563eb'},text:revArr.map(v=>f0(v)),textposition:'outside',textfont:{size:9},hovertemplate:`<b>%{x}</b><br>Revenue: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbls,y:ebArr,name:'EBITDA Adj',type:'bar',marker:{color:'#059669'},text:ebArr.map(v=>f0(v)),textposition:'outside',textfont:{size:9},hovertemplate:`<b>%{x}</b><br>EBITDA Adj: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbls,y:niArr,name:'NI',type:'bar',marker:{color:'#7c3aed'},text:niArr.map(v=>f0(v)),textposition:'outside',textfont:{size:9},hovertemplate:`<b>%{x}</b><br>NI: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbls,y:mgArr,name:'% Mg EBITDA Adj',type:'scatter',mode:'lines+markers',yaxis:'y2',line:{color:'#f59e0b',width:2.5,dash:'dot'},marker:{size:6},hovertemplate:'<b>%{x}</b><br>Margen: %{y:.1f}%<extra></extra>'},
+  ],{...LO,barmode:'group',hovermode:'x unified',yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}},yaxis2:{overlaying:'y',side:'right',tickfont:{size:9},ticksuffix:'%',color:'#f59e0b',gridcolor:'transparent'},margin:{...LO.margin,r:48,t:24}},cfg);
+}
+
 function chartMargins(){
-  const allLb=AMO.map(fmtM);
-  const revS=AMO.map(m=>isActM(m)?(P.modelTot.rev[m]||0):(S.revT[m]||0));
-  const ebS=AMO.map(m=>isActM(m)?(P.modelTot.ebitda[m]||0):(S.ebitda[m]||0));
-  const revB=AMO.map(m=>isActM(m)?(P.modelTot.rev[m]||0):(B.revT[m]||0));
-  const ebB=AMO.map(m=>isActM(m)?(P.modelTot.ebitda[m]||0):(B.ebitda[m]||0));
-  const mrgArr=AMO.map((_,i)=>revS[i]?ebS[i]/revS[i]*100:0);
-  const actIdx=P.actualMonths.length-0.5;
-  const shapes=P.actualMonths.length?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  const MM=getCurrYrMo(); // mensual año en curso
+  const allLb=MM.map(fmtM);
+  const unit=currUnitLbl();
+  const revSraw=MM.map(m=>isActM(m)?(P.modelTot.rev[m]||0):(S.revT[m]||0));
+  const ebSraw=MM.map(m=>isActM(m)?(P.modelTot.ebitda[m]||0):(S.ebitda[m]||0));
+  const revS=revSraw.map((v,i)=>convV(v,MM[i]));
+  const ebS=ebSraw.map((v,i)=>convV(v,MM[i]));
+  const revB=MM.map(m=>convV(isActM(m)?(P.modelTot.rev[m]||0):(B.revT[m]||0),m));
+  const ebB=MM.map(m=>convV(isActM(m)?(P.modelTot.ebitda[m]||0):(B.ebitda[m]||0),m));
+  const mrgArr=MM.map((_,i)=>revSraw[i]?ebSraw[i]/revSraw[i]*100:0);
+  const actCount=MM.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
   Plotly.react('ch-margins',[
-    {x:allLb,y:revS,name:'Revenue',type:'bar',marker:{color:'#2563eb'}},
-    {x:allLb,y:ebS,name:'EBITDA',type:'bar',marker:{color:'#059669'}},
-    {x:allLb,y:revB,name:'Rev Base',type:'scatter',mode:'lines',line:{color:'#94a3b8',width:1.5,dash:'dot'}},
-    {x:allLb,y:ebB,name:'EB Base',type:'scatter',mode:'lines',line:{color:'#6b7280',width:1.5,dash:'dot'}},
-    {x:allLb,y:mrgArr,name:'% EBITDA',type:'scatter',mode:'lines+markers',yaxis:'y2',line:{color:'#7c3aed',width:2,dash:'dot'}},
-  ],{...LO,barmode:'group',shapes,yaxis2:{overlaying:'y',side:'right',tickfont:{size:9},ticksuffix:'%',color:'#7c3aed',gridcolor:'transparent'},margin:{...LO.margin,r:48}},cfg);
+    {x:allLb,y:revS,name:'Revenue',type:'bar',marker:{color:'#2563eb'},hovertemplate:`<b>%{x}</b><br>Revenue: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:allLb,y:ebS,name:'EBITDA',type:'bar',marker:{color:'#059669'},hovertemplate:`<b>%{x}</b><br>EBITDA: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:allLb,y:revB,name:'Revenue · sin ajustes',type:'scatter',mode:'lines',line:{color:'#94a3b8',width:1.5,dash:'dot'},hoverinfo:'skip'},
+    {x:allLb,y:ebB,name:'EBITDA · sin ajustes', type:'scatter',mode:'lines',line:{color:'#6b7280',width:1.5,dash:'dot'},hoverinfo:'skip'},
+    {x:allLb,y:mrgArr,name:'% EBITDA',type:'scatter',mode:'lines+markers',yaxis:'y2',line:{color:'#7c3aed',width:2,dash:'dot'},hovertemplate:'<b>%{x}</b><br>Margen: %{y:.1f}%<extra></extra>'},
+  ],{...LO,barmode:'group',shapes,hovermode:'x unified',yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}},yaxis2:{overlaying:'y',side:'right',tickfont:{size:9},ticksuffix:'%',color:'#7c3aed',gridcolor:'transparent'},margin:{...LO.margin,r:48}},cfg);
 }
 function chartCostos(){
-  const allLb=AMO.map(fmtM);
+  const MM=getCurrYrMo();
+  const allLb=MM.map(fmtM);
   const gv=(m,k)=>{
     const rev=isActM(m)?P.modelTot.rev[m]:S.revT[m];
     if(!rev)return 0;
-    if(k==='cogs')return Math.abs(isActM(m)?P.modelTot.cogs[m]:S.cogsT[m])/rev*100;
-    if(k==='sga')return Math.abs(isActM(m)?P.modelTot.sga[m]:S.sgaT[m])/rev*100;
-    if(k==='ebitda')return (isActM(m)?P.modelTot.ebitda[m]:S.ebitda[m])/rev*100;
+    const cogs=isActM(m)?P.modelTot.cogs[m]:S.cogsT[m];
+    const sga=isActM(m)?P.modelTot.sga[m]:S.sgaT[m];
+    const eb=isActM(m)?P.modelTot.ebitda[m]:S.ebitda[m];
+    const ni=isActM(m)?P.modelTot.ni[m]:S.ni[m];
+    if(k==='grossPct')return (rev+cogs)/rev*100;
+    if(k==='ebitdaPct')return eb/rev*100;
+    if(k==='sgaPct')return Math.abs(sga)/rev*100;
+    if(k==='niPct')return ni/rev*100;
     return 0;
   };
+  const actCount=MM.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
   Plotly.react('ch-costos',[
-    {x:allLb,y:AMO.map(m=>gv(m,'cogs')),name:'COGS %',type:'bar',marker:{color:'rgba(239,68,68,.55)'}},
-    {x:allLb,y:AMO.map(m=>gv(m,'sga')),name:'SG&A %',type:'bar',marker:{color:'rgba(245,158,11,.5)'}},
-    {x:allLb,y:AMO.map(m=>gv(m,'ebitda')),name:'EBITDA %',type:'bar',marker:{color:'rgba(5,150,105,.55)'}},
-  ],{...LO,barmode:'stack',yaxis:{...LO.yaxis,ticksuffix:'%'}},cfg);
+    {x:allLb,y:MM.map(m=>gv(m,'grossPct')),name:'% Margen Bruto',type:'scatter',mode:'lines+markers',line:{color:'#059669',width:2.5},marker:{size:4},hovertemplate:'<b>%{x}</b><br>Mg Bruto: %{y:.1f}%<extra></extra>'},
+    {x:allLb,y:MM.map(m=>gv(m,'ebitdaPct')),name:'% Margen EBITDA',type:'scatter',mode:'lines+markers',line:{color:'#2563eb',width:2.5},marker:{size:4},hovertemplate:'<b>%{x}</b><br>EBITDA: %{y:.1f}%<extra></extra>'},
+    {x:allLb,y:MM.map(m=>gv(m,'sgaPct')),name:'% SG&A',type:'scatter',mode:'lines+markers',line:{color:'#f59e0b',width:2,dash:'dot'},marker:{size:4},hovertemplate:'<b>%{x}</b><br>SG&A: %{y:.1f}%<extra></extra>'},
+    {x:allLb,y:MM.map(m=>gv(m,'niPct')),name:'% NI',type:'scatter',mode:'lines+markers',line:{color:'#7c3aed',width:2},marker:{size:4},hovertemplate:'<b>%{x}</b><br>NI: %{y:.1f}%<extra></extra>'},
+  ],{...LO,shapes,yaxis:{...LO.yaxis,ticksuffix:'%',zeroline:true,zerolinecolor:'#9ca3af',zerolinewidth:1}},cfg);
 }
+// Per-product totals for COGS/SG&A breakdown
+function _prodCogs(m,p){return isActM(m)?(P.model.cogs?.[p]?.[m]||0):(S.cogs?.[p]?.[m]||0);}
+function _prodSga(m,p){
+  if(isActM(m))return P.model.sga?.[p]?.[m]||0;
+  return S.sga?.[p]?.[m]||0;
+}
+function _cogsProds(){return ['time','flex','mgrplus','einv','ramaflex','rex','bnovus','gaxu','geo','otros','rcl','rpe'];}
+function _sgaProds(){return P.sgaParams?Object.keys(P.sgaParams):_cogsProds().concat(['corp']);}
+function _prodLabel(p){return PRODS[p]||(p==='corp'?'Corporativo':p);}
+
+// Per-line values: real values from Excel for actual months, projection params for forecast
+function _lineValCogs(m,prod,lineName){
+  if(isActM(m)){
+    const v=P.model?.cogsLines?.[prod]?.[lineName]?.[m];
+    return (v===undefined)?null:v;
+  }
+  const params=P.cogsParams?.[prod];
+  if(!params)return 0;
+  if(params.fixed?.[lineName]){
+    if(m in params.fixed[lineName])return params.fixed[lineName][m]||0;
+    const dec=params.fixed[lineName]['2026-12']||0;
+    const decRev=P.model.rev[prod]?.['2026-12']||1;
+    return(dec/decRev)*(S.rev[prod]?.[m]||0);
+  }
+  if(params.variable?.[lineName]!=null)return params.variable[lineName]*(S.rev[prod]?.[m]||0);
+  return 0;
+}
+function _lineValSga(m,prod,lineName){
+  if(isActM(m)){
+    const v=P.model?.sgaLines?.[prod]?.[lineName]?.[m];
+    return (v===undefined)?null:v;
+  }
+  const params=P.sgaParams?.[prod];
+  if(!params)return 0;
+  if(params.fixed?.[lineName])return params.fixed[lineName]?.[m]||0;
+  const info=params.variable?.[lineName];
+  if(!info)return 0;
+  const eff=info.eff||0;
+  if(info.has_if_dec)return info.monthly_model?.[m]||0;
+  if(info.growth_type==='rev_product'){
+    const gp=info.growth_product;
+    let rcurr=0,baseRevP=0;
+    if(gp==='sistemica'){
+      rcurr=(S.rev?.rcl?.[m]||0)+(S.rev?.rpe?.[m]||0);
+      baseRevP=(P.model.rev?.rcl?.[m]||0)+(P.model.rev?.rpe?.[m]||0);
+    }else{
+      rcurr=S.rev?.[gp]?.[m]||0;
+      baseRevP=P.model.rev?.[gp]?.[m]||0;
+    }
+    const ratio=baseRevP>0?rcurr/baseRevP:1;
+    const baseVal=info.monthly_model_full?.[m]??info.monthly_model?.[m]??info.seed;
+    return baseVal*(1+(ratio-1)*(1-eff));
+  }
+  return info.monthly_model?.[m]||0;
+}
+
 function tableEERR(){
-  const gv=(m,k)=>{
-    const useModel=isActM(m);
-    const rev=useModel?P.modelTot.rev[m]:S.revT[m];
-    const cogs=useModel?P.modelTot.cogs[m]:S.cogsT[m];
-    const sga=useModel?P.modelTot.sga[m]:S.sgaT[m];
-    const eb=useModel?P.modelTot.ebitda[m]:S.ebitda[m];
-    const aj=P.modelTot.ajustes[m]||0;
-    const ni=useModel?P.modelTot.ni[m]:S.ni[m];
-    const interest=useModel?0:(S.ndI?S.ndI(m):0); // only new debt interest (actuals = 0)
-    if(k==='rev')return rev;
-    if(k==='cogs')return cogs;
-    if(k==='gross')return (rev||0)+(cogs||0);
-    if(k==='sga')return sga;
-    if(k==='ebitda')return eb;
-    if(k==='aj')return aj;
-    if(k==='ebadj')return (eb||0)+aj;
-    if(k==='int')return interest;
-    if(k==='ni')return ni;
-    if(k==='ebPct')return rev?eb/rev*100:0;
-    if(k==='ebAdjPct')return rev?((eb||0)+aj)/rev*100:0;
-    return 0;
-  };
+  const MT=P.modelTot;
+  const monthly=getCurrYrMo();
+  const unit=currUnitLbl();
+  document.getElementById('eerr-title').innerHTML=`EERR mensual (${unit}) · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">${getCurrYear()} — click en segmentos para drill-down</span>`;
+
   const badge='<span class="act-badge">Real</span>';
   let h='<table><thead><tr><th>Línea</th>';
-  for(const m of AMO){h+=`<th ${isActM(m)?'class="act-h"':''}>${fmtM(m)}${isActM(m)?' '+badge:''}</th>`;}
+  for(const m of monthly)h+=`<th ${isActM(m)?'class="act-h"':''}>${fmtM(m)}${isActM(m)?' '+badge:''}</th>`;
   h+='<th>Total</th></tr></thead><tbody>';
-  const rows=[
-    {l:'Ingresos totales',k:'rev',bold:true},
-    {l:'COGS',k:'cogs'},
-    {l:'Margen Bruto',k:'gross',tot:true},
-    {l:'SG&A',k:'sga'},
-    {l:'EBITDA',k:'ebitda',tot:true},
-    {l:'· % EBITDA',k:'ebPct',pct:true,sub:true},
-    {l:'(+) Ajustes',k:'aj'},
-    {l:'EBITDA Ajustado',k:'ebadj',tot:true},
-    {l:'· % EBITDA Adj',k:'ebAdjPct',pct:true,sub:true},
-    {l:'(−) Intereses nueva deuda',k:'int'},
-    {l:'NI',k:'ni',tot:true},
-  ];
-  for(const r of rows){
-    const tot=r.pct?(AMO.length?AMO.reduce((t,m)=>t+(gv(m,r.k)||0),0)/AMO.length:0):AMO.reduce((t,m)=>t+(gv(m,r.k)||0),0);
-    h+=`<tr class="${r.tot?'tot':''}${r.sub?' sub':''}">`;
-    h+=`<td>${r.bold?'<strong>'+r.l+'</strong>':r.l}</td>`;
-    h+=AMO.map(m=>{const v=gv(m,r.k)||0;const dv=r.pct?v.toFixed(1)+'%':f1(v);return `<td class="${v<0&&!r.pct?'neg':''} ${isActM(m)?'ac':''}">${dv}</td>`;}).join('');
-    const dt=r.pct?tot.toFixed(1)+'%':f1(tot);
-    h+=`<td class="${tot<0&&!r.pct?'neg':''}">${dt}</td></tr>`;
+
+  // ── helpers ─────────────────────────────────────────────
+  const cv=(v,m)=>{
+    if(v===null)return `<td class="${isActM(m)?'ac':''}">-</td>`;
+    return `<td class="${v<0?'neg':''} ${isActM(m)?'ac':''}">${fmtMoney(v,m,1)}</td>`;
+  };
+  const cvPct=(v,m)=>`<td class="${isActM(m)?'ac':''}">${v!=null?v.toFixed(1)+'%':'-'}</td>`;
+  const totC=(t)=>`<td class="${t<0?'neg':''}">${fmtMoneyY(t,monthly,1)}</td>`;
+  const sumM=(fn)=>monthly.reduce((s,m)=>s+(fn(m)||0),0);
+
+  // data accessors
+  const revP=   (m,p)=>(isActM(m)?P.model.rev?.[p]?.[m]:S.rev?.[p]?.[m])||0;
+  const revMgr= m=>MGR_PRODS.reduce((s,p)=>s+revP(m,p),0);
+  const revSis= m=>SIS_PRODS.reduce((s,p)=>s+revP(m,p),0);
+  const revTot= m=>isActM(m)?MT.rev[m]:S.revT[m];
+  const cogsMgr=m=>MGR_PRODS.reduce((s,p)=>s+_prodCogs(m,p),0);
+  const cogsSis=m=>SIS_PRODS.reduce((s,p)=>s+_prodCogs(m,p),0);
+  const cogsTot=m=>isActM(m)?MT.cogs[m]:S.cogsT[m];
+  const sgaCorp=m=>isActM(m)?(P.model.sga?.corp?.[m]||0):(S.sgaCorp?.[m]||0);
+  const sgaMgrERPs=m=>MGR_PRODS.reduce((s,p)=>s+_prodSga(m,p),0);
+  const sgaMgr=  m=>sgaMgrERPs(m)+sgaCorp(m);   // total Manager incluye corp
+  const sgaSis=  m=>SIS_PRODS.reduce((s,p)=>s+_prodSga(m,p),0);
+  const sgaTot=  m=>isActM(m)?MT.sga[m]:S.sgaT[m];
+  const erpEbitda=(m,p)=>revP(m,p)+_prodCogs(m,p)+_prodSga(m,p); // sin corp
+  const ebitdaMgr=m=>revMgr(m)+cogsMgr(m)+sgaMgr(m);  // incluye corp
+  const ebitdaSis=m=>revSis(m)+cogsSis(m)+sgaSis(m);
+  const ebitdaTot=m=>isActM(m)?MT.ebitda[m]:S.ebitda[m];
+  const ajV=m=>MT.ajustes[m]||0;
+  const niV=m=>isActM(m)?MT.ni[m]:S.ni[m];
+  const intV=m=>isActM(m)?0:(S.ndI?S.ndI(m):0);
+
+  // ── row builders ─────────────────────────────────────────
+  const row=(label,fn,cls='')=>{
+    const tot=sumM(fn);
+    h+=`<tr${cls?` class="${cls}"`:''}>`;
+    h+=`<td>${label}</td>`;
+    for(const m of monthly)h+=cv(fn(m),m);
+    h+=totC(tot);h+='</tr>';
+  };
+  const rowBold=(label,fn,cls='tot')=>{
+    const tot=sumM(fn);
+    h+=`<tr class="${cls}"><td><strong>${label}</strong></td>`;
+    for(const m of monthly)h+=cv(fn(m),m);
+    h+=totC(tot);h+='</tr>';
+  };
+  const rowPct=(label,numFn,denFn)=>{
+    const nTot=sumM(numFn),dTot=sumM(denFn);
+    h+=`<tr class="sub"><td>${label}</td>`;
+    for(const m of monthly){const d=denFn(m);h+=cvPct(d?numFn(m)/d*100:null,m);}
+    h+=`<td>${dTot?((nTot/dTot)*100).toFixed(1)+'%':'-'}</td></tr>`;
+  };
+  // L1 expandable
+  const l1=(label,fn,tag)=>{
+    const tot=sumM(fn);
+    h+=`<tr class="exp-hdr" data-exp-tag="${tag}" onclick="window.expRow(this,'${tag}')">`;
+    h+=`<td>${label} <span style="color:var(--text3);font-size:10px">▸</span></td>`;
+    for(const m of monthly)h+=cv(fn(m),m);
+    h+=totC(tot);h+='</tr>';
+  };
+  // L2 concept (child of L1, parent of L3)
+  const l2=(label,fn,parentTag,childTag)=>{
+    const tot=monthly.reduce((s,m)=>{const v=fn(m);return s+(v===null?0:v||0);},0);
+    if(Math.abs(tot)<0.05)return;
+    h+=`<tr class="exp-row hide exp-hdr" data-exp="${parentTag}" data-exp-tag="${childTag}" onclick="window.expRow(this,'${childTag}')">`;
+    h+=`<td style="padding-left:14px">${label} <span style="color:var(--text3);font-size:10px">▸</span></td>`;
+    for(const m of monthly)h+=cv(fn(m),m);
+    h+=totC(tot);h+='</tr>';
+  };
+  // L3 product (child of L2)
+  const l3=(label,fn,parentTag)=>{
+    const tot=monthly.reduce((s,m)=>{const v=fn(m);return s+(v===null?0:v||0);},0);
+    if(Math.abs(tot)<0.05)return;
+    h+=`<tr class="exp-row hide" data-exp="${parentTag}">`;
+    h+=`<td style="padding-left:28px">${label}</td>`;
+    for(const m of monthly)h+=cv(fn(m),m);
+    h+=totC(tot);h+='</tr>';
+  };
+  // concept block builder
+  const conceptBlock=(concepts,prods,segTag,lineValFn)=>{
+    for(const c of concepts){
+      const tag2=`${segTag}-${c.label.replace(/\W+/g,'-').toLowerCase()}`;
+      const fn2=m=>isActM(m)?null:c.lines.reduce((s,ln)=>s+prods.reduce((ss,p)=>ss+(lineValFn(m,p,ln)||0),0),0);
+      l2(c.label,fn2,segTag,tag2);
+      for(const p of prods){
+        const fn3=m=>isActM(m)?null:c.lines.reduce((s,ln)=>s+(lineValFn(m,p,ln)||0),0);
+        l3(PRODS[p]||p,fn3,tag2);
+      }
+    }
+  };
+
+  // ── Revenue ───────────────────────────────────────────────
+  l1('Ingresos Manager',revMgr,'rev-mgr');
+  for(const p of MGR_PRODS){
+    const fn=m=>revP(m,p);
+    const tot=sumM(fn);
+    if(Math.abs(tot)<0.05)continue;
+    h+=`<tr class="exp-row hide" data-exp="rev-mgr"><td style="padding-left:14px">${PRODS[p]||p}</td>`;
+    for(const m of monthly)h+=cv(fn(m),m);
+    h+=totC(tot);h+='</tr>';
   }
+  l1('Ingresos Sistemica',revSis,'rev-sis');
+  for(const p of SIS_PRODS){
+    const fn=m=>revP(m,p);
+    const tot=sumM(fn);
+    if(Math.abs(tot)<0.05)continue;
+    h+=`<tr class="exp-row hide" data-exp="rev-sis"><td style="padding-left:14px">${PRODS[p]||p}</td>`;
+    for(const m of monthly)h+=cv(fn(m),m);
+    h+=totC(tot);h+='</tr>';
+  }
+  rowBold('Ingresos Totales',revTot);
+
+  // helper: product-first drill (L2=producto, L3=línea de costo)
+  // L2 y L3 muestran valor tanto en meses actuales (Excel) como en proyectados (engine).
+  const prodBlock=(prods,segTag,concepts,lineValFn,sgaFnByProd)=>{
+    for(const p of prods){
+      const fn2=m=>sgaFnByProd?_prodSga(m,p):_prodCogs(m,p);
+      const prodTot=monthly.reduce((s,m)=>s+(fn2(m)||0),0);
+      if(Math.abs(prodTot)<0.05)continue;
+      const tag2=`${segTag}-${p}`;
+      l2(PRODS[p]||p,fn2,segTag,tag2);
+      for(const c of concepts){
+        const fn3=m=>{
+          const vals=c.lines.map(ln=>lineValFn(m,p,ln));
+          if(vals.every(v=>v===null||v===undefined))return null;
+          return vals.reduce((s,v)=>s+(v||0),0);
+        };
+        l3(c.label,fn3,tag2);
+      }
+    }
+  };
+
+  // ── COGS ─────────────────────────────────────────────────
+  l1('COGS Manager',cogsMgr,'cogs-mgr');
+  prodBlock(MGR_PRODS,'cogs-mgr',COGS_CONCEPT_MGR,_lineValCogs,false);
+  l1('COGS Sistemica',cogsSis,'cogs-sis');
+  prodBlock(SIS_PRODS,'cogs-sis',COGS_CONCEPT_SIS,_lineValCogs,false);
+  rowBold('COGS Total',cogsTot);
+
+  // ── Margen Bruto ─────────────────────────────────────────
+  row('Margen Bruto Manager',m=>revMgr(m)+cogsMgr(m));
+  row('Margen Bruto Sistemica',m=>revSis(m)+cogsSis(m));
+  rowBold('Margen Bruto Total',m=>revTot(m)+cogsTot(m));
+  rowPct('· % Margen Bruto',m=>revTot(m)+cogsTot(m),revTot);
+
+  // ── SG&A ─────────────────────────────────────────────────
+  l1('SG&A Manager',sgaMgr,'sga-mgr');   // total incluye corp
+  prodBlock(MGR_PRODS,'sga-mgr',SGA_CONCEPT_MGR,_lineValSga,true);
+  // Corporativo: L2 dentro de Manager (no es un segmento aparte)
+  {
+    const corpTot=monthly.reduce((s,m)=>{const v=sgaCorp(m);return s+(v||0);},0);
+    if(Math.abs(corpTot)>0.05){
+      l2('Corporativo',sgaCorp,'sga-mgr','sga-corp');
+      for(const line of SGA_CORP_LINES){
+        const fn=m=>_lineValSga(m,'corp',line);
+        l3(line.replace('Corporate Expenses: ',''),fn,'sga-corp');
+      }
+    }
+  }
+  l1('SG&A Sistemica',sgaSis,'sga-sis');
+  prodBlock(SIS_PRODS,'sga-sis',SGA_CONCEPT_SIS,_lineValSga,true);
+  rowBold('SG&A Total',sgaTot);
+
+  // ── EBITDA ────────────────────────────────────────────────
+  // Manager expandible por ERP (sin corp); corp como ajuste aparte
+  l1('EBITDA Manager',ebitdaMgr,'ebitda-mgr');
+  for(const p of MGR_PRODS){
+    const fn=m=>erpEbitda(m,p);
+    const tot=monthly.reduce((s,m)=>s+(fn(m)||0),0);
+    if(Math.abs(tot)<0.05)continue;
+    // leaf row (no L3)
+    h+=`<tr class="exp-row hide" data-exp="ebitda-mgr"><td style="padding-left:14px">${PRODS[p]||p}</td>`;
+    for(const m of monthly)h+=cv(fn(m),m);
+    h+=totC(tot);h+='</tr>';
+  }
+  // Corp como ajuste dentro de Manager (solo si hay valor)
+  {
+    const corpTot=monthly.reduce((s,m)=>s+(-sgaCorp(m)),0);
+    if(Math.abs(corpTot)>0.05){
+      h+=`<tr class="exp-row hide" data-exp="ebitda-mgr"><td style="padding-left:14px;color:var(--text3)">Corporativo (ajuste)</td>`;
+      for(const m of monthly)h+=cv(-sgaCorp(m),m);
+      h+=totC(corpTot);h+='</tr>';
+    }
+  }
+  l1('EBITDA Sistemica',ebitdaSis,'ebitda-sis');
+  for(const p of SIS_PRODS){
+    const fn=m=>erpEbitda(m,p);
+    const tot=monthly.reduce((s,m)=>s+(fn(m)||0),0);
+    if(Math.abs(tot)<0.05)continue;
+    h+=`<tr class="exp-row hide" data-exp="ebitda-sis"><td style="padding-left:14px">${PRODS[p]||p}</td>`;
+    for(const m of monthly)h+=cv(fn(m),m);
+    h+=totC(tot);h+='</tr>';
+  }
+  rowBold('EBITDA Total',ebitdaTot);
+  rowPct('· % EBITDA',ebitdaTot,revTot);
+  row('(+) Ajustes',ajV);
+  rowBold('EBITDA Ajustado',m=>ebitdaTot(m)+ajV(m));
+  rowPct('· % EBITDA Adj',m=>ebitdaTot(m)+ajV(m),revTot);
+  row('(−) Intereses nueva deuda',intV);
+  rowBold('NI',niV);
+
   document.getElementById('t-eerr').innerHTML=h+'</tbody></table>';
+}
+// Global expand — supports 2-level nesting
+window.expRow=function(trEl,tag){
+  trEl.classList.toggle('open');
+  const tbl=trEl.closest('table');
+  if(!tbl)return;
+  const isOpen=trEl.classList.contains('open');
+  tbl.querySelectorAll(`tr.exp-row[data-exp="${tag}"]`).forEach(r=>{
+    r.classList.toggle('hide',!isOpen);
+    if(!isOpen&&r.classList.contains('exp-hdr')){
+      r.classList.remove('open');
+      const childTag=r.getAttribute('data-exp-tag');
+      if(childTag)tbl.querySelectorAll(`tr.exp-row[data-exp="${childTag}"]`).forEach(c=>c.classList.add('hide'));
+    }
+  });
+};
+// Legacy alias
+function toggleExp(tag,trEl){window.expRow(trEl,tag);}
+
+// ═══ EERR anual (incluye históricos 2023/2024/2025 + proyección 2026+) ═══
+function tableEERRAnnual(){
+  if(!P.annual)return;
+  const years=[...new Set([...P.annualYears, ...AMO.map(m=>+m.slice(0,4))])].filter(y=>!isNaN(y)).sort((a,b)=>a-b);
+  const unit=currUnitLbl();
+  const earliestAMOYr=+AMO[0].slice(0,4);
+  const isHist=yr=>yr<earliestAMOYr;
+  const hasScenario=yr=>yr>=earliestAMOYr&&AMO.some(m=>+m.slice(0,4)===yr&&!isActM(m));
+  // AMO months of a given year (for data access)
+  const yrMs=yr=>AMO.filter(m=>+m.slice(0,4)===yr);
+  // All months of a year (dummy 12 mo for historical; used only for UF conversion)
+  const ms=yr=>{
+    if(isHist(yr)){const a=[];for(let mo=1;mo<=12;mo++)a.push(yr+'-'+String(mo).padStart(2,'0'));return a;}
+    return yrMs(yr);
+  };
+  // Total-level annual sum
+  const sumYear=(yr,k)=>{
+    if(isHist(yr)||!yrMs(yr).length){
+      const KEY={rev:'rev',cogs:'cogs',sga:'sga',ebitda:'ebitda',ebadj:'ebitdaAdj',ni:'ni',aj:'ebitdaAdj'};
+      return P.annual[KEY[k]||k]?.[yr]||0;
+    }
+    return yrMs(yr).reduce((t,m)=>{
+      const u=isActM(m);
+      if(k==='rev')return t+(u?P.modelTot.rev[m]:S.revT[m])||0;
+      if(k==='cogs')return t+(u?P.modelTot.cogs[m]:S.cogsT[m])||0;
+      if(k==='sga')return t+(u?P.modelTot.sga[m]:S.sgaT[m])||0;
+      if(k==='ebitda')return t+(u?P.modelTot.ebitda[m]:S.ebitda[m])||0;
+      if(k==='ebadj')return t+((u?P.modelTot.ebitda[m]:S.ebitda[m])||0)+(P.modelTot.ajustes[m]||0);
+      if(k==='ni')return t+(u?P.modelTot.ni[m]:S.ni[m])||0;
+      if(k==='aj')return t+(P.modelTot.ajustes[m]||0);
+      return t;
+    },0);
+  };
+  // ── Per-product / per-segment helpers ──────────────────────
+  // Historical years (before "desde"): use pre-computed annual sums in P.annual.revProd/cogsProd/sgaProd
+  // Non-historical years: sum from P.model (actuals) or S (scenario projection)
+  const revProdYr=(yr,p)=>{
+    if(isHist(yr)){
+      const v=P.annual?.revProd?.[p]?.[yr];
+      return (v!==undefined)?v:null;
+    }
+    const yms=yrMs(yr);if(!yms.length)return null;
+    return yms.reduce((t,m)=>t+(isActM(m)?P.model.rev?.[p]?.[m]:S.rev?.[p]?.[m])||0,0);
+  };
+  const cogsProdYr=(yr,p)=>{
+    if(isHist(yr)){
+      const v=P.annual?.cogsProd?.[p]?.[yr];
+      return (v!==undefined)?v:null;
+    }
+    const yms=yrMs(yr);if(!yms.length)return null;
+    return yms.reduce((t,m)=>t+_prodCogs(m,p),0);
+  };
+  const cogsConceptYr=(yr,p,concept)=>{
+    if(isHist(yr)){
+      const lineStore=P.annual?.cogsLinesProd?.[p];
+      if(!lineStore)return null;
+      const vals=concept.lines.map(ln=>lineStore[ln]?.[yr]);
+      if(vals.every(v=>v===undefined))return null;
+      return vals.reduce((s,v)=>s+(v||0),0);
+    }
+    const yms=yrMs(yr);if(!yms.length)return null;
+    return yms.reduce((s,m)=>s+concept.lines.reduce((ss,ln)=>ss+(_lineValCogs(m,p,ln)||0),0),0);
+  };
+  const sgaProdYr=(yr,p)=>{
+    if(isHist(yr)){
+      const v=P.annual?.sgaProd?.[p]?.[yr];
+      return (v!==undefined)?v:null;
+    }
+    const yms=yrMs(yr);if(!yms.length)return null;
+    return yms.reduce((t,m)=>t+_prodSga(m,p),0);
+  };
+  const sgaConceptYr=(yr,p,concept)=>{
+    if(isHist(yr)){
+      const lineStore=P.annual?.sgaLinesProd?.[p];
+      if(!lineStore)return null;
+      const vals=concept.lines.map(ln=>lineStore[ln]?.[yr]);
+      if(vals.every(v=>v===undefined))return null;
+      return vals.reduce((s,v)=>s+(v||0),0);
+    }
+    const yms=yrMs(yr);if(!yms.length)return null;
+    return yms.reduce((s,m)=>s+concept.lines.reduce((ss,ln)=>ss+(_lineValSga(m,p,ln)||0),0),0);
+  };
+  const sgaCorpYr=yr=>{
+    if(isHist(yr)){
+      const v=P.annual?.sgaProd?.corp?.[yr];
+      return (v!==undefined)?v:null;
+    }
+    const yms=yrMs(yr);if(!yms.length)return null;
+    const fn=m=>isActM(m)?(P.model.sga?.corp?.[m]||0):(S.sgaCorp?.[m]||0);
+    return yms.reduce((t,m)=>t+fn(m),0);
+  };
+  const sgaCorpLineYr=(yr,line)=>{
+    if(isHist(yr)){
+      const v=P.annual?.sgaLinesProd?.corp?.[line]?.[yr];
+      return (v===undefined)?null:v;
+    }
+    const yms=yrMs(yr);if(!yms.length)return null;
+    return yms.reduce((s,m)=>s+(_lineValSga(m,'corp',line)||0),0);
+  };
+  const _aggNull=(vals,extra)=>{const all=vals.map(v=>v||0);const hasData=vals.some(v=>v!==null);return hasData?all.reduce((s,v)=>s+v,0)+(extra||0):null;};
+  const revMgrYr=yr=>_aggNull(MGR_PRODS.map(p=>revProdYr(yr,p)));
+  const revSisYr=yr=>_aggNull(SIS_PRODS.map(p=>revProdYr(yr,p)));
+  const cogsMgrYr=yr=>_aggNull(MGR_PRODS.map(p=>cogsProdYr(yr,p)));
+  const cogsSisYr=yr=>_aggNull(SIS_PRODS.map(p=>cogsProdYr(yr,p)));
+  const sgaMgrYr=yr=>_aggNull(MGR_PRODS.map(p=>sgaProdYr(yr,p)),sgaCorpYr(yr));
+  const sgaSisYr=yr=>_aggNull(SIS_PRODS.map(p=>sgaProdYr(yr,p)));
+  const ebitdaProdYr=(yr,p)=>{
+    const rv=revProdYr(yr,p),cg=cogsProdYr(yr,p),sg=sgaProdYr(yr,p);
+    if(rv===null&&cg===null&&sg===null)return null;
+    return (rv||0)+(cg||0)+(sg||0);
+  };
+  const ebitdaMgrYr=yr=>{const rv=revMgrYr(yr),cg=cogsMgrYr(yr),sg=sgaMgrYr(yr);return(rv===null&&cg===null&&sg===null)?null:(rv||0)+(cg||0)+(sg||0);};
+  const ebitdaSisYr=yr=>{const rv=revSisYr(yr),cg=cogsSisYr(yr),sg=sgaSisYr(yr);return(rv===null&&cg===null&&sg===null)?null:(rv||0)+(cg||0)+(sg||0);};
+  // ── Cell / row formatters ───────────────────────────────────
+  const cell=(v,yr)=>{
+    if(v===null)return `<td class="${isHist(yr)?'ac':''}">-</td>`;
+    const dv=fmtMoneyY(v,ms(yr),1);
+    return `<td class="${v<0?'neg':''} ${isHist(yr)?'ac':''}">${dv}</td>`;
+  };
+  let h=`<table><thead><tr><th>Línea (${unit})</th>`;
+  for(const yr of years)
+    h+=`<th class="${isHist(yr)?'act-h':''}">${yr}${isHist(yr)?' <span class="act-badge">Real</span>':' <span class="fc-badge">F</span>'}</th>`;
+  h+='</tr></thead><tbody>';
+  const fmtPct=v=>(v==null||isNaN(v))?'-':v.toFixed(1)+'%';
+  const pctRow=(label,fn)=>{
+    let row=`<tr class="sub"><td>${label}</td>`;
+    for(const yr of years){const rev=sumYear(yr,'rev')||0,num=fn(yr);row+=`<td class="${isHist(yr)?'ac':''}">${fmtPct(rev?num/rev*100:null)}</td>`;}
+    return row+'</tr>';
+  };
+  const totRow=(label,fnYr)=>{
+    let row=`<tr class="tot"><td><strong>${label}</strong></td>`;
+    for(const yr of years)row+=cell(fnYr(yr),yr);
+    return row+'</tr>';
+  };
+  const moneyRow=(label,k,opts={})=>{
+    let row=`<tr class="${opts.tot?'tot':''}"><td>${opts.bold?'<strong>'+label+'</strong>':label}</td>`;
+    for(const yr of years){const v=sumYear(yr,k);row+=`<td class="${v<0?'neg':''} ${isHist(yr)?'ac':''}">${fmtMoneyY(v,ms(yr),1)}</td>`;}
+    return row+'</tr>';
+  };
+  const yoyRow=(label,k)=>{
+    let row=`<tr class="sub"><td>${label}</td>`;
+    for(let i=0;i<years.length;i++){
+      if(i===0){row+='<td>-</td>';continue;}
+      const yr=years[i],cur=sumYear(yr,k),prev=sumYear(years[i-1],k);
+      const g=prev?(cur/prev-1)*100:0;
+      row+=`<td class="${g>0?'pos':g<0?'neg':''} ${isHist(yr)?'ac':''}">${(g>0?'+':'')+g.toFixed(1)}%</td>`;
+    }
+    return row+'</tr>';
+  };
+  // L1 (expandable)
+  const annL1=(label,fnYr,tag,cls='')=>{
+    h+=`<tr class="${cls?cls+' ':''}exp-hdr" data-exp-tag="${tag}" onclick="window.expRow(this,'${tag}')">`;
+    h+=`<td>${label} <span style="color:var(--text3);font-size:10px">▸</span></td>`;
+    for(const yr of years)h+=cell(fnYr(yr),yr);
+    h+='</tr>';
+  };
+  // L2 leaf (no children)
+  const annL2Leaf=(label,fnYr,parentTag)=>{
+    const vals=years.map(fnYr);
+    if(!vals.some(v=>v!==null&&Math.abs(v)>0.05))return;
+    h+=`<tr class="exp-row hide" data-exp="${parentTag}"><td style="padding-left:14px">${label}</td>`;
+    for(let i=0;i<years.length;i++)h+=cell(vals[i],years[i]);
+    h+='</tr>';
+  };
+  // L2 expandable (has L3 children)
+  const annL2Exp=(label,fnYr,parentTag,childTag)=>{
+    const vals=years.map(fnYr);
+    if(!vals.some(v=>v!==null&&Math.abs(v)>0.05))return;
+    h+=`<tr class="exp-row hide exp-hdr" data-exp="${parentTag}" data-exp-tag="${childTag}" onclick="window.expRow(this,'${childTag}')">`;
+    h+=`<td style="padding-left:14px">${label} <span style="color:var(--text3);font-size:10px">▸</span></td>`;
+    for(let i=0;i<years.length;i++)h+=cell(vals[i],years[i]);
+    h+='</tr>';
+  };
+  // L3 leaf
+  const annL3=(label,fnYr,parentTag)=>{
+    const vals=years.map(fnYr);
+    if(!vals.some(v=>v!==null&&Math.abs(v)>0.05))return;
+    h+=`<tr class="exp-row hide" data-exp="${parentTag}"><td style="padding-left:28px">${label}</td>`;
+    for(let i=0;i<years.length;i++)h+=cell(vals[i],years[i]);
+    h+='</tr>';
+  };
+  // ── Revenue ────────────────────────────────────────────────
+  annL1('Ingresos Manager',revMgrYr,'rva-mgr-an');
+  for(const p of MGR_PRODS)annL2Leaf(PRODS[p]||p,yr=>revProdYr(yr,p),'rva-mgr-an');
+  annL1('Ingresos Sistemica',revSisYr,'rva-sis-an');
+  for(const p of SIS_PRODS)annL2Leaf(PRODS[p]||p,yr=>revProdYr(yr,p),'rva-sis-an');
+  h+=moneyRow('Ingresos Totales','rev',{bold:true,tot:true});
+  h+=yoyRow('· YoY Revenue','rev');
+  // ── COGS ──────────────────────────────────────────────────
+  annL1('COGS Manager',cogsMgrYr,'cogs-mgr-an');
+  for(const p of MGR_PRODS){
+    const pt=`cogs-mgr-an-${p}`;
+    annL2Exp(PRODS[p]||p,yr=>cogsProdYr(yr,p),'cogs-mgr-an',pt);
+    for(const c of COGS_CONCEPT_MGR)annL3(c.label,yr=>cogsConceptYr(yr,p,c),pt);
+  }
+  annL1('COGS Sistemica',cogsSisYr,'cogs-sis-an');
+  for(const p of SIS_PRODS){
+    const pt=`cogs-sis-an-${p}`;
+    annL2Exp(PRODS[p]||p,yr=>cogsProdYr(yr,p),'cogs-sis-an',pt);
+    for(const c of COGS_CONCEPT_SIS)annL3(c.label,yr=>cogsConceptYr(yr,p,c),pt);
+  }
+  h+=moneyRow('COGS Total','cogs',{bold:true});
+  h+=pctRow('· % COGS / Rev',yr=>sumYear(yr,'cogs')||0);
+  // ── Margen Bruto ──────────────────────────────────────────
+  h+=totRow('Margen Bruto',yr=>(sumYear(yr,'rev')||0)+(sumYear(yr,'cogs')||0));
+  h+=pctRow('· % Margen Bruto',yr=>(sumYear(yr,'rev')||0)+(sumYear(yr,'cogs')||0));
+  // ── SG&A ──────────────────────────────────────────────────
+  annL1('SG&A Manager',sgaMgrYr,'sga-mgr-an');
+  for(const p of MGR_PRODS){
+    const pt=`sga-mgr-an-${p}`;
+    annL2Exp(PRODS[p]||p,yr=>sgaProdYr(yr,p),'sga-mgr-an',pt);
+    for(const c of SGA_CONCEPT_MGR)annL3(c.label,yr=>sgaConceptYr(yr,p,c),pt);
+  }
+  {// Corporativo dentro de Manager
+    const ct='sga-corp-an';
+    annL2Exp('Corporativo',sgaCorpYr,'sga-mgr-an',ct);
+    for(const ln of SGA_CORP_LINES)annL3(ln.replace('Corporate Expenses: ',''),yr=>sgaCorpLineYr(yr,ln),ct);
+  }
+  annL1('SG&A Sistemica',sgaSisYr,'sga-sis-an');
+  for(const p of SIS_PRODS){
+    const pt=`sga-sis-an-${p}`;
+    annL2Exp(PRODS[p]||p,yr=>sgaProdYr(yr,p),'sga-sis-an',pt);
+    for(const c of SGA_CONCEPT_SIS)annL3(c.label,yr=>sgaConceptYr(yr,p,c),pt);
+  }
+  h+=moneyRow('SG&A Total','sga',{bold:true});
+  h+=pctRow('· % SG&A / Rev',yr=>sumYear(yr,'sga')||0);
+  // ── EBITDA ────────────────────────────────────────────────
+  annL1('EBITDA Manager',ebitdaMgrYr,'ebitda-mgr-an');
+  for(const p of MGR_PRODS)annL2Leaf(PRODS[p]||p,yr=>ebitdaProdYr(yr,p),'ebitda-mgr-an');
+  annL1('EBITDA Sistemica',ebitdaSisYr,'ebitda-sis-an');
+  for(const p of SIS_PRODS)annL2Leaf(PRODS[p]||p,yr=>ebitdaProdYr(yr,p),'ebitda-sis-an');
+  h+=moneyRow('EBITDA Total','ebitda',{tot:true});
+  h+=pctRow('· % EBITDA',yr=>sumYear(yr,'ebitda')||0);
+  h+=moneyRow('EBITDA Ajustado','ebadj',{tot:true});
+  h+=pctRow('· % EBITDA Adj',yr=>sumYear(yr,'ebadj')||0);
+  h+=moneyRow('Net Income','ni',{tot:true});
+  document.getElementById('t-eerr-annual').innerHTML=h+'</tbody></table>';
+}
+
+function _fcCash(m){
+  if(isActM(m)){
+    return P.modelTot.cashBS[m]||P.modelTot.cashEOP[m]||0;
+  }
+  return S.cashEOP[m]||0;
+}
+function _fcCashBase(m){
+  if(isActM(m))return P.modelTot.cashBS[m]||P.modelTot.cashEOP[m]||0;
+  return B.cashEOP[m]||0;
+}
+function _fcGet(m,k){
+  const useModel=isActM(m);
+  if(k==='ni')return useModel?P.modelTot.ni[m]:S.ni[m]||0;
+  if(k==='dep')return P.modelTot.dep[m]||0;
+  if(k==='dwc')return S.dWC[m]||0;
+  if(k==='cfop')return useModel?P.modelTot.cfop[m]:S.cfop[m]||0;
+  if(k==='cfinv')return useModel?P.modelTot.cfinv[m]:S.cfinv[m]||0;
+  if(k==='debtEx')return P.modelTot.debtAm[m]||0;
+  if(k==='divs')return useModel?P.modelTot.divs[m]:S.divs[m]||0;
+  if(k==='ndIn')return useModel?0:(S.ndIn?S.ndIn(m):0);
+  if(k==='ndAm')return useModel?0:(S.ndA?S.ndA(m):0);
+  if(k==='cfin')return useModel?P.modelTot.cffin[m]:S.cfin[m]||0;
+  return 0;
 }
 
 function chartCF(){
+  const MM=getCurrYrMo();
+  const allLb=MM.map(fmtM);
+  const cfopArr=MM.map(m=>_fcGet(m,'cfop'));
+  const cfinArr=MM.map(m=>_fcGet(m,'cfin'));
+  const cfinvArr=MM.map(m=>_fcGet(m,'cfinv'));
+  const cashArr=MM.map(m=>_fcCash(m));
+  const conv=(arr)=>arr.map((v,i)=>convV(v,MM[i]));
+  const actCount=MM.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  const unit=currUnitLbl();
   Plotly.react('ch-cf',[
-    {x:lb,y:MO.map(m=>S.cfop[m]||0),name:'CFop',type:'bar',marker:{color:'rgba(5,150,105,.7)'}},
-    {x:lb,y:MO.map(m=>S.cfin[m]||0),name:'CFfin',type:'bar',marker:{color:'rgba(239,68,68,.6)'}},
-    {x:lb,y:MO.map(m=>S.cashEOP[m]||0),name:'Caja EOP',type:'scatter',mode:'lines+markers',yaxis:'y2',line:{color:'#2563eb',width:2.5}},
-  ],{...LO,barmode:'relative',yaxis2:{overlaying:'y',side:'right',gridcolor:'transparent',tickfont:{size:9},color:'#2563eb'},margin:{...LO.margin,r:48}},cfg);
+    {x:allLb,y:conv(cfopArr),name:'CF Operacional',type:'bar',marker:{color:'rgba(5,150,105,.75)'},hovertemplate:`<b>%{x}</b><br>CFop: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:allLb,y:conv(cfinvArr),name:'CF Inversión',type:'bar',marker:{color:'rgba(124,58,237,.55)'},hovertemplate:`<b>%{x}</b><br>CFinv: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:allLb,y:conv(cfinArr),name:'CF Financiero',type:'bar',marker:{color:'rgba(239,68,68,.65)'},hovertemplate:`<b>%{x}</b><br>CFfin: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:allLb,y:conv(cashArr),name:'Caja EOP',type:'scatter',mode:'lines+markers',yaxis:'y2',line:{color:'#2563eb',width:2.5},marker:{size:5},hovertemplate:`<b>%{x}</b><br>Caja EOP: %{y:,.0f} ${unit}<extra></extra>`},
+  ],{...LO,barmode:'relative',shapes,yaxis:{...LO.yaxis,title:{text:`CF (${unit})`,font:{size:10,color:getThemeColors().fg}}},yaxis2:{overlaying:'y',side:'right',gridcolor:'transparent',tickfont:{size:9},color:'#2563eb',title:{text:`Caja (${unit})`,font:{size:10,color:'#2563eb'}}},margin:{...LO.margin,r:58},annotations:actCount?[{x:allLb[actCount-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[]},cfg);
 }
-function chartCF2(){
-  Plotly.react('ch-cf2',[
-    {x:lb,y:MO.map(m=>B.cashEOP[m]||0),name:'Base',type:'scatter',mode:'lines',fill:'tozeroy',fillcolor:'rgba(209,213,219,.15)',line:{color:'#d0d5dd',width:2}},
-    {x:lb,y:MO.map(m=>S.cashEOP[m]||0),name:'Escenario',type:'scatter',mode:'lines+markers',fill:'tozeroy',fillcolor:'rgba(37,99,235,.08)',line:{color:'#2563eb',width:2.5}},
-  ],{...LO},cfg);
+function chartGFinAnual(){
+  if(!P.annual)return;
+  const earliestAMOYr=+AMO[0].slice(0,4);
+  const years=[...new Set([...P.annualYears,...AMO.map(m=>+m.slice(0,4))])].filter(y=>!isNaN(y)&&y>=earliestAMOYr).sort((a,b)=>a-b);
+  const monthsOfYr=yr=>AMO.filter(m=>+m.slice(0,4)===yr);
+  // Preserve sign: egresos → negative, inflow → positive
+  const sumYr=(yr,k)=>monthsOfYr(yr).reduce((t,m)=>t+(_fcGet(m,k)||0),0);
+  const unit=currUnitLbl();
+  const lbls=years.map(String);
+  const debtEx=years.map(y=>convYearly(sumYr(y,'debtEx'),monthsOfYr(y)));
+  const divs  =years.map(y=>convYearly(sumYr(y,'divs')  ,monthsOfYr(y)));
+  const ndAm  =years.map(y=>convYearly(sumYr(y,'ndAm')  ,monthsOfYr(y)));
+  const ndIn  =years.map(y=>convYearly(sumYr(y,'ndIn')  ,monthsOfYr(y)));
+  const lbl=v=>Math.abs(v)>0.05?Math.round(Math.abs(v)).toLocaleString('es-CL'):'';
+  document.getElementById('gfin-an-title').innerHTML=`Gasto financiero anual · deuda + dividendos`;
+  Plotly.react('ch-gfin-annual',[
+    {x:lbls,y:debtEx,name:'Deuda existente',   type:'bar',marker:{color:'rgba(239,68,68,.75)'},text:debtEx.map(lbl),textposition:'inside',textfont:{size:9,color:'#fff'},hovertemplate:`<b>%{x}</b><br>Deuda existente: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbls,y:divs,  name:'Dividendos',         type:'bar',marker:{color:'rgba(245,158,11,.8)'},text:divs.map(lbl),  textposition:'inside',textfont:{size:9,color:'#fff'},hovertemplate:`<b>%{x}</b><br>Dividendos: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbls,y:ndAm,  name:'Nueva deuda (amort)',type:'bar',marker:{color:'rgba(124,58,237,.7)'},text:ndAm.map(lbl),  textposition:'inside',textfont:{size:9,color:'#fff'},hovertemplate:`<b>%{x}</b><br>Nva deuda amort: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbls,y:ndIn,  name:'Nueva deuda (inflow)',type:'bar',marker:{color:'rgba(37,99,235,.5)'},text:ndIn.map(lbl),  textposition:'inside',textfont:{size:9,color:'#fff'},hovertemplate:`<b>%{x}</b><br>Nva deuda inflow: %{y:,.0f} ${unit}<extra></extra>`},
+  ],{...LO,barmode:'relative',yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
 }
-function chartCFin(){
-  const deud=MO.map(m=>P.modelTot.debtAm[m]||0);
-  const divArr=MO.map(m=>S.divs[m]||0);
-  const ndInArr=MO.map(m=>S.ndIn(m)||0);
-  const ndAmArr=MO.map(m=>S.ndA(m)||0);
-  Plotly.react('ch-cfin',[
-    {x:lb,y:ndInArr,name:'Nueva deuda (inflow)',type:'bar',marker:{color:'rgba(37,99,235,.7)'}},
-    {x:lb,y:ndAmArr,name:'Nueva deuda (amortización)',type:'bar',marker:{color:'rgba(37,99,235,.35)'}},
-    {x:lb,y:deud,name:'Deuda existente',type:'bar',marker:{color:'rgba(239,68,68,.4)'}},
-    {x:lb,y:divArr,name:'Dividendos',type:'bar',marker:{color:'rgba(245,158,11,.5)'}},
-  ],{...LO,barmode:'relative'},cfg);
+function chartGFinMensual(){
+  // Solo meses proyectados (sin actuals)
+  const MM=getCurrYrMo().filter(m=>!isActM(m));
+  const cy=getCurrYear();
+  const lbMM=MM.map(fmtM);
+  const unit=currUnitLbl();
+  // Preserve sign: egresos → negative, inflow → positive
+  const debtEx=MM.map(m=>convV(_fcGet(m,'debtEx'),m));
+  const divs  =MM.map(m=>convV(_fcGet(m,'divs')  ,m));
+  const ndAm  =MM.map(m=>convV(_fcGet(m,'ndAm')  ,m));
+  const ndIn  =MM.map(m=>convV(_fcGet(m,'ndIn')  ,m));
+  const lbl=v=>Math.abs(v)>0.05?Math.round(Math.abs(v)).toLocaleString('es-CL'):'';
+  document.getElementById('gfin-mo-title').innerHTML=`Gasto financiero mensual · ${cy}`;
+  Plotly.react('ch-gfin-mo',[
+    {x:lbMM,y:debtEx,name:'Deuda existente',   type:'bar',marker:{color:'rgba(239,68,68,.75)'},text:debtEx.map(lbl),textposition:'inside',textfont:{size:9,color:'#fff'},hovertemplate:`<b>%{x}</b><br>Deuda existente: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbMM,y:divs,  name:'Dividendos',         type:'bar',marker:{color:'rgba(245,158,11,.8)'},text:divs.map(lbl),  textposition:'inside',textfont:{size:9,color:'#fff'},hovertemplate:`<b>%{x}</b><br>Dividendos: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbMM,y:ndAm,  name:'Nueva deuda (amort)',type:'bar',marker:{color:'rgba(124,58,237,.7)'},text:ndAm.map(lbl),  textposition:'inside',textfont:{size:9,color:'#fff'},hovertemplate:`<b>%{x}</b><br>Nva deuda amort: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbMM,y:ndIn,  name:'Nueva deuda (inflow)',type:'bar',marker:{color:'rgba(37,99,235,.5)'},text:ndIn.map(lbl),  textposition:'inside',textfont:{size:9,color:'#fff'},hovertemplate:`<b>%{x}</b><br>Nva deuda inflow: %{y:,.0f} ${unit}<extra></extra>`},
+  ],{...LO,barmode:'relative',yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
 }
 function tableFC(){
+  document.getElementById('fc-title').textContent=`Flujo de caja mensual proyectado (${currUnitLbl()}) · ${getCurrYear()}`;
+  const monthly=getCurrYrMo().filter(m=>!isActM(m)); // solo proyectado
+  if(!monthly.length){document.getElementById('t-fc').innerHTML='<tbody><tr><td style="padding:20px;text-align:center;color:var(--text3)">No hay meses proyectados en el año en curso</td></tr></tbody>';return;}
+  // Cash for projected months + the last actual month (needed for first BoP)
+  const cyMonths=getCurrYrMo();
+  const cashArr={};for(const m of cyMonths)cashArr[m]=_fcCash(m);
+  const prevMonth=(m)=>{const idx=cyMonths.indexOf(m);return idx<=0?null:cyMonths[idx-1];};
   const rows=[
-    {sec:'▸ CF Operacional'},
-    {l:'NI',f:m=>S.ni[m]||0},
-    {l:'+ Depreciación',f:m=>P.modelTot.dep[m]||0},
-    {l:'+ ΔWC',f:m=>S.dWC[m]||0},
-    {l:'CF Operacional',f:m=>S.cfop[m]||0,tot:true},
-    {sec:'▸ CF Financiero'},
-    {l:'Deuda existente',f:m=>P.modelTot.debtAm[m]||0},
-    {l:'Dividendos',f:m=>S.divs[m]||0},
-    {l:'Nueva deuda (inflow)',f:m=>S.ndIn(m)||0},
-    {l:'Nueva deuda (amortización)',f:m=>S.ndA(m)||0},
-    {l:'CF Financiero',f:m=>S.cfin[m]||0,tot:true},
-    {sec:'▸ Saldo'},
-    {l:'Caja EOP',f:m=>S.cashEOP[m]||0,tot:true,cash:true},
+    {sec:'CAJA'},
+    {l:'Caja BoP',f:m=>{const pm=prevMonth(m);return pm?cashArr[pm]:(P.cashStart||0);},snap:'first'},
+    {sec:'CF Operacional'},
+    {l:'NI',f:m=>_fcGet(m,'ni')},
+    {l:'+ Depreciación',f:m=>_fcGet(m,'dep')},
+    {l:'+ ΔWC',f:m=>_fcGet(m,'dwc')},
+    {l:'CF Operacional',f:m=>_fcGet(m,'cfop'),tot:true},
+    {sec:'CF Inversión'},
+    {l:'CAPEX / Inversión',f:m=>_fcGet(m,'cfinv')},
+    {l:'CF Inversión',f:m=>_fcGet(m,'cfinv'),tot:true},
+    {sec:'CF Financiero'},
+    {l:'Deuda existente',f:m=>_fcGet(m,'debtEx')},
+    {l:'Dividendos',f:m=>_fcGet(m,'divs')},
+    {l:'Nueva deuda (inflow)',f:m=>_fcGet(m,'ndIn')},
+    {l:'Nueva deuda (amortización)',f:m=>_fcGet(m,'ndAm')},
+    {l:'CF Financiero',f:m=>_fcGet(m,'cfin'),tot:true},
+    {sec:'RESULTADO'},
+    {l:'Δ Caja (CFop + CFinv + CFfin)',f:m=>_fcGet(m,'cfop')+_fcGet(m,'cfinv')+_fcGet(m,'cfin'),tot:true},
+    {l:'Caja EoP',f:m=>cashArr[m],tot:true,bold:true,snap:'last'},
   ];
-  const sec=lbl=>`<tr style="background:#f8f9fb"><td colspan="${MO.length+2}" style="font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--page-bg);padding:3px 11px;font-weight:700">${lbl}</td></tr>`;
-  let h='<thead><tr><th>Línea</th>'+lb.map(l=>'<th>'+l+'</th>').join('')+'<th>Total/Dic</th></tr></thead><tbody>';
+  const sec=lbl=>`<tr><td colspan="${monthly.length+2}" style="background:var(--surface2);font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text4);padding:8px 11px;font-weight:700;border-top:1px solid var(--border)">${lbl}</td></tr>`;
+  const badge='<span class="act-badge">Real</span>';
+  let h='<thead><tr><th>Línea</th>';
+  for(const m of monthly){h+=`<th ${isActM(m)?'class="act-h"':''}>${fmtM(m)}${isActM(m)?' '+badge:''}</th>`;}
+  h+=`<th>Total</th></tr></thead><tbody>`;
   for(const r of rows){
     if(r.sec){h+=sec(r.sec);continue;}
-    const tot=r.cash?r.f(MO[MO.length-1]):MO.reduce((t,m)=>t+r.f(m),0);
-    h+=`<tr class="${r.tot?'tot':''}"><td>${r.tot?'<strong>'+r.l+'</strong>':r.l}</td>`;
-    h+=MO.map(m=>{const v=r.f(m);return `<td class="${v<0?'neg':''}">${f1(v)}</td>`;}).join('');
-    h+=`<td class="${tot<0?'neg':''}">${f1(tot)}</td></tr>`;
+    h+=`<tr class="${r.tot?'tot':''}"><td>${r.bold?'<strong>'+r.l+'</strong>':r.l}</td>`;
+    h+=monthly.map(m=>{const v=r.f(m);return `<td class="${v<0?'neg':''} ${isActM(m)?'ac':''}">${fmtMoney(v,m,1)}</td>`;}).join('');
+    let tot;
+    if(r.snap==='last')tot=cashArr[monthly[monthly.length-1]];
+    else if(r.snap==='first')tot=monthly.length?r.f(monthly[0]):(P.cashStart||0);
+    else tot=monthly.reduce((t,m)=>t+r.f(m),0);
+    h+=`<td class="${tot<0?'neg':''}">${r.snap?fmtMoney(tot,monthly[monthly.length-1],1):fmtMoneyY(tot,monthly,1)}</td></tr>`;
   }
   document.getElementById('t-fc').innerHTML=h+'</tbody>';
+}
+
+// ═══ FC anual (2023-2028) ═══
+function tableFCAnnual(){
+  if(!P.annual)return;
+  const earliestAMOYr=+AMO[0].slice(0,4);
+  // Solo años proyectados (con al menos un mes en AMO) — no mostrar histórico
+  const years=[...new Set([...P.annualYears, ...AMO.map(m=>+m.slice(0,4))])].filter(y=>!isNaN(y)&&y>=earliestAMOYr).sort((a,b)=>a-b);
+  const monthsOfYr=yr=>AMO.filter(m=>+m.slice(0,4)===yr);
+  const isHist=yr=>yr<earliestAMOYr;
+  // Cash series
+  const cashByMonth={};for(const m of AMO)cashByMonth[m]=_fcCash(m);
+  const getCashBoP=(yr)=>{
+    if(isHist(yr))return 0; // no data
+    const ms=monthsOfYr(yr);if(!ms.length)return 0;
+    const idx=AMO.indexOf(ms[0]);
+    if(idx<=0)return P.cashStart||0;
+    return cashByMonth[AMO[idx-1]]||0;
+  };
+  const getCashEoP=(yr)=>{
+    if(isHist(yr))return 0;
+    const ms=monthsOfYr(yr);if(!ms.length)return 0;
+    return cashByMonth[ms[ms.length-1]]||0;
+  };
+  const sumYr=(yr,k)=>{
+    const ms=monthsOfYr(yr);
+    if(!ms.length)return 0;
+    return ms.reduce((t,m)=>t+(_fcGet(m,k)||0),0);
+  };
+  const unit=currUnitLbl();
+  const hasAct=yr=>monthsOfYr(yr).some(m=>isActM(m));
+  const allAct=yr=>monthsOfYr(yr).every(m=>isActM(m));
+  let h=`<table><thead><tr><th>Línea (${unit})</th>`;
+  for(const yr of years){
+    const cls=allAct(yr)?'act-h':hasAct(yr)?'act-h':'';
+    const badge=allAct(yr)?' <span class="act-badge">Real</span>':hasAct(yr)?' <span class="act-badge">Parcial</span>':' <span class="fc-badge">F</span>';
+    h+=`<th class="${cls}">${yr}${badge}</th>`;
+  }
+  h+='</tr></thead><tbody>';
+  const row=(label,fn,opts={})=>{
+    let r=`<tr class="${opts.tot?'tot':''}"><td>${opts.bold?'<strong>'+label+'</strong>':label}</td>`;
+    for(const yr of years){
+      const v=fn(yr);
+      const dv=fmtMoneyY(v,monthsOfYr(yr),1);
+      r+=`<td class="${v<0?'neg':''} ${allAct(yr)?'ac':''}">${dv}</td>`;
+    }
+    return r+'</tr>';
+  };
+  const snapRow=(label,fn,opts={})=>{
+    let r=`<tr class="${opts.tot?'tot':''}"><td>${opts.bold?'<strong>'+label+'</strong>':label}</td>`;
+    for(const yr of years){
+      const v=fn(yr);
+      const ms=monthsOfYr(yr);
+      const refM=ms[ms.length-1];
+      r+=`<td class="${v<0?'neg':''} ${allAct(yr)?'ac':''}">${fmtMoney(v,refM,1)}</td>`;
+    }
+    return r+'</tr>';
+  };
+  h+=`<tr><td colspan="${years.length+1}" style="background:var(--surface2);font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text4);padding:8px 11px;font-weight:700">CAJA</td></tr>`;
+  h+=snapRow('Caja BoP',getCashBoP);
+  h+=`<tr><td colspan="${years.length+1}" style="background:var(--surface2);font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text4);padding:8px 11px;font-weight:700">CF Operacional</td></tr>`;
+  h+=row('NI',yr=>sumYr(yr,'ni'));
+  h+=row('+ Depreciación',yr=>sumYr(yr,'dep'));
+  h+=row('+ ΔWC',yr=>sumYr(yr,'dwc'));
+  h+=row('CF Operacional',yr=>sumYr(yr,'cfop'),{tot:true});
+  h+=`<tr><td colspan="${years.length+1}" style="background:var(--surface2);font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text4);padding:8px 11px;font-weight:700">CF Inversión</td></tr>`;
+  h+=row('CF Inversión',yr=>sumYr(yr,'cfinv'),{tot:true});
+  h+=`<tr><td colspan="${years.length+1}" style="background:var(--surface2);font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text4);padding:8px 11px;font-weight:700">CF Financiero</td></tr>`;
+  h+=row('Deuda existente',yr=>sumYr(yr,'debtEx'));
+  h+=row('Dividendos',yr=>sumYr(yr,'divs'));
+  h+=row('Nueva deuda (inflow)',yr=>sumYr(yr,'ndIn'));
+  h+=row('Nueva deuda (amortización)',yr=>sumYr(yr,'ndAm'));
+  h+=row('CF Financiero',yr=>sumYr(yr,'cfin'),{tot:true});
+  h+=`<tr><td colspan="${years.length+1}" style="background:var(--surface2);font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text4);padding:8px 11px;font-weight:700">RESULTADO</td></tr>`;
+  h+=row('Δ Caja',yr=>sumYr(yr,'cfop')+sumYr(yr,'cfinv')+sumYr(yr,'cfin'),{tot:true});
+  h+=snapRow('Caja EoP (dic)',getCashEoP,{tot:true,bold:true});
+  document.getElementById('t-fc-annual').innerHTML=h+'</tbody></table>';
+}
+
+function chartFCAnnual(){
+  if(!P.annual)return;
+  const earliestAMOYr=+AMO[0].slice(0,4);
+  // Solo años proyectados (dentro de AMO)
+  const years=[...new Set([...P.annualYears, ...AMO.map(m=>+m.slice(0,4))])].filter(y=>!isNaN(y)&&y>=earliestAMOYr).sort((a,b)=>a-b);
+  const monthsOfYr=yr=>AMO.filter(m=>+m.slice(0,4)===yr);
+  const cashByMonth={};for(const m of AMO)cashByMonth[m]=_fcCash(m);
+  const sumYr=(yr,k)=>{const ms=monthsOfYr(yr);return ms.reduce((t,m)=>t+(_fcGet(m,k)||0),0);};
+  const cashEop=(yr)=>{const ms=monthsOfYr(yr);return ms.length?(cashByMonth[ms[ms.length-1]]||0):0;};
+  const lbls=years.map(String);
+  const unit=currUnitLbl();
+  const cfop=years.map(y=>convYearly(sumYr(y,'cfop'),monthsOfYr(y)));
+  const cfinv=years.map(y=>convYearly(sumYr(y,'cfinv'),monthsOfYr(y)));
+  const cffin=years.map(y=>convYearly(sumYr(y,'cfin'),monthsOfYr(y)));
+  const cash=years.map(y=>convV(cashEop(y),monthsOfYr(y)[11]||monthsOfYr(y)[monthsOfYr(y).length-1]));
+  Plotly.react('ch-fc-annual',[
+    {x:lbls,y:cfop,name:'CF Operacional',type:'bar',marker:{color:'rgba(5,150,105,.8)'},text:cfop.map(f0),textposition:'inside',textfont:{size:10,color:'#fff'},hovertemplate:`<b>%{x}</b><br>CFop: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbls,y:cfinv,name:'CF Inversión',type:'bar',marker:{color:'rgba(124,58,237,.7)'},text:cfinv.map(f0),textposition:'inside',textfont:{size:10,color:'#fff'},hovertemplate:`<b>%{x}</b><br>CFinv: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbls,y:cffin,name:'CF Financiero',type:'bar',marker:{color:'rgba(239,68,68,.7)'},text:cffin.map(f0),textposition:'inside',textfont:{size:10,color:'#fff'},hovertemplate:`<b>%{x}</b><br>CFfin: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:lbls,y:cash,name:'Caja EoP (dic)',type:'scatter',mode:'lines+markers',yaxis:'y2',line:{color:'#2563eb',width:3},marker:{size:8},hovertemplate:`<b>%{x}</b><br>Caja EoP: %{y:,.0f} ${unit}<extra></extra>`},
+  ],{...LO,barmode:'relative',hovermode:'x unified',yaxis:{...LO.yaxis,title:{text:`CF (${unit})`,font:{size:10}}},yaxis2:{overlaying:'y',side:'right',gridcolor:'transparent',tickfont:{size:9},color:'#2563eb',title:{text:`Caja (${unit})`,font:{size:10,color:'#2563eb'}}},margin:{...LO.margin,r:58}},cfg);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BALANCE SHEET (dinámico: cash, retained earnings y nueva deuda LT se mueven con escenario)
+// ═══════════════════════════════════════════════════════════════
+function _bsV(k,m){
+  if(!P.bs||!P.bsDef)return 0;
+  // Actuals always read from Excel BS (what the model actually recorded)
+  if(isActM(m))return P.bs[k]?.[m]||0;
+  // Projected months: read from the dynamic BS engine (Sbs) built from the active scenario.
+  // Falls back to P.bs if engine hasn't run yet.
+  if(Sbs&&Sbs[k]&&Sbs[k][m]!==undefined)return Sbs[k][m];
+  return P.bs[k]?.[m]||0;
+}
+function _bsSectionSum(section,m){
+  let s=0;
+  for(const k of Object.keys(P.bsDef||{})){
+    const def=P.bsDef[k];
+    if(def.section===section && !def.subtotal)s+=_bsV(k,m);
+  }
+  return s;
+}
+function renderBSKPIs(){
+  if(!P.bs){document.getElementById('bs-kpis').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:24px;font-size:12px">Cargá el modelo Excel para ver el Balance</div>';return;}
+  const lastM=AMO[AMO.length-1];
+  const ta=_bsV('totalAssets',lastM)||_bsSectionSum('ca',lastM)+_bsSectionSum('nca',lastM);
+  const tl=_bsV('totalLiab',lastM)||_bsSectionSum('cl',lastM)+_bsSectionSum('ncl',lastM);
+  const te=_bsV('totalEquity',lastM)||_bsSectionSum('eq',lastM);
+  const cash=_bsV('cash',lastM);
+  // Base (no scenario)
+  const taB=(P.bs.totalAssets?.[lastM]||0);
+  const tlB=(P.bs.totalLiab?.[lastM]||0);
+  const teB=(P.bs.totalEquity?.[lastM]||0);
+  const cashB=(P.bs.cash?.[lastM]||0);
+  const del=(s,b)=>{const d=s-b;if(Math.abs(d)<0.1)return '';const cls=d>0?'pos':'neg';const sg=d>0?'+':'';return `<span class="${cls}" style="font-size:10px;margin-left:6px">${sg}${f0(d)} ${currUnitLbl()}</span>`;};
+  const items=[
+    {l:'Total Activos',v:fmtMoney(ta,lastM),delta:del(ta,taB),c:'blu'},
+    {l:'Total Pasivos',v:fmtMoney(tl,lastM),delta:del(tl,tlB),c:'red'},
+    {l:'Patrimonio',v:fmtMoney(te,lastM),delta:del(te,teB),c:'grn'},
+    {l:'Caja & Eq.',v:fmtMoney(cash,lastM),delta:del(cash,cashB),c:'amb'},
+  ];
+  document.getElementById('bs-kpis').innerHTML=items.map(k=>
+    `<div class="kpi ${k.c||''}"><div class="kl">${k.l} ${fmtM(lastM)}</div><div class="kv" style="font-size:18px">${k.v} <span style="font-size:10px;color:var(--text3);font-weight:400">${currUnitLbl()}</span>${k.delta||''}</div></div>`
+  ).join('');
+}
+function tableBS(){
+  if(!P.bs){document.getElementById('t-bs').innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px">Cargá el modelo Excel para ver el Balance</div>';return;}
+  const monthlyCols=getCurrYrMo();
+  const totalCols=monthlyCols.length;
+  const badge='<span class="act-badge">Real</span>';
+  let h='<table><thead><tr><th>Cuenta</th>';
+  for(const m of monthlyCols){h+=`<th ${isActM(m)?'class="act-h"':''}>${fmtM(m)}${isActM(m)?' '+badge:''}</th>`;}
+  h+='</tr></thead><tbody>';
+  const sec=lbl=>`<tr class="bs-section-hdr"><td colspan="${totalCols+1}">${lbl}</td></tr>`;
+  const keysBySection=ss=>Object.keys(P.bsDef).filter(k=>P.bsDef[k].section===ss&&!P.bsDef[k].subtotal);
+  const secSum=(secs,m)=>Object.keys(P.bsDef)
+    .filter(k=>secs.includes(P.bsDef[k].section)&&!P.bsDef[k].subtotal)
+    .reduce((s,k)=>s+_bsV(k,m),0);
+  const rowCell=(v,m,extraCls='')=>`<td class="${v<0?'neg':''} ${isActM(m)?'ac':''} ${extraCls}">${fmtMoney(v,m,1)}</td>`;
+  const lineRow=(k)=>{
+    const def=P.bsDef[k];
+    const dyn=def.dynamic?`<span class="dyn-badge">dyn</span>`:'';
+    const hasAny=monthlyCols.some(m=>Math.abs(_bsV(k,m))>0.05);
+    if(!hasAny)return '';
+    let r=`<tr><td>${def.label}${dyn}</td>`;
+    for(const m of monthlyCols)r+=rowCell(_bsV(k,m),m);
+    return r+'</tr>';
+  };
+  const subTotalRow=(label,secs,kind='bs-sub-tot')=>{
+    let r=`<tr class="${kind}"><td><strong>${label}</strong></td>`;
+    for(const m of monthlyCols)r+=rowCell(secSum(secs,m),m);
+    return r+'</tr>';
+  };
+  const grandTotalRow=(label,fn)=>{
+    let r=`<tr class="bs-grand-tot"><td><strong>${label}</strong></td>`;
+    for(const m of monthlyCols){const v=fn(m);r+=rowCell(v,m);}
+    return r+'</tr>';
+  };
+  // ACTIVOS
+  h+=sec('ACTIVOS CORRIENTES');
+  for(const k of keysBySection('ca'))h+=lineRow(k);
+  h+=subTotalRow('Total Activos Corrientes',['ca']);
+  h+=sec('ACTIVOS NO CORRIENTES');
+  for(const k of keysBySection('nca'))h+=lineRow(k);
+  h+=subTotalRow('Total Activos No Corrientes',['nca']);
+  h+=grandTotalRow('TOTAL ACTIVOS',m=>secSum(['ca','nca'],m));
+  // PASIVOS
+  h+=sec('PASIVOS CORRIENTES');
+  for(const k of keysBySection('cl'))h+=lineRow(k);
+  h+=subTotalRow('Total Pasivos Corrientes',['cl']);
+  h+=sec('PASIVOS NO CORRIENTES');
+  for(const k of keysBySection('ncl'))h+=lineRow(k);
+  h+=subTotalRow('Total Pasivos No Corrientes',['ncl']);
+  h+=subTotalRow('Total Pasivos',['cl','ncl'],'bs-sub-tot');
+  // PATRIMONIO
+  h+=sec('PATRIMONIO');
+  for(const k of keysBySection('eq'))h+=lineRow(k);
+  h+=subTotalRow('Total Patrimonio',['eq']);
+  h+=grandTotalRow('TOTAL PASIVOS + PATRIMONIO',m=>secSum(['cl','ncl','eq'],m));
+  document.getElementById('t-bs').innerHTML=h+'</tbody></table>';
+}
+
+// ═══ Balance Sheet anual (snapshots Dic 2023-2028) ═══
+function tableBSAnnual(){
+  if(!P.bs){document.getElementById('t-bs-annual').innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px">Cargá el modelo Excel para ver el Balance</div>';return;}
+  const earliestAMOYr=+AMO[0].slice(0,4);
+  const years=[2023,2024,2025,2026,2027,2028].filter(y=>{
+    // Include year if it has BS data in P.bs (any key with non-zero value in Dec of that year)
+    const m=y+'-12';
+    if(isActM(m)||y<earliestAMOYr){
+      // historical — check if any BS row has a value
+      return Object.keys(P.bsDef).some(k=>Math.abs(P.bs[k]?.[m]||0)>0.05);
+    }
+    return AMO.includes(m);
+  });
+  if(!years.length){document.getElementById('t-bs-annual').innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px">No hay datos anuales disponibles</div>';return;}
+  const isHist=yr=>yr<earliestAMOYr;
+  const refM=yr=>yr+'-12'; // snapshot Dec
+  const secSum=(secs,m)=>Object.keys(P.bsDef)
+    .filter(k=>secs.includes(P.bsDef[k].section)&&!P.bsDef[k].subtotal)
+    .reduce((s,k)=>s+_bsV(k,m),0);
+  const keysBySection=ss=>Object.keys(P.bsDef).filter(k=>P.bsDef[k].section===ss&&!P.bsDef[k].subtotal);
+  const totalCols=years.length;
+  let h='<table><thead><tr><th>Cuenta (dic)</th>';
+  for(const yr of years){h+=`<th class="${isHist(yr)?'act-h':''}">${yr}${isHist(yr)?' <span class="act-badge">Real</span>':' <span class="fc-badge">F</span>'}</th>`;}
+  h+='</tr></thead><tbody>';
+  const sec=lbl=>`<tr class="bs-section-hdr"><td colspan="${totalCols+1}">${lbl}</td></tr>`;
+  const cell=(v,yr)=>`<td class="${v<0?'neg':''} ${isHist(yr)?'ac':''}">${fmtMoney(v,refM(yr),1)}</td>`;
+  const lineRow=(k)=>{
+    const def=P.bsDef[k];
+    const dyn=def.dynamic?`<span class="dyn-badge">dyn</span>`:'';
+    const hasAny=years.some(yr=>Math.abs(_bsV(k,refM(yr)))>0.05);
+    if(!hasAny)return '';
+    let r=`<tr><td>${def.label}${dyn}</td>`;
+    for(const yr of years)r+=cell(_bsV(k,refM(yr)),yr);
+    return r+'</tr>';
+  };
+  const subTotalRow=(label,secs)=>{
+    let r=`<tr class="bs-sub-tot"><td><strong>${label}</strong></td>`;
+    for(const yr of years)r+=cell(secSum(secs,refM(yr)),yr);
+    return r+'</tr>';
+  };
+  const grandRow=(label,fn)=>{
+    let r=`<tr class="bs-grand-tot"><td><strong>${label}</strong></td>`;
+    for(const yr of years){const v=fn(refM(yr));r+=cell(v,yr);}
+    return r+'</tr>';
+  };
+  h+=sec('ACTIVOS CORRIENTES');
+  for(const k of keysBySection('ca'))h+=lineRow(k);
+  h+=subTotalRow('Total Activos Corrientes',['ca']);
+  h+=sec('ACTIVOS NO CORRIENTES');
+  for(const k of keysBySection('nca'))h+=lineRow(k);
+  h+=subTotalRow('Total Activos No Corrientes',['nca']);
+  h+=grandRow('TOTAL ACTIVOS',m=>secSum(['ca','nca'],m));
+  h+=sec('PASIVOS CORRIENTES');
+  for(const k of keysBySection('cl'))h+=lineRow(k);
+  h+=subTotalRow('Total Pasivos Corrientes',['cl']);
+  h+=sec('PASIVOS NO CORRIENTES');
+  for(const k of keysBySection('ncl'))h+=lineRow(k);
+  h+=subTotalRow('Total Pasivos No Corrientes',['ncl']);
+  h+=subTotalRow('Total Pasivos',['cl','ncl']);
+  h+=sec('PATRIMONIO');
+  for(const k of keysBySection('eq'))h+=lineRow(k);
+  h+=subTotalRow('Total Patrimonio',['eq']);
+  h+=grandRow('TOTAL PASIVOS + PATRIMONIO',m=>secSum(['cl','ncl','eq'],m));
+  document.getElementById('t-bs-annual').innerHTML=h+'</tbody></table>';
 }
 
 function chartSaldo(){
   const scheds=getDeudaScheds();
   if(!scheds.length){Plotly.purge('ch-saldo');return;}
-  const traces=scheds.map(s=>({x:lb,y:MO.map(m=>Math.abs(s.sched[m]?.bal??0)),name:s.label,type:'scatter',mode:'lines+markers',fill:'tozeroy',line:{width:2}}));
-  Plotly.react('ch-saldo',traces,{...LO},cfg);
+  const unit=currUnitLbl();
+  const traces=scheds.map(s=>({x:lb,y:MO.map(m=>convV(Math.abs(s.sched[m]?.bal??0),m)),name:s.label,type:'scatter',mode:'lines+markers',fill:'tozeroy',line:{width:2}}));
+  Plotly.react('ch-saldo',traces,{...LO,yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
 }
 function chartCuota(){
   const scheds=getDeudaScheds();
   if(!scheds.length){Plotly.purge('ch-cuota');return;}
-  const intA=MO.map(m=>-scheds.reduce((t,s)=>t+(s.sched[m]?.int||0),0));
-  const amA=MO.map(m=>-scheds.reduce((t,s)=>t+(s.sched[m]?.am||0),0));
+  const unit=currUnitLbl();
+  const intA=MO.map(m=>convV(-scheds.reduce((t,s)=>t+(s.sched[m]?.int||0),0),m));
+  const amA=MO.map(m=>convV(-scheds.reduce((t,s)=>t+(s.sched[m]?.am||0),0),m));
   Plotly.react('ch-cuota',[
     {x:lb,y:amA,name:'Capital',type:'bar',marker:{color:'rgba(37,99,235,.7)'}},
     {x:lb,y:intA,name:'Interés',type:'bar',marker:{color:'rgba(239,68,68,.6)'}},
-  ],{...LO,barmode:'stack'},cfg);
+  ],{...LO,barmode:'stack',yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
 }
 function tableAmort(){
   const scheds=getDeudaScheds();
   if(!scheds.length){document.getElementById('t-amort').innerHTML='<tbody><tr><td style="text-align:center;color:var(--text3);padding:16px">Sin deuda nueva configurada</td></tr></tbody>';return;}
-  let h='<thead><tr><th>Tramo</th><th>Tipo</th><th>Monto</th><th>Tasa</th>'+lb.map(l=>'<th>'+l+'</th>').join('')+'</tr></thead><tbody>';
+  const unit=currUnitLbl();
+  let h=`<thead><tr><th>Tramo</th><th>Tipo</th><th>Monto (${unit})</th><th>Tasa</th>`+lb.map(l=>'<th>'+l+'</th>').join('')+'</tr></thead><tbody>';
   const tpLbl=t=>t==='bullet'?'Bullet':t==='zero'?'Cero Cupón':'Francés';
   for(const s of scheds){
-    h+=`<tr class="sub"><td>${s.label}</td><td>${tpLbl(s.tipo)}</td><td>${f0(s.amount/1e6)} M</td><td>${(s.rate*100).toFixed(2)}%</td>`;
-    h+=MO.map(m=>{const v=s.sched[m]?.am||0;return `<td class="${v<0?'neg':''}">${v?f1(v):'-'}</td>`;}).join('')+'</tr>';
+    h+=`<tr class="sub"><td>${s.label}</td><td>${tpLbl(s.tipo)}</td><td>${f0(convV(s.amount/1e6,MO[0]))}</td><td>${(s.rate*100).toFixed(2)}%</td>`;
+    h+=MO.map(m=>{const v=s.sched[m]?.am||0;return `<td class="${v<0?'neg':''}">${v?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
     h+=`<tr><td colspan="4" style="color:var(--text3);font-size:10px;padding-left:20px">└ Saldo</td>`;
-    h+=MO.map(m=>{const v=s.sched[m]?.bal;return `<td>${v!=null?f1(v):'-'}</td>`;}).join('')+'</tr>';
+    h+=MO.map(m=>{const v=s.sched[m]?.bal;return `<td>${v!=null?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
   }
   document.getElementById('t-amort').innerHTML=h+'</tbody>';
 }
