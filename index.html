@@ -1904,12 +1904,24 @@ function project(ov={}, _forceEngine=false){
   for(const p of BRIDGE){mrrUF[p]={};}
   const revT={},revM={},revS={},cogsT={},sgaT={},sgaCorp={},ebitda={},ajustes={},ni={};
 
+  // ─── BLINDAJE 2026 (año en curso) ─────────────────────────────────────────
+  // El modelo Excel tiene valores hardcodeados/budget en 2026 proyectado.
+  // Los sliders de MRR/dividendos NO deben pisar esos valores: solo afectan 2027+.
+  // Para meses proyectados del año en curso usamos los valores del modelo
+  // (MRR, Rev, COGS, SGA, NI), igual que se hace con los meses reales.
+  const _currYr=(()=>{
+    if(!P||!P.cutoff)return new Date().getFullYear();
+    const [y,mo]=P.cutoff.split('-').map(Number);
+    return mo===12?y+1:y;
+  })();
+  const isShortTerm=m=>!isAct(m) && +m.slice(0,4)<=_currYr;
+
   // Step 1: MRR per bridge product
   // Base (no override): use month-by-month model rates for exact replication
-  // Scenario (override): use constant override rate the slider expresses
+  // Scenario (override): use constant override rate — solo a partir de _currYr+1
   for(const p of BRIDGE){
     for(const m of P.months){
-      if(isAct(m)){mrrUF[p][m]=P.model.mrrUF[p][m]||0;continue;}
+      if(isAct(m)||isShortTerm(m)){mrrUF[p][m]=P.model.mrrUF[p][m]||0;continue;}
       if(p==='ramaflex'){mrrUF[p][m]=0;continue;}
       const prev=mrrUF[p][addM(m,-1)]??(P.model.mrrUF[p][addM(m,-1)]||0);
       const baseRate=P.mrr_growth_base?.[p]||0;
@@ -1922,7 +1934,7 @@ function project(ov={}, _forceEngine=false){
   // Step 2: Revenue per product
   for(const m of P.months){
     for(const p of ALL_PRODS){
-      if(isAct(m)){rev[p][m]=P.model.rev[p][m]||0;continue;}
+      if(isAct(m)||isShortTerm(m)){rev[p][m]=P.model.rev[p][m]||0;continue;}
       if(p==='ramaflex'){rev[p][m]=0;continue;}
       if(BRIDGE.includes(p)){
         const mrrCLP=mrrUF[p][m]*uf(m)/1e6;
@@ -1950,7 +1962,7 @@ function project(ov={}, _forceEngine=false){
   // Step 3: COGS per product (line-by-line: fixed ppto + variable %)
   for(const m of P.months){
     for(const p of ALL_PRODS){
-      if(isAct(m)){cogs[p][m]=P.model.cogs[p][m]||0;continue;}
+      if(isAct(m)||isShortTerm(m)){cogs[p][m]=P.model.cogs[p][m]||0;continue;}
       const params=P.cogsParams[p];
       if(!params){cogs[p][m]=0;continue;}
       let total=0;
@@ -1986,6 +1998,21 @@ function project(ov={}, _forceEngine=false){
   for(let i=0;i<P.projMonths.length;i++){
     const m=P.projMonths[i];
     const prev_m=i>0?P.projMonths[i-1]:P.cutoff;
+    // ─── Año en curso proyectado: usar valores del modelo (blindaje) ───
+    // Sincronizamos sga_state con el valor por línea del modelo, así cuando
+    // arranquemos 2027+ el compounding parte del último valor real de 2026.
+    if(isShortTerm(m)){
+      for(const p of Object.keys(P.sgaParams)){
+        sga[p][m]=P.model.sga?.[p]?.[m]||0;
+        const params=P.sgaParams[p];
+        for(const line of Object.keys(params.variable||{})){
+          const info=params.variable[line];
+          const v=(info.monthly_model_full?.[m]??info.monthly_model?.[m]);
+          if(v!=null&&!isNaN(v)) sga_state[p][line]=v;
+        }
+      }
+      continue;
+    }
     for(const p of Object.keys(P.sgaParams)){
       const params=P.sgaParams[p];
       let total=0;
@@ -2053,6 +2080,8 @@ function project(ov={}, _forceEngine=false){
   for(const m of P.months){const yr=m.slice(0,4);aEBT[yr]=(aEBT[yr]||0)+ebitda[m]+ndI(m);}
   for(const m of P.months){
     if(isAct(m)){ni[m]=MT.ni[m]||0;continue;}
+    // 2026 proyectado: NI del modelo sin impuesto (mismo tratamiento que el branch isBase)
+    if(isShortTerm(m)){ni[m]=(MT.ni[m]||0)-(MT.incomeTax[m]||0);continue;}
     ni[m]=ebitda[m]+ndI(m);
   }
 
@@ -2316,7 +2345,7 @@ function renderTab(id){
   else if(id==='eerr'){renderEERRKPIs();chartMargins();chartCostos();tableEERRAnnual();chartEERRAnnual();tableEERR();}
   else if(id==='fc'){renderCFKPIs();chartCashFC();chartCashFCAnual();tableFCAnnual();chartCashWaterfall();tableFC();}
   else if(id==='bs'){renderBSKPIs();tableBSAnnual();tableBS();}
-  else if(id==='deuda'){renderExcelDebt();renderDeudaKPIs();chartSaldo();chartCuota();tableAmort();}
+  else if(id==='deuda'){renderDeudaKPIs();chartSaldo();chartCuota();tableAmort();}
 }
 
 // ═══ Display periods: monthly until Dec-2026, annual for 2027+ ═══
@@ -2550,23 +2579,36 @@ function renderCFKPIs(){
 }
 
 function renderDeudaKPIs(){
-  const scheds=getDeudaScheds();
-  if(!scheds.length){
-    document.getElementById('deuda-kpis').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:24px;font-size:12px">Agrega tramos de deuda con el botón de arriba</div>';
+  if(!P.bs||!P.modelTot){
+    document.getElementById('deuda-kpis').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:24px;font-size:12px">Cargá el modelo Excel primero</div>';
     return;
   }
-  const tot=scheds.reduce((t,s)=>t+s.amount/1e6,0);
-  const totInt=scheds.reduce((t,s)=>t+MO.reduce((tt,m)=>tt+Math.abs(s.sched[m]?.int||0),0),0);
-  const totAm=scheds.reduce((t,s)=>t+MO.reduce((tt,m)=>tt+Math.abs(s.sched[m]?.am||0),0),0);
-  const ebAn=MO.reduce((t,m)=>t+S.ebitda[m],0);
-  const ds=totInt+totAm;
-  const dscr=ds>0?ebAn/ds:0;
+  const cy=getCurrYear();
+  const cyMo=AMO.filter(m=>+m.slice(0,4)===cy);
+  const lastM=cyMo[cyMo.length-1]||AMO[AMO.length-1];
+  // Saldo deuda bancaria total = porción corriente (BS r1257 "Other Financial Liabilities")
+  // + porción no corriente (BS r1269 "Financial Debt Non Current").
+  // Verificado contra "New Banking Debt" schedule (r1661 Current + r1662 Non-current) — coincide exacto.
+  const existingDebt=(P.bs.otherFinL?.[lastM]||0)+(P.bs.debtLT?.[lastM]||0);
+  // Servicio existente bancario (del CF row 1303 "Debt Amortization") — solo capital
+  // OJO: NO sumamos "Devolución Préstamo" (r1306) porque ese flujo es POSITIVO
+  // (es un cobro de un préstamo a relacionados, no un pago de deuda nuestra).
+  const existingAmort=cyMo.reduce((t,m)=>t+Math.abs(P.modelTot.debtAm[m]||0),0);
+  // Tramos nuevos (si hay)
+  const scheds=getDeudaScheds();
+  const newTotal=scheds.reduce((t,s)=>t+s.amount/1e6,0);
+  const newAm=scheds.reduce((t,s)=>t+cyMo.reduce((tt,m)=>tt+Math.abs(s.sched[m]?.am||0),0),0);
+  const newInt=scheds.reduce((t,s)=>t+cyMo.reduce((tt,m)=>tt+Math.abs(s.sched[m]?.int||0),0),0);
+  // EBITDA del año (real + proyección)
+  const ebAn=cyMo.reduce((t,m)=>t+((isActM(m)?P.modelTot.ebitda[m]:S?.ebitda?.[m])||0),0);
+  const totalService=existingAmort+newAm+newInt;
+  const dscr=totalService>0?ebAn/totalService:0;
   const u=currUnitLbl();
   const items=[
-    {l:'Deuda total ('+u+')',v:f0(convYearly(tot,MO)),c:'blu'},
-    {l:'Intereses ('+u+')',v:'-'+f0(convYearly(totInt,MO))},
-    {l:'Amortización ('+u+')',v:'-'+f0(convYearly(totAm,MO))},
-    {l:'DSCR',v:dscr.toFixed(2)+'x',c:dscr>=1.2?'grn':dscr>=1?'amb':'red'},
+    {l:`Saldo Deuda · ${fmtM(lastM)}`,v:f0(convV(existingDebt+newTotal,lastM)),c:'blu'},
+    {l:`Amort. Bancaria ${cy}`,v:'-'+f0(convYearly(existingAmort,cyMo))},
+    {l:`Tramos Nuevos · Capital`,v:newTotal>0?f0(convYearly(newTotal,cyMo)):'—',c:newTotal>0?'amb':''},
+    {l:`DSCR ${cy}`,v:totalService>0?dscr.toFixed(2)+'x':'—',c:dscr>=1.2?'grn':dscr>=1?'amb':totalService>0?'red':''},
   ];
   document.getElementById('deuda-kpis').innerHTML=items.map(k=>
     `<div class="kpi ${k.c||''}"><div class="kl">${k.l}</div><div class="kv" style="font-size:18px">${k.v}</div></div>`
@@ -4549,34 +4591,81 @@ function renderExcelDebt(){
 }
 
 function chartSaldo(){
-  const scheds=getDeudaScheds();
-  if(!scheds.length){Plotly.purge('ch-saldo');return;}
+  if(!P.bs){Plotly.purge('ch-saldo');return;}
+  const allLb=AMO.map(fmtM);
   const unit=currUnitLbl();
-  const traces=scheds.map(s=>({x:lb,y:MO.map(m=>convV(Math.abs(s.sched[m]?.bal??0),m)),name:s.label,type:'scatter',mode:'lines+markers',fill:'tozeroy',line:{width:2}}));
-  Plotly.react('ch-saldo',traces,{...LO,yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
+  // Saldo deuda bancaria total = porción corriente (BS r1257) + porción no corriente (BS r1269).
+  // Coincide con r1661 Current Debt + r1662 Non-current Debt del schedule "New Banking Debt".
+  const existingBal=AMO.map(m=>convV((P.bs.otherFinL?.[m]||0)+(P.bs.debtLT?.[m]||0),m));
+  const traces=[{
+    x:allLb,y:existingBal,name:'Deuda Existente',type:'scatter',mode:'lines+markers',
+    fill:'tozeroy',line:{color:'#2563eb',width:2},marker:{size:3},fillcolor:'rgba(37,99,235,.10)',
+    hovertemplate:`<b>%{x}</b><br>Existente: %{y:,.0f} ${unit}<extra></extra>`,
+  }];
+  const scheds=getDeudaScheds();
+  const palette=['#7c3aed','#059669','#d97706','#dc2626','#0891b2'];
+  scheds.forEach((s,i)=>{
+    traces.push({
+      x:allLb,y:AMO.map(m=>convV(Math.abs(s.sched[m]?.bal||0),m)),
+      name:s.label||('Tramo '+(i+1)),type:'scatter',mode:'lines+markers',
+      line:{color:palette[i%palette.length],width:2,dash:'dot'},marker:{size:3},
+      hovertemplate:`<b>%{x}</b><br>${s.label}: %{y:,.0f} ${unit}<extra></extra>`,
+    });
+  });
+  // Sombra para meses reales (igual que otros charts)
+  const actCount=AMO.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  const annot=actCount?[{x:allLb[actCount-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[];
+  Plotly.react('ch-saldo',traces,{...LO,shapes,annotations:annot,yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:unit,font:{size:10}}}},cfg);
 }
 function chartCuota(){
-  const scheds=getDeudaScheds();
-  if(!scheds.length){Plotly.purge('ch-cuota');return;}
+  if(!P.modelTot){Plotly.purge('ch-cuota');return;}
+  const allLb=AMO.map(fmtM);
   const unit=currUnitLbl();
-  const intA=MO.map(m=>convV(-scheds.reduce((t,s)=>t+(s.sched[m]?.int||0),0),m));
-  const amA=MO.map(m=>convV(-scheds.reduce((t,s)=>t+(s.sched[m]?.am||0),0),m));
-  Plotly.react('ch-cuota',[
-    {x:lb,y:amA,name:'Capital',type:'bar',marker:{color:'rgba(37,99,235,.7)'}},
-    {x:lb,y:intA,name:'Interés',type:'bar',marker:{color:'rgba(239,68,68,.6)'}},
-  ],{...LO,barmode:'stack',yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
+  // Capital existente: solo "Debt Amortization" (r1303) — egreso real de amortización bancaria.
+  // Excluimos "Devolución Préstamo" (r1306) porque es positivo (cobro), no egreso.
+  const existingCap=AMO.map(m=>convV(-Math.abs(P.modelTot.debtAm[m]||0),m));
+  const scheds=getDeudaScheds();
+  const newCap=AMO.map(m=>{let t=0;for(const s of scheds)t+=Math.abs(s.sched[m]?.am||0);return convV(-t,m);});
+  const newInt=AMO.map(m=>{let t=0;for(const s of scheds)t+=Math.abs(s.sched[m]?.int||0);return convV(-t,m);});
+  const traces=[
+    {x:allLb,y:existingCap,name:'Capital existente',type:'bar',marker:{color:'rgba(37,99,235,.75)'},hovertemplate:`<b>%{x}</b><br>Capital ex.: %{y:,.0f} ${unit}<extra></extra>`},
+  ];
+  if(scheds.length){
+    traces.push({x:allLb,y:newCap,name:'Capital nuevos',type:'bar',marker:{color:'rgba(124,58,237,.75)'},hovertemplate:`<b>%{x}</b><br>Capital nuevos: %{y:,.0f} ${unit}<extra></extra>`});
+    traces.push({x:allLb,y:newInt,name:'Intereses nuevos',type:'bar',marker:{color:'rgba(239,68,68,.6)'},hovertemplate:`<b>%{x}</b><br>Intereses: %{y:,.0f} ${unit}<extra></extra>`});
+  }
+  const actCount=AMO.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  Plotly.react('ch-cuota',traces,{...LO,barmode:'stack',shapes,yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
 }
 function tableAmort(){
-  const scheds=getDeudaScheds();
-  if(!scheds.length){document.getElementById('t-amort').innerHTML='<tbody><tr><td style="text-align:center;color:var(--text3);padding:16px">Sin deuda nueva configurada</td></tr></tbody>';return;}
+  if(!P.modelTot){
+    document.getElementById('t-amort').innerHTML='<tbody><tr><td style="text-align:center;color:var(--text3);padding:16px">Cargá el modelo primero</td></tr></tbody>';
+    return;
+  }
   const unit=currUnitLbl();
-  let h=`<thead><tr><th>Tramo</th><th>Tipo</th><th>Monto (${unit})</th><th>Tasa</th>`+lb.map(l=>'<th>'+l+'</th>').join('')+'</tr></thead><tbody>';
+  const scheds=getDeudaScheds();
+  const months=MO; // sólo proyectados (cuotas futuras)
+  if(!months.length){document.getElementById('t-amort').innerHTML='<tbody><tr><td style="padding:16px;text-align:center;color:var(--text3)">Sin meses proyectados</td></tr></tbody>';return;}
+  let h=`<thead><tr><th>Concepto</th><th>Tipo</th><th>Monto (${unit})</th><th>Tasa</th>`+months.map(m=>'<th>'+fmtM(m)+'</th>').join('')+'</tr></thead><tbody>';
+  // Fila 1: Deuda existente — SALDO total mensual = corriente (BS r1257) + no corriente (BS r1269)
+  // Fila 2 (sub): amortización mensual del flujo de caja (CF row 1303 "Debt Amortization")
+  const _exBal=m=>(P.bs?.otherFinL?.[m]||0)+(P.bs?.debtLT?.[m]||0);
+  const existingBalFirst=_exBal(months[0]);
+  h+=`<tr class="sub"><td><strong>Deuda Existente · Saldo</strong></td><td>Modelo</td><td>${f0(convV(existingBalFirst,months[0]))}</td><td>—</td>`;
+  h+=months.map(m=>{const v=_exBal(m);return `<td><strong>${fmtMoney(v,m,1)}</strong></td>`;}).join('')+'</tr>';
+  h+=`<tr><td colspan="4" style="color:var(--text3);font-size:10px;padding-left:20px">└ Amortización mensual (capital)</td>`;
+  h+=months.map(m=>{const v=-Math.abs(P.modelTot.debtAm[m]||0);return `<td class="${v<0?'neg':''}" style="font-size:10px;color:var(--text3)">${Math.abs(v)>0.05?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
+  // Tramos nuevos
   const tpLbl=t=>t==='bullet'?'Bullet':t==='zero'?'Cero Cupón':'Francés';
   for(const s of scheds){
-    h+=`<tr class="sub"><td>${s.label}</td><td>${tpLbl(s.tipo)}</td><td>${f0(convV(s.amount/1e6,MO[0]))}</td><td>${(s.rate*100).toFixed(2)}%</td>`;
-    h+=MO.map(m=>{const v=s.sched[m]?.am||0;return `<td class="${v<0?'neg':''}">${v?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
+    h+=`<tr class="sub"><td>${s.label}</td><td>${tpLbl(s.tipo)}</td><td>${f0(convV(s.amount/1e6,months[0]))}</td><td>${(s.rate*100).toFixed(2)}%</td>`;
+    h+=months.map(m=>{const v=s.sched[m]?.am||0;return `<td class="${v<0?'neg':''}">${v?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
     h+=`<tr><td colspan="4" style="color:var(--text3);font-size:10px;padding-left:20px">└ Saldo</td>`;
-    h+=MO.map(m=>{const v=s.sched[m]?.bal;return `<td>${v!=null?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
+    h+=months.map(m=>{const v=s.sched[m]?.bal;return `<td>${v!=null?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
   }
   document.getElementById('t-amort').innerHTML=h+'</tbody>';
 }
