@@ -375,7 +375,7 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
 <main class="main">
 <div id="pg-dash" class="pg on">
   <div class="g4" id="kpis" style="margin-bottom:10px"></div>
-  <div id="kpis2" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px"></div>
+  <div id="kpis2" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px"></div>
   <div class="g2">
     <div class="card"><div class="card-title" id="dash-title-revpie">Distribución de Revenue por ERP</div><div id="ch-rev-pie" style="height:280px"></div></div>
     <div class="card"><div class="card-title">Cascada P&amp;L anual</div><div id="ch-wf" style="height:280px"></div></div>
@@ -2500,13 +2500,18 @@ function renderKPIs(){
     {l:`Net Income ${cy} (s/Imp)`,v:`${f0(niSc)}<span class="unit">${curUnit}</span>`,c:'grn',icon:'▲',delta:deltaEl(niSc,niBc),spark:sparkline(niSeries,90,26,'#10b981')},
     {l:`Caja al 31-Dic-${String(cy).slice(2)}`,v:`${f0(cashNoTaxSc)}<span class="unit">${curUnit}</span>`,c:'amb',icon:'◆',delta:cashFoot,spark:sparkline(cashSeries,90,26,'#d97706')},
   ];
-  // ── Row 2: ARR, Rule of 40 (con gauge), Growth YoY ──
+  // ── Row 2: ARR, Rule of 40 (con gauge), Growth YoY, Deuda/EBITDA ──
   const ruleClass=ruleS>=40?'ok':ruleS>=20?'warn':'bad';
   const rulePct=Math.max(0,Math.min(100,ruleS*1.5)); // visual scale (40 ≈ 60%)
+  // Deuda/EBITDA al cierre del año en curso
+  const totalDebtKpi=((P.bs?.otherFinL?.[_cyrLast]||0)+(P.bs?.debtLT?.[_cyrLast]||0));
+  const debtEbitdaKpi=ebAdjS>0?totalDebtKpi/ebAdjS:0;
+  const debtEbColor=ebAdjS<=0?'':debtEbitdaKpi<2?'grn':debtEbitdaKpi<3?'amb':'red';
   const row2=[
     {l:`ARR Anualizado ${getCurrYear()}`,v:`${f0(arrLastC)}<span class="unit">${curUnit}</span>`,c:'',icon:'∞',delta:deltaEl(arrLastC,arrBaseC),spark:sparkline(arrSeries,90,26,'#3b82f6')},
     {l:`Rule of 40 ${getCurrYear()}`,v:`${ruleS.toFixed(0)}<span class="unit">%</span>`,c:ruleS>=40?'grn':ruleS>=20?'amb':'red',icon:'⟁',delta:deltaPct(ruleS,ruleB),spark:`<div class="kpi-gauge ${ruleClass}"><div class="kpi-gauge-fill" style="width:${rulePct}%"></div></div>`},
     {l:`Growth YoY ${getCurrYear()}`,v:growthYoY!=null?`${growthYoY.toFixed(1)}<span class="unit">%</span>`:'—',c:'purp',icon:'↗',delta:growthYoY!=null?deltaPct(growthYoY,growthYoYBase):'',spark:''},
+    {l:`Deuda / EBITDA ${getCurrYear()}`,v:ebAdjS>0?`${debtEbitdaKpi.toFixed(2)}<span class="unit">x</span>`:'—',c:debtEbColor,icon:'⚖',delta:`<span class="kpi-delta fl">Saldo ${f0(convV(totalDebtKpi,_cyrLast))} ${curUnit}</span>`,spark:''},
   ];
   document.getElementById('kpis').innerHTML=row1.map(mkKPI).join('');
   document.getElementById('kpis2').innerHTML=row2.map(mkKPI).join('');
@@ -2604,9 +2609,14 @@ function renderDeudaKPIs(){
   const totalService=existingAmort+newAm+newInt;
   const dscr=totalService>0?ebAn/totalService:0;
   const u=currUnitLbl();
+  // Apalancamiento Deuda / EBITDA — métrica clásica de leverage
+  // Convención: <2x sano, 2-3x moderado, 3-4x alto, >4x crítico
+  const totalDebt=existingDebt+newTotal;
+  const debtEbitda=ebAn>0?totalDebt/ebAn:0;
+  const debtEbitdaColor=ebAn<=0?'':debtEbitda<2?'grn':debtEbitda<3?'amb':'red';
   const items=[
-    {l:`Saldo Deuda · ${fmtM(lastM)}`,v:f0(convV(existingDebt+newTotal,lastM)),c:'blu'},
-    {l:`Amort. Bancaria ${cy}`,v:'-'+f0(convYearly(existingAmort,cyMo))},
+    {l:`Saldo Deuda · ${fmtM(lastM)}`,v:f0(convV(totalDebt,lastM)),c:'blu'},
+    {l:`Deuda / EBITDA ${cy}`,v:ebAn>0?debtEbitda.toFixed(2)+'x':'—',c:debtEbitdaColor},
     {l:`Tramos Nuevos · Capital`,v:newTotal>0?f0(convYearly(newTotal,cyMo)):'—',c:newTotal>0?'amb':''},
     {l:`DSCR ${cy}`,v:totalService>0?dscr.toFixed(2)+'x':'—',c:dscr>=1.2?'grn':dscr>=1?'amb':totalService>0?'red':''},
   ];
