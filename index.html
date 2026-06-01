@@ -1906,7 +1906,16 @@ function project(ov={}, _forceEngine=false){
         out.divs[m]=MT.divs[m]||0;
       }else{
         out.ni[m]=(MT.ni[m]||0)-(MT.incomeTax[m]||0);
-        out.divs[m]=out.ni[m]>0?-divPct*out.ni[m]:0;
+        // Detección de override manual en el Excel:
+        //   Si MT.divs[m] difiere de la fórmula base (-divPctBase × EBT) por más de 0.5 M,
+        //   se asume que el usuario lo tocó a mano → respetamos el valor del modelo.
+        //   Si coincide con la fórmula, recalculamos con el slider actual divPct.
+        const ebt=out.ni[m];
+        const divPctBase=P.div_pct_base||0.3;
+        const formulaBase=ebt>0?-divPctBase*ebt:0;
+        const modelDiv=MT.divs[m]||0;
+        const isManual=Math.abs(modelDiv-formulaBase)>0.5; // tolerancia 0.5 M CLP
+        out.divs[m]=isManual?modelDiv:(ebt>0?-divPct*ebt:0);
       }
       out.cfop[m]=MT.cfop[m]||0;
       out.cfin[m]=MT.cffin[m]||0;
@@ -2167,9 +2176,15 @@ function project(ov={}, _forceEngine=false){
     }
     const niRef=_bRef?(_bRef.ni[m]||0):(MT.ni[m]||0);
     const dNI=ni[m]-niRef;
-    const scenDivs=ni[m]>0?-divPct*ni[m]:0;
-    const baseDivs=_bRef?(niRef>0?-divPct*niRef:0):(MT.divs[m]||0);
+    // Detección de dividendo manual en el Excel: si MT.divs[m] no matchea la fórmula
+    // base (-divPctBase × EBT_modelo), respetamos el valor del modelo.
+    const ebtModel=(MT.ni[m]||0)-(MT.incomeTax[m]||0);
+    const divPctBase=P.div_pct_base||0.3;
+    const formulaBaseDiv=ebtModel>0?-divPctBase*ebtModel:0;
     const modelDivs=MT.divs[m]||0;
+    const isDivManual=Math.abs(modelDivs-formulaBaseDiv)>0.5;
+    const scenDivs=isDivManual?modelDivs:(ni[m]>0?-divPct*ni[m]:0);
+    const baseDivs=isDivManual?modelDivs:(_bRef?(niRef>0?-divPct*niRef:0):(MT.divs[m]||0));
     const dDivs=scenDivs-baseDivs;
     const newDebtCF=ndIn(m)+ndA(m);
     const wcS=P.ar_days*revT[m]/30-P.ap_days*cogsT[m]/30;
