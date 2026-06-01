@@ -1214,12 +1214,23 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     const rowMA=findRow(wsE,'M&A',1283);
     const rowDebtAm=findRow(wsE,'Debt Amortization',1283);
     const rowIncDebt=findRow(wsE,'Increase Financial Debt',1283);
-    const rowDevolBPO=findRow(wsE,'Devolución Prestamo',1283);
+    // En el modelo nuevo la etiqueta es 'Devolución Prestamo (BPO)'. En el viejo era 'Devolución Prestamo'.
+    let rowDevolBPO=findRow(wsE,'Devolución Prestamo (BPO)',1283);
+    if(rowDevolBPO<0) rowDevolBPO=findRow(wsE,'Devolución Prestamo',1283);
     const rowDivCF=findRow(wsE,'Dividends',1283);
     const rowCashEOP=findRow(wsE,'Cash and cash equivalents, end of period');
     const rowCashBOP=findRow(wsE,'Cash and cash equivalents, beginning of period');
     const rowAjustes=findRow(wsE,'Total Ajuste');
     const rowIncomeTax=findDataRow(wsE,'Income Tax',ymCol('2026-12'));
+
+    // ═══ CF Operacional — detalle (modelo nuevo desagrega WC + IVA + PPM + tax) ═══
+    const rowWcPure=findRow(wsE,'(Increase) / Decrease In Operating Working Capital',1283);
+    const rowIvaDev=findRow(wsE,'Devengo IVA neto del mes (DF − CF generado)',1283);
+    const rowIvaPag=findRow(wsE,'Pago F29 IVA al SII (mes anterior)',1283);
+    const rowPpm=findRow(wsE,'PPM',1283);
+    const rowRentaPag=findRow(wsE,'Pago Operación Renta SII (Abril año siguiente)',1283);
+    const rowDevolImp=findRow(wsE,'Devolución Impuestos',1283);
+    const rowReversoTax=findRow(wsE,'Reverso Income Tax devengo (no cash)',1283);
 
     const brigs={
       time:findProductBridge(wsE,'Product Time'),
@@ -1345,40 +1356,64 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     const rowCFinv=findRow(wsE,'Net Cash Provided By (Used In) Investing Activities');
     const rowCFfin=findRow(wsE,'Net Cash Provided By (Used In) Financing Activities');
 
-    // ═══ BALANCE SHEET rows (from 0-indexed exploration of the Excel) ═══
-    const BS_ROWS = {
-      cash:             {label:'Cash and Cash Equivalents',           row:1235, section:'ca', dynamic:'cash'},
-      ar:               {label:'Accounts Receivable',                 row:1236, section:'ca'},
-      rpReceivable:     {label:'Related Party Receivable',            row:1237, section:'ca'},
-      currentTaxA:      {label:'Current Tax Assets',                  row:1238, section:'ca'},
-      otherCurrentA:    {label:'Other Current Assets',                row:1239, section:'ca'},
-      otherFinA:        {label:'Other Financial Assets',              row:1240, section:'ca'},
-      inventory:        {label:'Inventory',                           row:1241, section:'ca'},
-      totalCurrentA:    {label:'Current Assets',                      row:1243, section:'ca', subtotal:true},
-      ltRelatedR:       {label:'Long Term Related Party Receivable',  row:1245, section:'nca'},
-      investments:      {label:'Investments',                         row:1246, section:'nca'},
-      ppe:              {label:'PP&E',                                row:1247, section:'nca'},
-      intangibles:      {label:'Intangible Assets',                   row:1248, section:'nca'},
-      otherNonCurrentA: {label:'Other Non Current Assets',            row:1250, section:'nca'},
-      totalNonCurrentA: {label:'Non Current Assets',                  row:1252, section:'nca', subtotal:true},
-      totalAssets:      {label:'Total Assets',                        row:1254, section:'tot', subtotal:true},
-      otherFinL:        {label:'Other Financial Liabilities',         row:1256, section:'cl'},
-      ap:               {label:'Accounts Payable',                    row:1257, section:'cl'},
-      rpPayable:        {label:'Related Party Payable',               row:1258, section:'cl'},
-      deferredRev:      {label:'Deferred Revenue',                    row:1259, section:'cl'},
-      provEmp:          {label:'Provisions for Employee Benefits',    row:1260, section:'cl'},
-      currentTaxL:      {label:'Current Tax Liabilities',             row:1261, section:'cl'},
-      otherCurrentL:    {label:'Other Current Liabilities',           row:1262, section:'cl'},
-      otherPayables:    {label:'Other Payables',                      row:1263, section:'cl'},
-      totalCurrentL:    {label:'Current Liabilities',                 row:1266, section:'cl', subtotal:true},
-      debtLT:           {label:'Financial Debt Non Current',          row:1268, section:'ncl', dynamic:'newDebtLT'},
-      totalNonCurrentL: {label:'Non Current Liabilities',             row:1269, section:'ncl', subtotal:true},
-      totalLiab:        {label:'Total Liabilities',                   row:1271, section:'tot', subtotal:true},
-      equity:           {label:'Equity (Capital)',                    row:1275, section:'eq'},
-      retainedEarnings: {label:'Retained Earnings',                   row:1276, section:'eq', dynamic:'retained'},
-      totalEquity:      {label:'Total Equity',                        row:1278, section:'eq', subtotal:true},
-      checkEL:          {label:'Equity + Liabilities',                row:1280, section:'tot', subtotal:true},
+    // ═══ BALANCE SHEET rows — dynamically resolved by label in col E ═══
+    // Anchor: "Balance Sheet" header in col E (~R1234). Then each BS row label found in
+    // a window after the anchor. Resilient to row shifts when new BS lines are added/removed.
+    const _bsAnchor=(()=>{
+      for(let r=1200;r<1310;r++){
+        const c=wsE[XLSX.utils.encode_cell({r,c:4})];
+        if(c&&typeof c.v==='string'&&c.v.trim()==='Balance Sheet')return r;
+      }
+      return 1233; // fallback to known position
+    })();
+    const _bsLabelRow=(lbl)=>{
+      // Search col E in window [anchor, anchor+80]. Returns SheetJS 0-indexed row or -1.
+      for(let r=_bsAnchor;r<_bsAnchor+80;r++){
+        const c=wsE[XLSX.utils.encode_cell({r,c:4})];
+        if(c&&typeof c.v==='string'&&c.v.trim()===lbl)return r;
+      }
+      return -1;
     };
+    const BS_ROWS = {
+      cash:             {label:'Cash and Cash Equivalents',           row:_bsLabelRow('Cash and Cash Equivalents'),           section:'ca', dynamic:'cash'},
+      ar:               {label:'Accounts Receivable',                 row:_bsLabelRow('Accounts Receivable'),                 section:'ca'},
+      rpReceivable:     {label:'Related Party Receivable',            row:_bsLabelRow('Related Party Receivable'),            section:'ca'},
+      currentTaxA:      {label:'Current Tax Assets',                  row:_bsLabelRow('Current Tax Assets'),                  section:'ca'},
+      inputVAT:         {label:'Input VAT',                           row:_bsLabelRow('Input VAT'),                           section:'ca'},
+      ppm:              {label:'PPM',                                 row:_bsLabelRow('PPM'),                                 section:'ca'},
+      otherCurrentA:    {label:'Other Current Assets',                row:_bsLabelRow('Other Current Assets'),                section:'ca'},
+      otherFinA:        {label:'Other Financial Assets',              row:_bsLabelRow('Other Financial Assets'),              section:'ca'},
+      inventory:        {label:'Inventory',                           row:_bsLabelRow('Inventory'),                           section:'ca'},
+      totalCurrentA:    {label:'Current Assets',                      row:_bsLabelRow('Current Assets'),                      section:'ca', subtotal:true},
+      ltRelatedR:       {label:'Long Term Related Party Receivable',  row:_bsLabelRow('Long Term Related Party Receivable'),  section:'nca'},
+      investments:      {label:'Investments',                         row:_bsLabelRow('Investments'),                         section:'nca'},
+      ppe:              {label:'PP&E',                                row:_bsLabelRow('PP&E'),                                section:'nca'},
+      intangibles:      {label:'Intangible Assets',                   row:_bsLabelRow('Intangible Assets'),                   section:'nca'},
+      otherNonCurrentA: {label:'Other Non Current Assets',            row:_bsLabelRow('Other Non Current Assets'),            section:'nca'},
+      totalNonCurrentA: {label:'Non Current Assets',                  row:_bsLabelRow('Non Current Assets'),                  section:'nca', subtotal:true},
+      totalAssets:      {label:'Total Assets',                        row:_bsLabelRow('Total Assets'),                        section:'tot', subtotal:true},
+      otherFinL:        {label:'Other Financial Liabilities',         row:_bsLabelRow('Other Financial Liabilities'),         section:'cl'},
+      ap:               {label:'Accounts Payable',                    row:_bsLabelRow('Accounts Payable'),                    section:'cl'},
+      rpPayable:        {label:'Related Party Payable',               row:_bsLabelRow('Related Party Payable'),               section:'cl'},
+      deferredRev:      {label:'Deferred Revenue',                    row:_bsLabelRow('Deferred Revenue'),                    section:'cl'},
+      provEmp:          {label:'Provisions for Employee Benefits',    row:_bsLabelRow('Provisions for Employee Benefits'),    section:'cl'},
+      currentTaxL:      {label:'Current Tax Liabilities',             row:_bsLabelRow('Current Tax Liabilities'),             section:'cl'},
+      outputVAT:        {label:'Output VAT',                          row:_bsLabelRow('Output VAT'),                          section:'cl'},
+      incomeTax:        {label:'Income Tax (BS)',                     row:_bsLabelRow('Income Tax'),                          section:'cl'},
+      otherCurrentL:    {label:'Other Current Liabilities',           row:_bsLabelRow('Other Current Liabilities'),           section:'cl'},
+      otherPayables:    {label:'Other Payables',                      row:_bsLabelRow('Other Payables'),                      section:'cl'},
+      totalCurrentL:    {label:'Current Liabilities',                 row:_bsLabelRow('Current Liabilities'),                 section:'cl', subtotal:true},
+      debtLT:           {label:'Financial Debt Non Current',          row:_bsLabelRow('Financial Debt Non Current'),          section:'ncl', dynamic:'newDebtLT'},
+      // Note: source file has typo "Non Currrent Liabilities" (3 r's). Try both spellings.
+      totalNonCurrentL: {label:'Non Current Liabilities',             row:(_bsLabelRow('Non Currrent Liabilities')>=0?_bsLabelRow('Non Currrent Liabilities'):_bsLabelRow('Non Current Liabilities')), section:'ncl', subtotal:true},
+      totalLiab:        {label:'Total Liabilities',                   row:_bsLabelRow('Total Liabilities'),                   section:'tot', subtotal:true},
+      equity:           {label:'Equity',                              row:_bsLabelRow('Equity'),                              section:'eq'},
+      retainedEarnings: {label:'Earnings',                            row:_bsLabelRow('Earnings'),                            section:'eq', dynamic:'retained'},
+      totalEquity:      {label:'Total Equity',                        row:_bsLabelRow('Total Equity'),                        section:'eq', subtotal:true},
+      checkEL:          {label:'Equity + Liabilities',                row:_bsLabelRow('Equity + Liabilities'),                section:'tot', subtotal:true},
+    };
+    // Drop rows not present in this file (e.g. Input VAT/PPM if uploading old file)
+    for(const k of Object.keys(BS_ROWS)) if(BS_ROWS[k].row<0) delete BS_ROWS[k];
     const bs={};
     // Parse allMonths PLUS Dec snapshots for every annual year (so BS annual shows 2023-2028 even if desde=2026)
     const bsMonths=[...new Set([...allMonths,...[2023,2024,2025,2026,2027,2028].map(y=>y+'-12')])];
@@ -1431,7 +1466,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     // Use findRow (not findDataRow) since probeC=2024-01 might be empty for BS
     const rowCashBS=findRow(wsE,'Cash and Cash Equivalents');
     console.log('[Cash BS] rowCashBS=',rowCashBS,'test Jan-26 value=',numV(wsE,rowCashBS,ymCol('2026-01')));
-    const modelTot={rev:{},cogs:{},sga:{},ebitda:{},ni:{},cashEOP:{},cashBS:{},dep:{},amort:{},capex:{},ma:{},debtAm:{},incDebt:{},devolBPO:{},divs:{},ajustes:{},cfop:{},cfinv:{},cffin:{},incomeTax:{}};
+    const modelTot={rev:{},cogs:{},sga:{},ebitda:{},ni:{},cashEOP:{},cashBS:{},dep:{},amort:{},capex:{},ma:{},debtAm:{},incDebt:{},devolBPO:{},divs:{},ajustes:{},cfop:{},cfinv:{},cffin:{},incomeTax:{},wcPure:{},ivaDev:{},ivaPag:{},ppm:{},rentaPag:{},devolImp:{},reversoTax:{}};
     for(const m of allMonths){
       const c=ymCol(m);
       modelTot.rev[m]=numV(wsE,rowRev,c)/1e6;
@@ -1454,6 +1489,14 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       modelTot.cfinv[m]=rowCFinv>0?numV(wsE,rowCFinv,c)/1e6:0;
       modelTot.cffin[m]=rowCFfin>0?numV(wsE,rowCFfin,c)/1e6:0;
       modelTot.incomeTax[m]=rowIncomeTax>0?numV(wsE,rowIncomeTax,c)/1e6:0;
+      // Detalle CF Operacional (modelo nuevo)
+      modelTot.wcPure[m]=rowWcPure>0?numV(wsE,rowWcPure,c)/1e6:0;
+      modelTot.ivaDev[m]=rowIvaDev>0?numV(wsE,rowIvaDev,c)/1e6:0;
+      modelTot.ivaPag[m]=rowIvaPag>0?numV(wsE,rowIvaPag,c)/1e6:0;
+      modelTot.ppm[m]=rowPpm>0?numV(wsE,rowPpm,c)/1e6:0;
+      modelTot.rentaPag[m]=rowRentaPag>0?numV(wsE,rowRentaPag,c)/1e6:0;
+      modelTot.devolImp[m]=rowDevolImp>0?numV(wsE,rowDevolImp,c)/1e6:0;
+      modelTot.reversoTax[m]=rowReversoTax>0?numV(wsE,rowReversoTax,c)/1e6:0;
     }
 
     // Client metrics + ARPA per bridge product
@@ -1743,6 +1786,33 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       priorYearEbitda+=numV(wsE,rowEBITDA,ymCol(ym))/1e6;
     }
 
+    // ═══ Tasa efectiva de impuesto a la renta POR AÑO, leída del modelo ═══
+    // Modelo Excel: EBT (label "EBT" en col E ~R1216), Income Tax (label "Income Tax" en col E ~R1220)
+    // Anual cols 126-131 = 2023-2028. Rate = -Tax / EBT por año.
+    const _findEERRRow=(lbl)=>{
+      for(let r=1200;r<1240;r++){
+        const c=wsE[XLSX.utils.encode_cell({r,c:4})];
+        if(c&&typeof c.v==='string'&&c.v.trim()===lbl)return r;
+      }
+      return -1;
+    };
+    const _rowEBT=_findEERRRow('EBT');
+    const _rowTax=_findEERRRow('Income Tax');
+    const taxRateByYear={};
+    if(_rowEBT>=0&&_rowTax>=0){
+      for(let i=0;i<ANNUAL_YEARS.length;i++){
+        const yr=ANNUAL_YEARS[i];
+        const c=ANNUAL_COL_BASE+i;
+        const ebt=numV(wsE,_rowEBT,c);
+        const tax=numV(wsE,_rowTax,c);
+        if(Math.abs(ebt)>1e3) taxRateByYear[yr]=Math.max(0,Math.min(0.5,-tax/ebt));
+      }
+    }
+    // Fallback para años fuera del rango del Excel: usar el último año conocido (típicamente 27% en 2028)
+    const _lastTaxYr=Math.max(...Object.keys(taxRateByYear).map(y=>+y).filter(y=>!isNaN(y)),0);
+    const _fallbackTaxRate=_lastTaxYr?taxRateByYear[_lastTaxYr]:0.27;
+    console.log('[tax] rate by year:',taxRateByYear,'fallback:',_fallbackTaxRate);
+
     P={
       months:allMonths,actualMonths,projMonths,cutoff:cutoffYM,projFirst,
       uf,ipc,model,modelTot,
@@ -1753,7 +1823,8 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       cogsPct,sgaPct,corpSgaPct,
       cogsParams:cogsParamsLine,sgaParams:sgaParamsLine,
       ar_days,ap_days,cashStart,
-      tax_rate:0.27,
+      tax_rate:_fallbackTaxRate,       // legacy, se mantiene como fallback general
+      tax_rate_by_year:taxRateByYear,  // mapa año→tasa efectiva del modelo
       div_pct_base:0.3,
       priorYearRev,priorYearEbitda,
       bs,bsDef:BS_ROWS,annual,annualYears:ANNUAL_YEARS,
@@ -1841,22 +1912,24 @@ function project(ov={}, _forceEngine=false){
       out.cfin[m]=MT.cffin[m]||0;
       out.cfinv[m]=MT.cfinv[m]||0;
       out.cashEOP[m]=MT.cashEOP[m]||MT.cashBS[m]||0;
-      out.dWC[m]=(MT.cfop[m]||0)-(MT.ni[m]||0)-(MT.dep[m]||0);
+      // dWC = CF Op − NI(pre-tax) − Dep. Importante usar out.ni (pre-impuesto) y no MT.ni
+      // (post-impuesto), para que ni+dep+dWC reconstruya correctamente MT.cfop.
+      // Si usamos MT.ni cuando out.ni difiere por el tax devengo de Dec, el "Δ WC" absorbe
+      // un +tax_devengo extra y el subtotal CF Op queda inflado por ese monto.
+      out.dWC[m]=(MT.cfop[m]||0)-(out.ni[m]||0)-(MT.dep[m]||0);
       out.revM[m]=MGR_PRODS.reduce((s,p)=>s+(out.rev[p][m]||0),0);
       out.revS[m]=SIS_PRODS.reduce((s,p)=>s+(out.rev[p][m]||0),0);
       out.sgaCorp[m]=out.sga.corp?.[m]||0;
     }
-    // Caja real proyectada (incluye pago de impuesto del año anterior en Abril)
-    // cashNoTax = caja real "operativa": acumula flujos + paga impuesto fiscal año previo en Abril.
-    //   En Dic año X la caja todavía NO descontó el tax de X (se paga en Abr año X+1).
-    // cashWithTax = informativo: caja si el impuesto del año en curso se pagara HOY (no real, sólo para Dashboard).
-    // out.taxPaid[m] = monto pagado de tax año anterior en este mes (0 salvo Abril)
-    // out.taxAccrued[m] = provisión tax acumulada del año fiscal en curso (al cierre del mes)
+    // Caja proyectada: el nuevo modelo Excel ya tiene baked-in el timing real del impuesto
+    // (Reverso Income Tax en Dic + Pago Operación Renta SII en Abril). Por eso acumulamos
+    // los componentes que YA estan en MT.cfop sin simular el flujo del tax aparte.
+    // cashWithTax / taxAccrued / taxPaid se mantienen por compatibilidad con código externo
+    // pero apuntan al mismo valor que cashNoTax (no hay "post-tax" separado).
     out.taxPaid={};out.taxAccrued={};
     if(P.actualMonths?.length){
       const lastAct=P.actualMonths[P.actualMonths.length-1];
       let cashReal=MT.cashBS[lastAct]||MT.cashEOP[lastAct]||0;
-      const yearTaxAccum={}; // tax devengado por año fiscal, se paga en Abril año siguiente
       for(const m of P.actualMonths){
         out.cashNoTax[m]=MT.cashBS[m]||MT.cashEOP[m]||0;
         out.cashWithTax[m]=out.cashNoTax[m];
@@ -1864,33 +1937,20 @@ function project(ov={}, _forceEngine=false){
         out.taxAccrued[m]=0;
       }
       for(const pm of P.projMonths){
-        const yr=pm.slice(0,4);
-        const mo=pm.slice(5);
-        // En Abril paga impuesto del año fiscal anterior
-        let taxPayment=0;
-        if(mo==='04'){
-          const prevYr=String(+yr-1);
-          if(yearTaxAccum[prevYr]!=null){
-            taxPayment=yearTaxAccum[prevYr]; // negativo = egreso
-            delete yearTaxAccum[prevYr];
-          }
-        }
         const ni=out.ni[pm]||0;
         const dep=(MT.dep[pm]||0)+(MT.amort[pm]||0);
         const dwc=out.dWC[pm]||0;
         const ma=MT.ma[pm]||0;
+        const capex=MT.capex[pm]||0;
         const devol=MT.devolBPO[pm]||0;
         const amort=MT.debtAm[pm]||0;
         const incDebt=MT.incDebt[pm]||0;
         const divs=out.divs[pm]||0;
-        cashReal+=ni+dep+dwc+ma+devol+amort+incDebt+divs+taxPayment;
+        cashReal+=ni+dep+dwc+ma+capex+devol+amort+incDebt+divs;
         out.cashNoTax[pm]=cashReal;
-        out.taxPaid[pm]=taxPayment;
-        // Acumular tax devengado del año fiscal en curso
-        yearTaxAccum[yr]=(yearTaxAccum[yr]||0)+(MT.incomeTax[pm]||0);
-        out.taxAccrued[pm]=yearTaxAccum[yr];
-        // cashWithTax: caja real + tax devengado pendiente del año en curso (informativo)
-        out.cashWithTax[pm]=cashReal+yearTaxAccum[yr];
+        out.cashWithTax[pm]=cashReal;
+        out.taxPaid[pm]=0;
+        out.taxAccrued[pm]=0;
       }
     }
     return out;
@@ -2125,7 +2185,8 @@ function project(ov={}, _forceEngine=false){
     const modelCFfinNoDivDebt=(MT.cffin[m]||0)-modelDivs;
     cfin[m]=modelCFfinNoDivDebt+scenDivs+ndIn(m)+ndA(m);
     cfinv[m]=MT.cfinv[m]||0;
-    dWC[m]=(MT.cfop[m]||0)-(MT.ni[m]||0)-(MT.dep[m]||0);
+    // dWC con NI pre-impuesto (ni[m]) para consistencia con isBase y para que ni+dep+dWC=cfop
+    dWC[m]=(MT.cfop[m]||0)-(ni[m]||0)-(MT.dep[m]||0);
     cashEOP[m]=(MT.cashEOP[m]||0)+cumDelta;
   }
 
@@ -2134,34 +2195,26 @@ function project(ov={}, _forceEngine=false){
   if(P.actualMonths?.length){
     const lastAct=P.actualMonths[P.actualMonths.length-1];
     let cashReal=MT.cashBS[lastAct]||MT.cashEOP[lastAct]||0;
-    const yearTaxAccum={};
     for(const am of P.actualMonths){
       cashNoTax[am]=MT.cashBS[am]||MT.cashEOP[am]||0;
       cashWithTax[am]=cashNoTax[am];
       taxPaid[am]=0;taxAccrued[am]=0;
     }
     for(const pm of P.projMonths){
-      const yr=pm.slice(0,4),mo=pm.slice(5);
-      let taxPayment=0;
-      if(mo==='04'){
-        const prevYr=String(+yr-1);
-        if(yearTaxAccum[prevYr]!=null){taxPayment=yearTaxAccum[prevYr];delete yearTaxAccum[prevYr];}
-      }
       const ni_m=ni[pm]||0;
       const dep_m=(MT.dep[pm]||0)+(MT.amort[pm]||0);
       const dwc_m=dWC[pm]||0;
       const ma_m=MT.ma[pm]||0;
+      const capex_m=MT.capex[pm]||0;
       const devol_m=MT.devolBPO[pm]||0;
       const amort_m=MT.debtAm[pm]||0;
       const incDebt_m=MT.incDebt[pm]||0;
       const divs_m=divs[pm]||0;
       const newDebtNet=ndIn(pm)+ndA(pm);
-      cashReal+=ni_m+dep_m+dwc_m+ma_m+devol_m+amort_m+incDebt_m+divs_m+newDebtNet+taxPayment;
+      cashReal+=ni_m+dep_m+dwc_m+ma_m+capex_m+devol_m+amort_m+incDebt_m+divs_m+newDebtNet;
       cashNoTax[pm]=cashReal;
-      taxPaid[pm]=taxPayment;
-      yearTaxAccum[yr]=(yearTaxAccum[yr]||0)+(MT.incomeTax[pm]||0);
-      taxAccrued[pm]=yearTaxAccum[yr];
-      cashWithTax[pm]=cashReal+yearTaxAccum[yr];
+      cashWithTax[pm]=cashReal;
+      taxPaid[pm]=0;taxAccrued[pm]=0;
     }
   }
 
@@ -2484,12 +2537,10 @@ function renderKPIs(){
   const cashNoTaxSc=convV(cashNoTaxS,lastM),cashNoTaxBc=convV(cashNoTaxB,lastM);
   const cashWithTaxSc=convV(cashWithTaxS,lastM);
   const arrLastC=convV(arrLast,lastM),arrBaseC=convV(arrBase,lastM);
-  // KPI Caja: muestra Caja real al cierre (s/Imp, antes de pago de impuesto que ocurre Abr año siguiente)
-  // Footer: impuesto pendiente a pagar y caja proyectada post-impuesto
+  // KPI Caja: muestra Caja al cierre del año proyectado.
+  // (El timing real del impuesto ya está dentro del modelo via Pago Operación Renta SII en Abril.)
   const cy=getCurrYear();
-  const taxPendiente=cashNoTaxSc-cashWithTaxSc;
-  const cashFootStyle=`font-family:'DM Mono',monospace;font-size:10px;font-weight:500;color:var(--text3);letter-spacing:.2px;line-height:1.4`;
-  const cashFoot=`<span style="${cashFootStyle}">Impto Renta (Abr-${String(cy+1).slice(2)}): <strong style="color:#dc2626">${f0(-Math.abs(taxPendiente))}</strong> ${curUnit}<br>Caja post-Impto: <strong style="color:var(--text2)">${f0(cashWithTaxSc)}</strong> ${curUnit}</span>`;
+  const cashFoot=deltaEl(cashNoTaxSc,cashNoTaxBc);
   // EBITDA Adj. con margen inline (pill arriba del valor)
   const marginPillColor=ebMarginS>=25?'#059669':ebMarginS>=15?'#d97706':'#dc2626';
   const marginPillBg=ebMarginS>=25?'rgba(5,150,105,.10)':ebMarginS>=15?'rgba(217,119,6,.10)':'rgba(220,38,38,.10)';
@@ -2574,9 +2625,7 @@ function renderCFKPIs(){
     {l:`CFop ${cy} (${u})`,v:convYearly(cfopTot,projMo),c:'blu'},
     {l:`CFinv ${cy} (${u})`,v:convYearly(cfinvTot,projMo)},
     {l:`CFfin ${cy} (${u})`,v:convYearly(cfinTot,projMo)},
-    {l:`Caja al 31-Dic-${String(cy).slice(2)} (real)`,v:convV(cashNoTax,lastM),c:'grn'},
-    {l:`Provisión Imp. Renta (Abr-${String(cy+1).slice(2)})`,v:convYearly(taxTot,projMo)},
-    {l:`Caja proyectada post-Impuesto`,v:convV(cashWithTax,lastM),c:'amb'},
+    {l:`Caja al 31-Dic-${String(cy).slice(2)}`,v:convV(cashNoTax,lastM),c:'grn'},
   ];
   document.getElementById('cf-kpis').innerHTML=items.map(k=>
     `<div class="kpi ${k.c||''}"><div class="kl">${k.l}</div><div class="kv" style="font-size:18px">${f0(k.v)}</div></div>`
@@ -2654,32 +2703,45 @@ function chartRevProd(){
   }
   const isDark=document.documentElement.getAttribute('data-theme')==='dark';
   const fg=isDark?'#e5e7eb':'#111827';
+  // Responsivo según ancho del contenedor:
+  //   ≥ 520px: leyenda lateral derecha, % adentro de los slices
+  //   < 520px: leyenda abajo (horizontal), sólo % adentro (sin label) para evitar choques
+  const gd=document.getElementById('ch-rev-pie');
+  const w=gd?.clientWidth||520;
+  const wide=w>=520;
   Plotly.react('ch-rev-pie',[{
     type:'pie',
     labels,values,
     marker:{colors,line:{color:isDark?'#0f172a':'#ffffff',width:2}},
-    textinfo:'label+percent',
-    // Texto adentro: blanco grueso (alto contraste sobre slices coloreadas)
-    insidetextfont:{family:"'Outfit',sans-serif",size:12,color:'#ffffff',weight:600},
-    // Texto afuera: color del tema (cuando un slice es muy chico Plotly lo saca afuera)
-    outsidetextfont:{family:"'Outfit',sans-serif",size:11,color:fg},
-    insidetextorientation:'radial',
+    // Sólo el % en los slices, los nombres van en la leyenda → evita superposición
+    textinfo:'percent',
+    textposition:'inside',
+    insidetextfont:{family:"'Outfit',sans-serif",size:wide?12:10,color:'#ffffff',weight:600},
+    insidetextorientation:'horizontal',
+    automargin:true,
+    sort:false,
     hovertemplate:`<b>%{label}</b><br>%{value:,.0f} ${unit}<br>%{percent}<extra></extra>`,
     hoverlabel:{bgcolor:isDark?'#1e293b':'#fff',bordercolor:isDark?'#475569':'#d1d5db',font:{family:"'DM Mono',monospace",size:12,color:fg}},
-    hole:0.45,
+    hole:0.5,
   }],{
     paper_bgcolor:'transparent',
     plot_bgcolor:'transparent',
     font:{family:"'Outfit',sans-serif",size:11,color:fg},
     showlegend:true,
-    legend:{font:{size:10,color:fg},orientation:'v',x:1.02,y:0.5,xanchor:'left',yanchor:'middle',bgcolor:'transparent'},
-    margin:{t:10,b:10,l:10,r:140},
+    autosize:true,
+    legend:wide
+      ?{font:{size:10,color:fg},orientation:'v',x:1,y:0.5,xanchor:'left',yanchor:'middle',bgcolor:'transparent',itemwidth:30}
+      :{font:{size:9,color:fg},orientation:'h',y:-0.05,x:0.5,xanchor:'center',yanchor:'top',bgcolor:'transparent'},
+    margin:wide?{t:10,b:10,l:10,r:110}:{t:10,b:60,l:10,r:10},
     annotations:[{
       text:`<b>${f0(values.reduce((s,v)=>s+v,0))}</b><br><span style="font-size:9px;color:#9ca3af">${unit} · ${getCurrYear()}</span>`,
       x:0.5,y:0.5,xref:'paper',yref:'paper',showarrow:false,
-      font:{family:"'Instrument Serif',serif",size:22,color:fg},
+      font:{family:"'Instrument Serif',serif",size:wide?22:18,color:fg},
     }],
-  },cfg);
+  },cfg).then(()=>{
+    const el=document.getElementById('ch-rev-pie');
+    if(el)Plotly.Plots.resize(el);
+  });
 }
 function chartWaterfall(){
   const _wfMo=getCurrYrMo();
@@ -4036,11 +4098,8 @@ function chartCashWaterfall(){
   const amortTotalSum = amortSum + newDebtUiAmort;
   // Dividendos = 30% × NI (sin impuesto), tomado del motor S.divs
   const divsSum = sum(m=>S?.divs?.[m]||0);
-  // Impuesto: valor anual del Excel (cae en Dic) — usamos suma para capturar cualquier mes
-  const taxSum = sum(m=>MT.incomeTax[m]||0);
-
-  const cashBeforeTax = cashStart + niSum + depSum + dwcSum + maSum + devolSum + amortTotalSum + incDebtSum + newDebtUiInflow + divsSum;
-  const cashAfterTax  = cashBeforeTax + taxSum;
+  // Caja al cierre del año proyectado (timing real del tax ya dentro de MT.cfop via R1299 / R1301)
+  const cashFinal = cashStart + niSum + depSum + dwcSum + maSum + devolSum + amortTotalSum + incDebtSum + newDebtUiInflow + divsSum;
 
   // Construir arrays para Plotly waterfall
   const measures=[], xLabels=[], yValues=[], txtLabels=[];
@@ -4060,9 +4119,7 @@ function chartCashWaterfall(){
   if(Math.abs(maSum)>0.05) push('M&A (Convecta)',maSum,'relative');
   push('Amort. Deuda',amortTotalSum,'relative');
   push(`Dividendos (${divPctNow}% NI)`,divsSum,'relative');
-  push(`Caja al 31-Dic-${String(cy).slice(2)}`,cashBeforeTax,'total');
-  push(`Impuesto Renta (pagable Abr-${String(cy+1).slice(2)})`,taxSum,'relative');
-  push(`Caja proyectada post-Impuesto`,cashAfterTax,'total');
+  push(`Caja al 31-Dic-${String(cy).slice(2)}`,cashFinal,'total');
 
   document.getElementById('wf-title').innerHTML=`Flujo de Caja proyectado · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:11px">${fmtM(firstProj)} → ${fmtM(lastProj)} · ${unit}</span>`;
   // Paleta pastel alineada a "Cascada P&L Anual"
@@ -4148,9 +4205,20 @@ function tableFC(){
     return cashNoTaxArr[monthly[idx-1]];
   };
   const divPctNow=+(document.getElementById('div')?.value||30);
-  const _fnNi=m=>_fcGet(m,'ni');
-  const _fnDep=m=>_fcGet(m,'dep')+(MT.amort[m]||0);
-  const _fnDwc=m=>_fcGet(m,'dwc');
+  // CF Operacional — desagregado igual que el modelo Excel
+  // NOTA: NI mostrado aquí es POST-impuesto (=MT.ni). La línea "Reverso Income Tax devengo"
+  // revierte el tax del NI dentro del CF Op para que la suma matchee MT.cfop sin pago real del tax en Dic.
+  const _fnNi=m=>MT.ni[m]||0; // post-tax NI (igual que Excel CF row)
+  const _fnDep=m=>MT.dep[m]||0;
+  const _fnAmort_=m=>MT.amort[m]||0;
+  const _fnWcPure=m=>MT.wcPure[m]||0;
+  const _fnIvaDev=m=>MT.ivaDev[m]||0;
+  const _fnIvaPag=m=>MT.ivaPag[m]||0;
+  const _fnPpm=m=>MT.ppm[m]||0;
+  const _fnRentaPag=m=>MT.rentaPag[m]||0;
+  const _fnDevolImp=m=>MT.devolImp[m]||0;
+  const _fnReversoTax=m=>MT.reversoTax[m]||0;
+  const _fnCapex=m=>MT.capex[m]||0;
   const _fnMa=m=>MT.ma[m]||0;
   const _fnBpo=m=>MT.devolBPO[m]||0;
   const _fnRandom=m=>MT.incDebt[m]||0;
@@ -4158,19 +4226,26 @@ function tableFC(){
   const _fnUiAm=m=>_fcGet(m,'ndAm');
   const _fnAmort=m=>_fcGet(m,'debtEx');
   const _fnDivs=m=>_fcGet(m,'divs');
-  const _fnTaxPaid=m=>S?.taxPaid?.[m]||0;
-  const _sumOp=m=>_fnNi(m)+_fnDep(m)+_fnDwc(m);
-  const _sumInv=m=>_fnMa(m);
-  const _sumFin=m=>_fnBpo(m)+_fnRandom(m)+_fnUiIn(m)+_fnUiAm(m)+_fnAmort(m)+_fnDivs(m)+_fnTaxPaid(m);
+  const _sumOp=m=>_fnNi(m)+_fnDep(m)+_fnAmort_(m)+_fnWcPure(m)+_fnIvaDev(m)+_fnIvaPag(m)+_fnPpm(m)+_fnRentaPag(m)+_fnDevolImp(m)+_fnReversoTax(m);
+  const _sumInv=m=>_fnCapex(m)+_fnMa(m);
+  const _sumFin=m=>_fnBpo(m)+_fnRandom(m)+_fnUiIn(m)+_fnUiAm(m)+_fnAmort(m)+_fnDivs(m);
   const rows=[
     {sec:'CAJA'},
     {l:'Caja BoP',f:cashBopFn,snap:'first',bold:true},
     {sec:'CF OPERACIONAL'},
-    {l:'NI (s/ Impuesto)',f:_fnNi},
-    {l:'+ Depreciación',f:_fnDep},
-    {l:'+ Δ Capital de Trabajo',f:_fnDwc},
+    {l:'Net Income / (Loss)',f:_fnNi},
+    {l:'Depreciation',f:_fnDep},
+    {l:'Amortization',f:_fnAmort_},
+    {l:'(Increase) / Decrease In Operating Working Capital',f:_fnWcPure},
+    {l:'Devengo IVA neto del mes (DF − CF generado)',f:_fnIvaDev,hl:'green'},
+    {l:'Pago F29 IVA al SII (mes anterior)',f:_fnIvaPag,hl:'red'},
+    {l:'PPM',f:_fnPpm,hl:'red'},
+    {l:'Pago Operación Renta SII (Abril año siguiente)',f:_fnRentaPag,hl:'red'},
+    {l:'Devolución Impuestos',f:_fnDevolImp,hl:'green'},
+    {l:'Reverso Income Tax devengo (no cash)',f:_fnReversoTax,hl:'green'},
     {l:'≡ Subtotal CF Operacional',f:_sumOp,tot:true},
     {sec:'CF INVERSIÓN'},
+    {l:'CAPEX',f:_fnCapex,hl:'red'},
     {l:'M&A (Convecta)',f:_fnMa,hl:'red'},
     {l:'≡ Subtotal CF Inversión',f:_sumInv,tot:true},
     {sec:'CF FINANCIERO'},
@@ -4180,13 +4255,9 @@ function tableFC(){
     {l:'Tramos Nuevos (amort.)',f:_fnUiAm,hl:'red'},
     {l:'Amort. Deuda Existente',f:_fnAmort,hl:'red'},
     {l:`Dividendos (${divPctNow}% NI)`,f:_fnDivs,hl:'red'},
-    {l:'Pago Impuesto Renta año anterior (Abr)',f:_fnTaxPaid,hl:'red'},
     {l:'≡ Subtotal CF Financiero',f:_sumFin,tot:true},
-    {sec:'RESULTADO · Caja real al cierre'},
-    {l:'Caja EoP (real)',f:m=>cashNoTaxArr[m],tot:true,bold:true,snap:'last',hl:'blue'},
-    {sec:'Impuesto Renta · se paga en Abril del año siguiente'},
-    {l:'Provisión Impuesto Renta',f:m=>MT.incomeTax[m]||0,hl:'red'},
-    {l:'Caja proyectada post-Impuesto',f:m=>cashWithTaxArr[m],tot:true,bold:true,snap:'lastWithTax',hl:'blue'},
+    {sec:'RESULTADO · Caja al cierre'},
+    {l:'Caja EoP',f:m=>cashNoTaxArr[m],tot:true,bold:true,snap:'last',hl:'blue'},
   ];
   const sec=lbl=>`<tr><td colspan="${monthly.length+2}" style="background:var(--surface2);font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text4);padding:8px 11px;font-weight:700;border-top:1px solid var(--border)">${lbl}</td></tr>`;
   const badge='<span class="act-badge">Real</span>';
@@ -4276,24 +4347,30 @@ function tableFCAnnual(){
     }
     return r+'</tr>';
   };
-  // ─── Helpers alineados al WATERFALL (sin impuesto) ───
+  // ─── Helpers alineados al modelo Excel (CF desagregado) ───
   const MT=P.modelTot;
-  // Para anual: sumar usando engine NI (sin impuesto en proy) + dep + dwc + flujos detallados
-  const sumNiNoTax=yr=>monthsOfYr(yr).reduce((t,m)=>t+(isActM(m)?(MT.ni[m]||0):(S?.ni?.[m]||0)),0);
-  const sumDep=yr=>monthsOfYr(yr).reduce((t,m)=>t+(MT.dep[m]||0)+(MT.amort[m]||0),0);
-  const sumDwc=yr=>monthsOfYr(yr).reduce((t,m)=>t+(S?.dWC?.[m]||0),0);
-  const sumMa=yr=>monthsOfYr(yr).reduce((t,m)=>t+(MT.ma[m]||0),0);
-  const sumBpo=yr=>monthsOfYr(yr).reduce((t,m)=>t+(MT.devolBPO[m]||0),0);
-  const sumRandom=yr=>monthsOfYr(yr).reduce((t,m)=>t+(MT.incDebt[m]||0),0);
+  const _sumOf=(yr,k)=>monthsOfYr(yr).reduce((t,m)=>t+(MT[k]?.[m]||0),0);
+  const sumNi=yr=>_sumOf(yr,'ni'); // post-tax (matchea Excel)
+  const sumDep=yr=>_sumOf(yr,'dep');
+  const sumAmort_=yr=>_sumOf(yr,'amort');
+  const sumWcPure=yr=>_sumOf(yr,'wcPure');
+  const sumIvaDev=yr=>_sumOf(yr,'ivaDev');
+  const sumIvaPag=yr=>_sumOf(yr,'ivaPag');
+  const sumPpm=yr=>_sumOf(yr,'ppm');
+  const sumRentaPag=yr=>_sumOf(yr,'rentaPag');
+  const sumDevolImp=yr=>_sumOf(yr,'devolImp');
+  const sumReversoTax=yr=>_sumOf(yr,'reversoTax');
+  const sumCapex=yr=>_sumOf(yr,'capex');
+  const sumMa=yr=>_sumOf(yr,'ma');
+  const sumBpo=yr=>_sumOf(yr,'devolBPO');
+  const sumRandom=yr=>_sumOf(yr,'incDebt');
   const sumUiIn=yr=>monthsOfYr(yr).reduce((t,m)=>t+(S?.ndIn?S.ndIn(m):0),0);
   const sumUiAm=yr=>monthsOfYr(yr).reduce((t,m)=>t+(S?.ndA?S.ndA(m):0),0);
-  const sumAmort=yr=>monthsOfYr(yr).reduce((t,m)=>t+(MT.debtAm[m]||0),0);
+  const sumAmort=yr=>_sumOf(yr,'debtAm');
   const sumDivs=yr=>monthsOfYr(yr).reduce((t,m)=>t+(isActM(m)?(MT.divs[m]||0):(S?.divs?.[m]||0)),0);
-  const sumTax=yr=>monthsOfYr(yr).reduce((t,m)=>t+(MT.incomeTax[m]||0),0);
-  const sumTaxPaid=yr=>monthsOfYr(yr).reduce((t,m)=>t+(S?.taxPaid?.[m]||0),0);
-  const sumCFop=yr=>sumNiNoTax(yr)+sumDep(yr)+sumDwc(yr);
-  const sumCFinv=yr=>sumMa(yr);
-  const sumCFfin=yr=>sumBpo(yr)+sumRandom(yr)+sumUiIn(yr)+sumUiAm(yr)+sumAmort(yr)+sumDivs(yr)+sumTaxPaid(yr);
+  const sumCFop=yr=>sumNi(yr)+sumDep(yr)+sumAmort_(yr)+sumWcPure(yr)+sumIvaDev(yr)+sumIvaPag(yr)+sumPpm(yr)+sumRentaPag(yr)+sumDevolImp(yr)+sumReversoTax(yr);
+  const sumCFinv=yr=>sumCapex(yr)+sumMa(yr);
+  const sumCFfin=yr=>sumBpo(yr)+sumRandom(yr)+sumUiIn(yr)+sumUiAm(yr)+sumAmort(yr)+sumDivs(yr);
   // Caja s/Impuesto y c/Impuesto a fin de año
   const cashNoTaxEoY=yr=>{
     const ms=monthsOfYr(yr);if(!ms.length)return 0;
@@ -4347,11 +4424,19 @@ function tableFCAnnual(){
   h+=sec('CAJA');
   h+=snapRowHl('Caja BoP',cashBoY,{bold:true});
   h+=sec('CF OPERACIONAL');
-  h+=rowHl('NI (s/ Impuesto)',sumNiNoTax);
-  h+=rowHl('+ Depreciación',sumDep);
-  h+=rowHl('+ Δ Capital de Trabajo',sumDwc);
+  h+=rowHl('Net Income / (Loss)',sumNi);
+  h+=rowHl('Depreciation',sumDep);
+  h+=rowHl('Amortization',sumAmort_);
+  h+=rowHl('(Increase) / Decrease In Operating Working Capital',sumWcPure);
+  h+=rowHl('Devengo IVA neto del mes (DF − CF generado)',sumIvaDev,{hl:'green'});
+  h+=rowHl('Pago F29 IVA al SII (mes anterior)',sumIvaPag,{hl:'red'});
+  h+=rowHl('PPM',sumPpm,{hl:'red'});
+  h+=rowHl('Pago Operación Renta SII (Abril año siguiente)',sumRentaPag,{hl:'red'});
+  h+=rowHl('Devolución Impuestos',sumDevolImp,{hl:'green'});
+  h+=rowHl('Reverso Income Tax devengo (no cash)',sumReversoTax,{hl:'green'});
   h+=rowHl('≡ Subtotal CF Operacional',sumCFop,{tot:true});
   h+=sec('CF INVERSIÓN');
+  h+=rowHl('CAPEX',sumCapex,{hl:'red'});
   h+=rowHl('M&A (Convecta)',sumMa,{hl:'red'});
   h+=rowHl('≡ Subtotal CF Inversión',sumCFinv,{tot:true});
   h+=sec('CF FINANCIERO');
@@ -4361,13 +4446,9 @@ function tableFCAnnual(){
   h+=rowHl('Tramos Nuevos (amort.)',sumUiAm,{hl:'red'});
   h+=rowHl('Amort. Deuda Existente',sumAmort,{hl:'red'});
   h+=rowHl('Dividendos',sumDivs,{hl:'red'});
-  h+=rowHl('Pago Impuesto Renta año anterior (Abr)',sumTaxPaid,{hl:'red'});
   h+=rowHl('≡ Subtotal CF Financiero',sumCFfin,{tot:true});
-  h+=sec('RESULTADO · Caja real al cierre');
-  h+=snapRowHl('Caja EoP (real)',cashNoTaxEoY,{tot:true,bold:true,hl:'blue'});
-  h+=sec('Impuesto Renta · se paga en Abril año siguiente');
-  h+=rowHl('Provisión Impuesto Renta',sumTax,{hl:'red'});
-  h+=snapRowHl('Caja proyectada post-Impuesto',cashWithTaxEoY,{tot:true,bold:true,hl:'blue'});
+  h+=sec('RESULTADO · Caja al cierre');
+  h+=snapRowHl('Caja EoP',cashNoTaxEoY,{tot:true,bold:true,hl:'blue'});
   document.getElementById('t-fc-annual').innerHTML=h+'</tbody></table>';
 }
 
