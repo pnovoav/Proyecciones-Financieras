@@ -1208,29 +1208,36 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     const rowSGA=findDataRow(wsE,'SG&A',probeC);
     const rowEBITDA=findDataRow(wsE,'EBITDA',probeC);
     const rowNI=findDataRow(wsE,'Net Income / (Loss)',probeC);
+    // Helper: prueba múltiples labels (compat ES → EN del modelo) y devuelve el primero hallado.
+    const findRowAny=(labels,start=1283)=>{
+      for(const lbl of labels){
+        const r=findRow(wsE,lbl,start);
+        if(r>=0) return r;
+      }
+      return -1;
+    };
     const rowDep=findRow(wsE,'Depreciation',1283);
     const rowAmort=findRow(wsE,'Amortization',1283);
     const rowCAPEX=findRow(wsE,'CAPEX',1283);
     const rowMA=findRow(wsE,'M&A',1283);
     const rowDebtAm=findRow(wsE,'Debt Amortization',1283);
     const rowIncDebt=findRow(wsE,'Increase Financial Debt',1283);
-    // En el modelo nuevo la etiqueta es 'Devolución Prestamo (BPO)'. En el viejo era 'Devolución Prestamo'.
-    let rowDevolBPO=findRow(wsE,'Devolución Prestamo (BPO)',1283);
-    if(rowDevolBPO<0) rowDevolBPO=findRow(wsE,'Devolución Prestamo',1283);
+    // El modelo cambió varios labels de español a inglés. Se prueban ambos.
+    const rowDevolBPO=findRowAny(['Loan Repayment (BPO)','Devolución Prestamo (BPO)','Devolución Prestamo']);
     const rowDivCF=findRow(wsE,'Dividends',1283);
     const rowCashEOP=findRow(wsE,'Cash and cash equivalents, end of period');
     const rowCashBOP=findRow(wsE,'Cash and cash equivalents, beginning of period');
-    const rowAjustes=findRow(wsE,'Total Ajuste');
+    const rowAjustes=findRowAny(['Total Adjustment','Total Ajuste'],0);
     const rowIncomeTax=findDataRow(wsE,'Income Tax',ymCol('2026-12'));
 
-    // ═══ CF Operacional — detalle (modelo nuevo desagrega WC + IVA + PPM + tax) ═══
+    // ═══ CF Operacional — detalle (modelo desagrega WC + IVA + PPM + tax) ═══
     const rowWcPure=findRow(wsE,'(Increase) / Decrease In Operating Working Capital',1283);
-    const rowIvaDev=findRow(wsE,'Devengo IVA neto del mes (DF − CF generado)',1283);
-    const rowIvaPag=findRow(wsE,'Pago F29 IVA al SII (mes anterior)',1283);
+    const rowIvaDev=findRowAny(['Net VAT accrual for the month (Output VAT − Input VAT generated)','Devengo IVA neto del mes (DF − CF generado)']);
+    const rowIvaPag=findRowAny(['F29 VAT payment to SII (prior month)','Pago F29 IVA al SII (mes anterior)']);
     const rowPpm=findRow(wsE,'PPM',1283);
-    const rowRentaPag=findRow(wsE,'Pago Operación Renta SII (Abril año siguiente)',1283);
-    const rowDevolImp=findRow(wsE,'Devolución Impuestos',1283);
-    const rowReversoTax=findRow(wsE,'Reverso Income Tax devengo (no cash)',1283);
+    const rowRentaPag=findRowAny(['Income Tax payment to SII (April of following year)','Pago Operación Renta SII (Abril año siguiente)']);
+    const rowDevolImp=findRowAny(['Tax Refund','Devolución Impuestos']);
+    const rowReversoTax=findRowAny(['Reversal Income Tax accrual (non-cash)','Reverso Income Tax devengo (no cash)']);
 
     const brigs={
       time:findProductBridge(wsE,'Product Time'),
