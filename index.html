@@ -366,6 +366,11 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
       <div class="ctrl-label">Ratio pago <strong id="div-lbl">30%</strong></div>
       <div class="input-group"><input type="number" id="div" value="30" min="0" max="100" step="5" oninput="document.getElementById('div-lbl').textContent=this.value+'%';compute();renderAll()"><span class="unit">%</span></div>
     </div>
+    <div class="ctrl-row" style="margin-top:6px">
+      <div class="ctrl-label" style="font-size:10px;color:var(--text3)">o Monto fijo mensual <span style="font-size:9px;color:var(--text4)">(0 = usar %)</span></div>
+      <div class="input-group"><input type="number" id="div-fix" value="0" min="0" step="10" oninput="compute();renderAll()"><span class="unit">M CLP</span></div>
+    </div>
+    <div style="font-size:9px;color:var(--text4);margin-top:4px;line-height:1.3">Los meses con override manual en el Excel se respetan siempre.</div>
   </div>
   <div class="ctrl-section">
     <div class="ctrl-section-title">Crecimiento MRR (mensual)</div>
@@ -1865,6 +1870,8 @@ function project(ov={}, _forceEngine=false){
   }
   let divPct=ov.div_pct??P.div_pct_base;
   if(Math.abs(divPct-(P.div_pct_base||0.3))<0.005)divPct=P.div_pct_base||0.3;
+  // Monto fijo mensual de dividendo (negativo = egreso). 0 = sin override.
+  const divFix=+(ov.div_fix)||0;
   const newDebt=ov.new_debt||[];
   const uf=m=>P.uf[m]||39000;
   const isAct=m=>P.actualMonths.includes(m);
@@ -1874,6 +1881,7 @@ function project(ov={}, _forceEngine=false){
   // _forceEngine bypasses this shortcut (used internally for delta-reference computation)
   const isBase=!_forceEngine&&(()=>{
     if(newDebt.length>0)return false;
+    if(divFix>0)return false;
     if(Math.abs(divPct-(P.div_pct_base||0.3))>0.0005)return false;
     for(const p of BRIDGE){
       const baseG=P.mrr_growth_base?.[p]||0;
@@ -1913,16 +1921,18 @@ function project(ov={}, _forceEngine=false){
         out.divs[m]=MT.divs[m]||0;
       }else{
         out.ni[m]=(MT.ni[m]||0)-(MT.incomeTax[m]||0);
-        // Detección de override manual en el Excel:
-        //   Si MT.divs[m] difiere de la fórmula base (-divPctBase × EBT) por más de 0.5 M,
-        //   se asume que el usuario lo tocó a mano → respetamos el valor del modelo.
-        //   Si coincide con la fórmula, recalculamos con el slider actual divPct.
+        // Prioridad de dividendos (proyectados):
+        //   1. Override manual del Excel (MT.divs ≠ -divPctBase × EBT por más de 0.5 M) → respetar
+        //   2. Override de "monto fijo mensual" en UI (divFix > 0) → -divFix
+        //   3. Fórmula -divPct × EBT con el slider
         const ebt=out.ni[m];
         const divPctBase=P.div_pct_base||0.3;
         const formulaBase=ebt>0?-divPctBase*ebt:0;
         const modelDiv=MT.divs[m]||0;
         const isManual=Math.abs(modelDiv-formulaBase)>0.5; // tolerancia 0.5 M CLP
-        out.divs[m]=isManual?modelDiv:(ebt>0?-divPct*ebt:0);
+        if(isManual) out.divs[m]=modelDiv;
+        else if(divFix>0) out.divs[m]=-divFix;
+        else out.divs[m]=ebt>0?-divPct*ebt:0;
       }
       out.cfop[m]=MT.cfop[m]||0;
       out.cfin[m]=MT.cffin[m]||0;
@@ -2183,15 +2193,22 @@ function project(ov={}, _forceEngine=false){
     }
     const niRef=_bRef?(_bRef.ni[m]||0):(MT.ni[m]||0);
     const dNI=ni[m]-niRef;
-    // Detección de dividendo manual en el Excel: si MT.divs[m] no matchea la fórmula
-    // base (-divPctBase × EBT_modelo), respetamos el valor del modelo.
+    // Prioridad de dividendos (proyectados):
+    //   1. Override manual del Excel → respetar
+    //   2. Monto fijo mensual UI (divFix > 0) → -divFix
+    //   3. Fórmula -divPct × EBT_escenario
     const ebtModel=(MT.ni[m]||0)-(MT.incomeTax[m]||0);
     const divPctBase=P.div_pct_base||0.3;
     const formulaBaseDiv=ebtModel>0?-divPctBase*ebtModel:0;
     const modelDivs=MT.divs[m]||0;
     const isDivManual=Math.abs(modelDivs-formulaBaseDiv)>0.5;
-    const scenDivs=isDivManual?modelDivs:(ni[m]>0?-divPct*ni[m]:0);
-    const baseDivs=isDivManual?modelDivs:(_bRef?(niRef>0?-divPct*niRef:0):(MT.divs[m]||0));
+    let scenDivs, baseDivs;
+    if(isDivManual){scenDivs=modelDivs;baseDivs=modelDivs;}
+    else if(divFix>0){scenDivs=-divFix;baseDivs=-divFix;}
+    else{
+      scenDivs=ni[m]>0?-divPct*ni[m]:0;
+      baseDivs=_bRef?(niRef>0?-divPct*niRef:0):(MT.divs[m]||0);
+    }
     const dDivs=scenDivs-baseDivs;
     const newDebtCF=ndIn(m)+ndA(m);
     const wcS=P.ar_days*revT[m]/30-P.ap_days*cogsT[m]/30;
@@ -2321,6 +2338,8 @@ function compute(){
   let divPct=+document.getElementById('div').value/100;
   // Snap to base if within rounding tolerance (avoid spurious deltas)
   if(Math.abs(divPct-(P.div_pct_base||0.3))<0.001)divPct=P.div_pct_base||0.3;
+  // Monto fijo mensual de dividendo (M CLP). 0 = no override.
+  const divFix=+(document.getElementById('div-fix')?.value)||0;
   const mrrR={};BRIDGE.forEach(p=>{
     const el=document.getElementById('mr-'+p);
     if(el){
@@ -2341,7 +2360,7 @@ function compute(){
     if(am>0)nd.push({amount:am,rate:r,start:st,tenor:tn,tipo:tp});
   });
   B=project();
-  S=project({div_pct:divPct,mrr_growth:mrrR,new_debt:nd});
+  S=project({div_pct:divPct,div_fix:divFix,mrr_growth:mrrR,new_debt:nd});
   // Also compute the projected Balance Sheet for both scenarios
   Bbs=projectBS(B);
   Sbs=projectBS(S);
@@ -4132,6 +4151,8 @@ function chartCashWaterfall(){
 
   // Depreciación se incluye en la caja pero NO en el gráfico (es muy chica)
   const divPctNow=+(document.getElementById('div')?.value||30);
+  const divFixNow=+(document.getElementById('div-fix')?.value||0);
+  const divLabel=divFixNow>0?`Dividendos (${divFixNow} M CLP/mes fijo)`:`Dividendos (${divPctNow}% NI)`;
   push('Caja Inicial',cashStart,'absolute');
   push('Utilidad Neta',niSum,'relative');
   push('Δ Cap. Trabajo',dwcSum,'relative');
@@ -4140,7 +4161,7 @@ function chartCashWaterfall(){
   if(Math.abs(newDebtUiInflow)>0.05) push('Tramos Nuevos',newDebtUiInflow,'relative');
   if(Math.abs(maSum)>0.05) push('M&A (Convecta)',maSum,'relative');
   push('Amort. Deuda',amortTotalSum,'relative');
-  push(`Dividendos (${divPctNow}% NI)`,divsSum,'relative');
+  push(divLabel,divsSum,'relative');
   push(`Caja al 31-Dic-${String(cy).slice(2)}`,cashFinal,'total');
 
   document.getElementById('wf-title').innerHTML=`Flujo de Caja proyectado · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:11px">${fmtM(firstProj)} → ${fmtM(lastProj)} · ${unit}</span>`;
@@ -4227,6 +4248,8 @@ function tableFC(){
     return cashNoTaxArr[monthly[idx-1]];
   };
   const divPctNow=+(document.getElementById('div')?.value||30);
+  const divFixNow=+(document.getElementById('div-fix')?.value||0);
+  const divLabel=divFixNow>0?`Dividendos (${divFixNow} M CLP/mes fijo)`:`Dividendos (${divPctNow}% NI)`;
   // CF Operacional — desagregado igual que el modelo Excel
   // NOTA: NI mostrado aquí es POST-impuesto (=MT.ni). La línea "Reverso Income Tax devengo"
   // revierte el tax del NI dentro del CF Op para que la suma matchee MT.cfop sin pago real del tax en Dic.
@@ -4276,7 +4299,7 @@ function tableFC(){
     {l:'Tramos Nuevos (inflow)',f:_fnUiIn,hl:'green'},
     {l:'Tramos Nuevos (amort.)',f:_fnUiAm,hl:'red'},
     {l:'Amort. Deuda Existente',f:_fnAmort,hl:'red'},
-    {l:`Dividendos (${divPctNow}% NI)`,f:_fnDivs,hl:'red'},
+    {l:divLabel,f:_fnDivs,hl:'red'},
     {l:'≡ Subtotal CF Financiero',f:_sumFin,tot:true},
     {sec:'RESULTADO · Caja al cierre'},
     {l:'Caja EoP',f:m=>cashNoTaxArr[m],tot:true,bold:true,snap:'last',hl:'blue'},
@@ -4854,7 +4877,7 @@ document.addEventListener('keydown',e=>{
 
 // ── ESTADO: serialización del P + sliders ──
 function getState(){
-  const sliders={div_pct:+document.getElementById('div')?.value||30,mrr_rates:{},debt:[]};
+  const sliders={div_pct:+document.getElementById('div')?.value||30,div_fix:+document.getElementById('div-fix')?.value||0,mrr_rates:{},debt:[]};
   BRIDGE.forEach(p=>{const el=document.getElementById('mr-'+p);if(el)sliders.mrr_rates[p]=+el.value;});
   document.querySelectorAll('#dc .dc').forEach(c=>{
     sliders.debt.push({
@@ -4895,6 +4918,10 @@ function applyState(state){
       // Migrar legacy 50% (default antiguo) a 30% (default actual). Cualquier otro valor se respeta.
       const dp=sliders.div_pct===50?30:sliders.div_pct;
       if(el){el.value=dp;document.getElementById('div-lbl').textContent=dp+'%';}
+    }
+    if(sliders.div_fix!=null){
+      const el=document.getElementById('div-fix');
+      if(el)el.value=sliders.div_fix;
     }
     if(sliders.mrr_rates){
       Object.entries(sliders.mrr_rates).forEach(([p,v])=>{
