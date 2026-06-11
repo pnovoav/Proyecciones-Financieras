@@ -385,6 +385,8 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
     <div class="card"><div class="card-title" id="dash-title-revpie">Distribución de Revenue por ERP</div><div id="ch-rev-pie" style="height:280px"></div></div>
     <div class="card"><div class="card-title">Cascada P&amp;L anual</div><div id="ch-wf" style="height:280px"></div></div>
   </div>
+  <div class="card gmb"><div class="card-title" id="dash-title-cash-wf">Flujo de Caja proyectado</div><div id="ch-cash-wf-dash" style="height:360px"></div></div>
+  <div class="card gmb"><div class="card-title">Evolución de la deuda financiera</div><div id="ch-saldo-dash" style="height:240px"></div></div>
   <div class="card gmb"><div class="card-title" id="dash-title-ebit">EBITDA mensual · margen %</div><div id="ch-ebit" style="height:200px"></div></div>
   <div class="card gmb"><div class="card-title" id="dash-title-cash">Saldo caja EOP</div><div id="ch-cash" style="height:180px"></div></div>
   <div class="card gmb"><div class="card-title">Métricas por producto — último mes real</div><div class="tw"><table id="t-metrics"></table></div></div>
@@ -2153,6 +2155,16 @@ function project(ov={}, _forceEngine=false){
     sgaCorp[m]=sga.corp?.[m]||0;
     ajustes[m]=MT.ajustes[m]||0;
     ebitda[m]=revT[m]+cogsT[m]+sgaT[m];
+    // ─── Patch: para meses actuals o shortTerm, los totales se leen DIRECTO del modelo.
+    // La suma por producto (cogs[p], sga[p]) NO incluye porciones corporativas/ajustes
+    // que sí están en MT.cogs/sga, así que sumarlas da un EBITDA inflado.
+    // (Aparecía como bug: agregar deuda movía el EBITDA porque rompía el isBase shortcut.)
+    if(isAct(m)||isShortTerm(m)){
+      revT[m]=MT.rev[m]||0;
+      cogsT[m]=MT.cogs[m]||0;
+      sgaT[m]=MT.sga[m]||0;
+      ebitda[m]=MT.ebitda[m]||0;
+    }
   }
 
   // Step 5: New debt schedule
@@ -2434,7 +2446,7 @@ function renderAll(){
 }
 function renderTab(id){
   if(!B||!S)return;
-  if(id==='dash'){renderKPIs();chartRevProd();chartWaterfall();chartEBIT();chartCash();tableMetrics();}
+  if(id==='dash'){renderKPIs();chartRevProd();chartWaterfall();chartCashWaterfall('ch-cash-wf-dash');chartSaldo('ch-saldo-dash');chartEBIT();chartCash();tableMetrics();}
   else if(id==='ing'){tableRevAnnual();chartRevByProd();chartBridge();tableBridge();tableMRR();}
   else if(id==='eerr'){renderEERRKPIs();chartMargins();chartCostos();tableEERRAnnual();chartEERRAnnual();tableEERR();}
   else if(id==='fc'){renderCFKPIs();chartCashFC();chartCashFCAnual();tableFCAnnual();chartCashWaterfall();tableFC();}
@@ -4108,13 +4120,13 @@ function chartCF(){
     {x:allLb,y:conv(cashArr),name:'Caja EOP',type:'scatter',mode:'lines+markers',yaxis:'y2',line:{color:'#2563eb',width:2.5},marker:{size:5},hovertemplate:`<b>%{x}</b><br>Caja EOP: %{y:,.0f} ${unit}<extra></extra>`},
   ],{...LO,barmode:'relative',shapes,yaxis:{...LO.yaxis,title:{text:`CF (${unit})`,font:{size:10,color:getThemeColors().fg}}},yaxis2:{overlaying:'y',side:'right',gridcolor:'transparent',tickfont:{size:9},color:'#2563eb',title:{text:`Caja (${unit})`,font:{size:10,color:'#2563eb'}}},margin:{...LO.margin,r:58},annotations:actCount?[{x:allLb[actCount-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[]},cfg);
 }
-function chartCashWaterfall(){
+function chartCashWaterfall(targetId='ch-cash-wf'){
   // Waterfall flujo de caja: solo meses proyectados de 2026 (May → Dic)
   const cy=getCurrYear();
   const MT=P.modelTot;
   if(!MT)return;
   const projMo=P.projMonths.filter(m=>+m.slice(0,4)===cy);
-  if(!projMo.length){Plotly.purge('ch-cash-wf');return;}
+  if(!projMo.length){Plotly.purge(targetId);return;}
   const firstProj=projMo[0];
   const lastProj=projMo[projMo.length-1];
 
@@ -4164,7 +4176,9 @@ function chartCashWaterfall(){
   push(divLabel,divsSum,'relative');
   push(`Caja al 31-Dic-${String(cy).slice(2)}`,cashFinal,'total');
 
-  document.getElementById('wf-title').innerHTML=`Flujo de Caja proyectado · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:11px">${fmtM(firstProj)} → ${fmtM(lastProj)} · ${unit}</span>`;
+  // Título dinámico: el FC tab usa wf-title, el dashboard usa dash-title-cash-wf
+  const titleEl=targetId==='ch-cash-wf-dash'?document.getElementById('dash-title-cash-wf'):document.getElementById('wf-title');
+  if(titleEl)titleEl.innerHTML=`Flujo de Caja proyectado · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:11px">${fmtM(firstProj)} → ${fmtM(lastProj)} · ${unit}</span>`;
   // Paleta pastel alineada a "Cascada P&L Anual"
   const isDark=document.documentElement.getAttribute('data-theme')==='dark';
   const colors={
@@ -4187,7 +4201,7 @@ function chartCashWaterfall(){
     return isDark?'#0f172a':'#1a202c';              // texto oscuro sobre pastel
   });
 
-  Plotly.react('ch-cash-wf',[{
+  Plotly.react(targetId,[{
     type:'waterfall',
     orientation:'v',
     measure:measures,
@@ -4726,26 +4740,31 @@ function renderExcelDebt(){
   document.getElementById('t-excel-debt').innerHTML=h+'</tbody>';
 }
 
-function chartSaldo(){
-  if(!P.bs){Plotly.purge('ch-saldo');return;}
+function chartSaldo(targetId='ch-saldo'){
+  if(!P.bs){Plotly.purge(targetId);return;}
   const allLb=AMO.map(fmtM);
   const unit=currUnitLbl();
   // Saldo deuda bancaria total = porción corriente (BS r1257) + porción no corriente (BS r1269).
   // Coincide con r1661 Current Debt + r1662 Non-current Debt del schedule "New Banking Debt".
   const existingBal=AMO.map(m=>convV((P.bs.otherFinL?.[m]||0)+(P.bs.debtLT?.[m]||0),m));
+  // Stack: cada tramo nuevo se apila encima del saldo existente (área cumulativa).
   const traces=[{
-    x:allLb,y:existingBal,name:'Deuda Existente',type:'scatter',mode:'lines+markers',
-    fill:'tozeroy',line:{color:'#2563eb',width:2},marker:{size:3},fillcolor:'rgba(37,99,235,.10)',
+    x:allLb,y:existingBal,name:'Deuda Existente',type:'scatter',mode:'lines',
+    stackgroup:'debt',line:{color:'#2563eb',width:2},
+    fillcolor:'rgba(37,99,235,.18)',
     hovertemplate:`<b>%{x}</b><br>Existente: %{y:,.0f} ${unit}<extra></extra>`,
   }];
   const scheds=getDeudaScheds();
   const palette=['#7c3aed','#059669','#d97706','#dc2626','#0891b2'];
+  const fillPalette=['rgba(124,58,237,.30)','rgba(5,150,105,.30)','rgba(217,119,6,.30)','rgba(220,38,38,.30)','rgba(8,145,178,.30)'];
   scheds.forEach((s,i)=>{
     traces.push({
       x:allLb,y:AMO.map(m=>convV(Math.abs(s.sched[m]?.bal||0),m)),
-      name:s.label||('Tramo '+(i+1)),type:'scatter',mode:'lines+markers',
-      line:{color:palette[i%palette.length],width:2,dash:'dot'},marker:{size:3},
-      hovertemplate:`<b>%{x}</b><br>${s.label}: %{y:,.0f} ${unit}<extra></extra>`,
+      name:s.label||('Tramo '+(i+1)),type:'scatter',mode:'lines',
+      stackgroup:'debt',
+      line:{color:palette[i%palette.length],width:2},
+      fillcolor:fillPalette[i%fillPalette.length],
+      hovertemplate:`<b>%{x}</b><br>${s.label||('Tramo '+(i+1))}: %{y:,.0f} ${unit}<extra></extra>`,
     });
   });
   // Sombra para meses reales (igual que otros charts)
@@ -4753,7 +4772,14 @@ function chartSaldo(){
   const actIdx=actCount-0.5;
   const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
   const annot=actCount?[{x:allLb[actCount-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[];
-  Plotly.react('ch-saldo',traces,{...LO,shapes,annotations:annot,yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:unit,font:{size:10}}}},cfg);
+  Plotly.react(targetId,traces,{
+    ...LO,
+    shapes,
+    annotations:annot,
+    margin:{...LO.margin,b:60},
+    xaxis:{...LO.xaxis,tickangle:-45,automargin:true,nticks:Math.min(allLb.length,18),tickfont:{size:9}},
+    yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:unit,font:{size:10}}}
+  },cfg);
 }
 function chartCuota(){
   if(!P.modelTot){Plotly.purge('ch-cuota');return;}
@@ -4775,7 +4801,14 @@ function chartCuota(){
   const actCount=AMO.filter(m=>isActM(m)).length;
   const actIdx=actCount-0.5;
   const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
-  Plotly.react('ch-cuota',traces,{...LO,barmode:'stack',shapes,yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
+  Plotly.react('ch-cuota',traces,{
+    ...LO,
+    barmode:'stack',
+    shapes,
+    margin:{...LO.margin,b:60},
+    xaxis:{...LO.xaxis,tickangle:-45,automargin:true,nticks:Math.min(allLb.length,18),tickfont:{size:9}},
+    yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}
+  },cfg);
 }
 function tableAmort(){
   if(!P.modelTot){
