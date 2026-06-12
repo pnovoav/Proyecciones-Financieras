@@ -344,6 +344,7 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
   <button class="tab" onclick="showTab('fc',this)">Flujo de Caja</button>
   <button class="tab" onclick="showTab('bs',this)">Balance</button>
   <button class="tab" onclick="showTab('deuda',this)">Deuda</button>
+  <button class="tab" onclick="showTab('kpis',this)">KPIs</button>
 </nav>
 <div class="body">
 <div class="sidebar-scrim" id="sidebar-scrim" onclick="toggleDrawer(false)"></div>
@@ -388,12 +389,27 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
   <div class="card gmb"><div class="card-title" id="dash-title-cash-wf">Flujo de Caja proyectado</div><div id="ch-cash-wf-dash" style="height:360px"></div></div>
   <div class="card gmb"><div class="card-title">Evolución de la deuda financiera</div><div id="ch-saldo-dash" style="height:240px"></div></div>
   <div class="card gmb"><div class="card-title" id="dash-title-ebit">EBITDA mensual · margen %</div><div id="ch-ebit" style="height:200px"></div></div>
-  <div class="card gmb"><div class="card-title" id="dash-title-cash">Saldo caja EOP</div><div id="ch-cash" style="height:180px"></div></div>
-  <div class="card gmb"><div class="card-title">Métricas por producto — último mes real</div><div class="tw"><table id="t-metrics"></table></div></div>
+  <div class="card gmb"><div class="card-title" style="display:flex;align-items:center;justify-content:space-between">Métricas por producto — último mes real<span><button id="btn-metrics-uf" class="btn btn-outline" style="padding:4px 10px;font-size:10px;background:var(--blue3);color:#fff;border-color:var(--blue3)" onclick="setMetricsUnit('UF')">UF</button> <button id="btn-metrics-clp" class="btn btn-outline" style="padding:4px 10px;font-size:10px" onclick="setMetricsUnit('CLP')">M CLP</button></span></div><div class="tw"><table id="t-metrics"></table></div></div>
 </div>
 <div id="pg-ing" class="pg">
   <div class="card gmb"><div class="card-title">Revenue anual por segmento · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">2023-2028 con históricos reales y proyección — click para expandir por producto</span></div><div class="tw" id="t-rev-annual"></div></div>
-  <div class="card gmb"><div class="card-title"><span data-curr-title>Revenue mensual por producto</span></div><div id="ch-rprod" style="height:260px"></div></div>
+  <div class="card gmb">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px">
+      <div class="card-title" style="margin-bottom:0"><span data-curr-title>Revenue mensual por producto</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <div id="rprod-presets" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center"></div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.5px">Desde</span>
+          <select id="rprod-desde" onchange="onRprodSelectorChange()" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--mono);min-width:90px"></select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.5px">Hasta</span>
+          <select id="rprod-hasta" onchange="onRprodSelectorChange()" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-family:var(--mono);min-width:90px"></select>
+        </div>
+      </div>
+    </div>
+    <div id="ch-rprod" style="height:260px"></div>
+  </div>
   <div class="card gmb">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <div class="card-title" style="margin-bottom:0">MRR Bridge — <span id="bridge-unit-lbl">UF</span></div>
@@ -446,7 +462,7 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
 </div>
 <div id="pg-bs" class="pg">
   <div class="g4" id="bs-kpis"></div>
-  <div class="card gmb"><div class="card-title"><span data-curr-title>Balance Sheet anual</span> · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">snapshots Dic 2023-2028 · líneas con badge <strong>dyn</strong> responden a los sliders</span></div><div class="tw" id="t-bs-annual"></div></div>
+  <div class="card gmb"><div class="card-title"><span data-curr-title>Balance Sheet anual</span> · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">snapshots Dic 2023-2028</span></div><div class="tw" id="t-bs-annual"></div></div>
   <div class="card"><div class="card-title"><span data-curr-title>Balance Sheet mensual</span> · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">hasta Dic-26</span></div><div class="tw" id="t-bs"></div></div>
 </div>
 <div id="pg-deuda" class="pg">
@@ -456,11 +472,17 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
     <button class="btn btn-outline" style="margin-top:10px;width:auto;padding:7px 18px" onclick="addD()">＋ Agregar tramo</button>
   </div>
   <div class="g4" id="deuda-kpis"></div>
+  <div class="card gmb"><div class="card-title">Deuda / EBITDA Adj. LTM · 2026</div><div id="ch-debt-ebitda-12m" style="height:280px"></div></div>
+  <div class="card gmb"><div class="card-title">DSCR LTM · 2026</div><div id="ch-dscr" style="height:280px"></div></div>
   <div class="g2">
     <div class="card"><div class="card-title"><span data-curr-title>Saldo insoluto por tramo</span></div><div id="ch-saldo" style="height:220px"></div></div>
     <div class="card"><div class="card-title">Composición cuota</div><div id="ch-cuota" style="height:220px"></div></div>
   </div>
+  <div class="card"><div class="card-title">Intereses · Mensual</div><div id="ch-intereses" style="height:220px"></div></div>
   <div class="card"><div class="card-title"><span data-curr-title>Tabla de amortización</span></div><div class="tw"><table id="t-amort"></table></div></div>
+</div>
+<div id="pg-kpis" class="pg">
+  <div class="card gmb"><div class="card-title">KPIs Mensuales · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">total compañía, hasta Dic-26</span></div><div class="tw" id="t-kpis"></div></div>
 </div>
 </main>
 </div></div>
@@ -692,6 +714,58 @@ function dSch(am,ar,st,tn,tipo='frances'){
 }
 // Debt tranches parsed from Excel "Deuda" sheet on last load
 let _xlsxDeudaTranches=[];
+// Tramos de deuda existentes del modelo, parseados de la hoja "Financial Debt".
+// Cada uno trae su schedule mensual {ym: {am, int, bal}} ya calculado por el Excel.
+let _xlsxExistingDebt=[];
+
+// Parser: hoja "Financial Debt" del modelo. Layout: cada tramo ocupa 8 columnas a partir
+// de R7 (label). Las columnas por tramo: [Periodo, Fecha, Cuota, Interés, Capital, Saldo].
+// Tramos con Monto vacío o 0 se ignoran.
+function parseFinancialDebtSheet(wb){
+  _xlsxExistingDebt=[];
+  const ws=wb.Sheets['Financial Debt'];
+  if(!ws)return;
+  // Recorro columnas buscando labels en R7 (idx 6)
+  for(let baseCol=2;baseCol<35;baseCol++){
+    const labelCell=ws[XLSX.utils.encode_cell({r:6,c:baseCol})];
+    const label=labelCell?.v;
+    if(typeof label!=='string'||!label.trim())continue;
+    // Monto: R9 (idx 8) col_label+1
+    const montoCell=ws[XLSX.utils.encode_cell({r:8,c:baseCol+1})];
+    const monto=+(montoCell?.v||0);
+    if(monto<=0)continue;
+    const tasaAnual=+(ws[XLSX.utils.encode_cell({r:9,c:baseCol+1})]?.v||0);
+    const plazo=+(ws[XLSX.utils.encode_cell({r:12,c:baseCol+1})]?.v||0);
+    // Parse schedule rows (R17+ = idx 16+)
+    const sched={};
+    for(let r=16;r<16+plazo+4;r++){
+      const fechaCell=ws[XLSX.utils.encode_cell({r,c:baseCol+1})];
+      const fecha=fechaCell?.v;
+      if(fecha==null)continue;
+      let ym=null;
+      if(typeof fecha==='number'){
+        const d=XLSX.SSF.parse_date_code(fecha);
+        if(d)ym=d.y+'-'+(d.m<10?'0':'')+d.m;
+      } else if(fecha instanceof Date){
+        ym=fecha.getFullYear()+'-'+String(fecha.getMonth()+1).padStart(2,'0');
+      } else if(typeof fecha==='string'&&fecha.match(/^\d{4}-\d{2}/)){
+        ym=fecha.slice(0,7);
+      }
+      if(!ym)continue;
+      const intCell=ws[XLSX.utils.encode_cell({r,c:baseCol+3})];
+      const capCell=ws[XLSX.utils.encode_cell({r,c:baseCol+4})];
+      const balCell=ws[XLSX.utils.encode_cell({r,c:baseCol+5})];
+      const interes=+(intCell?.v||0);
+      const capital=+(capCell?.v||0);
+      const saldo=+(balCell?.v||0);
+      // En el modelo los valores son negativos (egresos). Para mantener convención
+      // del visor: am, int son montos absolutos (positivos).
+      sched[ym]={am:Math.abs(capital)/1e6,int:Math.abs(interes)/1e6,bal:Math.abs(saldo)/1e6};
+    }
+    _xlsxExistingDebt.push({label:label.trim(),amount:monto,rate:tasaAnual,plazo,sched});
+  }
+  console.log('[Financial Debt parsed]', _xlsxExistingDebt.map(t=>({label:t.label,monto:t.amount,plazo:t.plazo,scheds:Object.keys(t.sched).length})));
+}
 
 function parseDeudaSheet(wb){
   _xlsxDeudaTranches=[];
@@ -788,6 +862,7 @@ function handleXlsx(input){
     try{
       const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
       parseDeudaSheet(wb);
+      parseFinancialDebtSheet(wb);
       window._wb=wb;
       const wsE=wb.Sheets['ERPs'];if(!wsE)throw new Error("Hoja 'ERPs' no encontrada");
       const probeC=ymCol('2024-01');
@@ -1230,12 +1305,13 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     const rowDebtAm=findRow(wsE,'Debt Amortization',1283);
     const rowIncDebt=findRow(wsE,'Increase Financial Debt',1283);
     // El modelo cambió varios labels de español a inglés. Se prueban ambos.
-    const rowDevolBPO=findRowAny(['Loan Repayment (BPO)','Devolución Prestamo (BPO)','Devolución Prestamo']);
+    const rowDevolBPO=findRowAny(['Loans & Repayments – Related Parties','Loan Repayment (BPO)','Devolución Prestamo (BPO)','Devolución Prestamo']);
     const rowDivCF=findRow(wsE,'Dividends',1283);
     const rowCashEOP=findRow(wsE,'Cash and cash equivalents, end of period');
     const rowCashBOP=findRow(wsE,'Cash and cash equivalents, beginning of period');
     const rowAjustes=findRowAny(['Total Adjustment','Total Ajuste'],0);
     const rowIncomeTax=findDataRow(wsE,'Income Tax',ymCol('2026-12'));
+    const rowIntExp=findRow(wsE,'Financial Interest Expense',1100);
 
     // ═══ CF Operacional — detalle (modelo desagrega WC + IVA + PPM + tax) ═══
     const rowWcPure=findRow(wsE,'(Increase) / Decrease In Operating Working Capital',1283);
@@ -1480,7 +1556,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     // Use findRow (not findDataRow) since probeC=2024-01 might be empty for BS
     const rowCashBS=findRow(wsE,'Cash and Cash Equivalents');
     console.log('[Cash BS] rowCashBS=',rowCashBS,'test Jan-26 value=',numV(wsE,rowCashBS,ymCol('2026-01')));
-    const modelTot={rev:{},cogs:{},sga:{},ebitda:{},ni:{},cashEOP:{},cashBS:{},dep:{},amort:{},capex:{},ma:{},debtAm:{},incDebt:{},devolBPO:{},divs:{},ajustes:{},cfop:{},cfinv:{},cffin:{},incomeTax:{},wcPure:{},ivaDev:{},ivaPag:{},ppm:{},rentaPag:{},devolImp:{},reversoTax:{}};
+    const modelTot={rev:{},cogs:{},sga:{},ebitda:{},ni:{},cashEOP:{},cashBS:{},dep:{},amort:{},capex:{},ma:{},debtAm:{},incDebt:{},devolBPO:{},divs:{},ajustes:{},cfop:{},cfinv:{},cffin:{},incomeTax:{},wcPure:{},ivaDev:{},ivaPag:{},ppm:{},rentaPag:{},devolImp:{},reversoTax:{},intExp:{}};
     for(const m of allMonths){
       const c=ymCol(m);
       modelTot.rev[m]=numV(wsE,rowRev,c)/1e6;
@@ -1511,6 +1587,59 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       modelTot.rentaPag[m]=rowRentaPag>0?numV(wsE,rowRentaPag,c)/1e6:0;
       modelTot.devolImp[m]=rowDevolImp>0?numV(wsE,rowDevolImp,c)/1e6:0;
       modelTot.reversoTax[m]=rowReversoTax>0?numV(wsE,rowReversoTax,c)/1e6:0;
+      modelTot.intExp[m]=rowIntExp>0?numV(wsE,rowIntExp,c)/1e6:0;
+    }
+
+    // ═══ History para LTM: cargar 12 meses ANTES de desdeYM solo para series usadas
+    // en trailing 12 months (Deuda/EBITDA LTM y DSCR LTM). Sin esto, los primeros meses
+    // del eje del chart tienen un "LTM" incompleto (solo cuentan meses ≥desdeYM).
+    // No se carga BS porque es snapshot por mes — no requiere historia.
+    {
+      const [dy,dm]=desdeYM.split('-').map(Number);
+      const histMonths=[];
+      for(let i=12;i>=1;i--){
+        let y=dy,mo=dm-i;
+        while(mo<1){mo+=12;y--;}
+        histMonths.push(y+'-'+(mo<10?'0':'')+mo);
+      }
+      for(const m of histMonths){
+        const c=ymCol(m);
+        if(c<0)continue;
+        modelTot.ebitda[m]=numV(wsE,rowEBITDA,c)/1e6;
+        modelTot.ajustes[m]=rowAjustes>0?numV(wsE,rowAjustes,c)/1e6:0;
+        modelTot.debtAm[m]=numV(wsE,rowDebtAm,c)/1e6;
+        modelTot.intExp[m]=rowIntExp>0?numV(wsE,rowIntExp,c)/1e6:0;
+      }
+    }
+
+    // ═══ Complementar debtAm + intExp con tramos parseados de hoja "Financial Debt".
+    // El sheet ERPs (R1196 intExp, R1303 debtAm) tiene valores 0 en algunos meses (típico
+    // en 2025 donde el modelo no consolida los pagos del schedule). El parser de
+    // Financial Debt los tiene mes a mes. Si MT[m] es 0 y el schedule tiene valor, lo uso.
+    if(_xlsxExistingDebt&&_xlsxExistingDebt.length){
+      // Acumulo el total por mes sumando todos los tramos
+      const totalAmByMonth={},totalIntByMonth={};
+      for(const t of _xlsxExistingDebt){
+        for(const ym in t.sched){
+          totalAmByMonth[ym]=(totalAmByMonth[ym]||0)+(t.sched[ym].am||0);
+          totalIntByMonth[ym]=(totalIntByMonth[ym]||0)+(t.sched[ym].int||0);
+        }
+      }
+      // Reemplazo con el max(|ERPs|, |schedule|) para no perder los pagos del schedule
+      // cuando el ERPs reporta valores ridículamente bajos (data quality del modelo),
+      // pero respetar el ERPs cuando es mayor (incluye otros gastos no en Financial Debt).
+      for(const ym in totalAmByMonth){
+        const exA=Math.abs(modelTot.debtAm[ym]||0);
+        const schA=totalAmByMonth[ym]||0;
+        modelTot.debtAm[ym]=-Math.max(exA,schA); // negativo (egreso)
+      }
+      for(const ym in totalIntByMonth){
+        const exI=Math.abs(modelTot.intExp[ym]||0);
+        const schI=totalIntByMonth[ym]||0;
+        modelTot.intExp[ym]=-Math.max(exI,schI);
+      }
+      console.log('[Financial Debt] consolidado por mes:',
+        Object.fromEntries(Object.entries(totalAmByMonth).map(([k,v])=>[k,{am:+v.toFixed(2),int:+(totalIntByMonth[k]||0).toFixed(2)}])));
     }
 
     // Client metrics + ARPA per bridge product
@@ -2446,12 +2575,13 @@ function renderAll(){
 }
 function renderTab(id){
   if(!B||!S)return;
-  if(id==='dash'){renderKPIs();chartRevProd();chartWaterfall();chartCashWaterfall('ch-cash-wf-dash');chartSaldo('ch-saldo-dash');chartEBIT();chartCash();tableMetrics();}
+  if(id==='dash'){renderKPIs();chartRevProd();chartWaterfall();chartCashWaterfall('ch-cash-wf-dash');chartSaldo('ch-saldo-dash');chartEBIT();tableMetrics();}
   else if(id==='ing'){tableRevAnnual();chartRevByProd();chartBridge();tableBridge();tableMRR();}
   else if(id==='eerr'){renderEERRKPIs();chartMargins();chartCostos();tableEERRAnnual();chartEERRAnnual();tableEERR();}
   else if(id==='fc'){renderCFKPIs();chartCashFC();chartCashFCAnual();tableFCAnnual();chartCashWaterfall();tableFC();}
   else if(id==='bs'){renderBSKPIs();tableBSAnnual();tableBS();}
-  else if(id==='deuda'){renderDeudaKPIs();chartSaldo();chartCuota();tableAmort();}
+  else if(id==='deuda'){renderDeudaKPIs();chartDebtEbitda12M();chartDSCR();chartSaldo();chartCuota();chartIntereses();tableAmort();}
+  else if(id==='kpis'){renderKpisPage();}
 }
 
 // ═══ Display periods: monthly until Dec-2026, annual for 2027+ ═══
@@ -2514,7 +2644,9 @@ function renderKPIs(){
   const ebS=_cyrMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:S.ebitda[m])||0,0);
   const ajTot=_cyrMo.reduce((t,m)=>t+(P.modelTot.ajustes[m]||0),0);
   const ebAdjS=ebS+ajTot;
-  const niS=_cyrMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.ni[m]:S.ni[m])||0,0);
+  // NI post-tax: para proyectados S.ni es pre-tax (EBT). Sumamos MT.incomeTax (negativo)
+  // para descontar el tax devengo y mostrar Net Income real.
+  const niS=_cyrMo.reduce((t,m)=>t+(isActM(m)?(P.modelTot.ni[m]||0):((S.ni[m]||0)+(P.modelTot.incomeTax[m]||0))),0);
   const lastM=_cyrLast;
   // Cash sin impuesto y con impuesto (motor)
   const cashNoTaxS=S.cashNoTax?.[lastM]??(S.cashEOP[lastM]||P.modelTot.cashEOP[lastM]||0);
@@ -2525,7 +2657,7 @@ function renderKPIs(){
   const revB=_cyrMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.rev[m]:B.revT[m])||0,0);
   const ebB=_cyrMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.ebitda[m]:B.ebitda[m])||0,0);
   const ebAdjB=ebB+ajTot;
-  const niB=_cyrMo.reduce((t,m)=>t+(isActM(m)?P.modelTot.ni[m]:B.ni[m])||0,0);
+  const niB=_cyrMo.reduce((t,m)=>t+(isActM(m)?(P.modelTot.ni[m]||0):((B.ni[m]||0)+(P.modelTot.incomeTax[m]||0))),0);
   const cashNoTaxB=B.cashNoTax?.[lastM]??(B.cashEOP[lastM]||P.modelTot.cashEOP[lastM]||0);
   const cashWithTaxB=B.cashWithTax?.[lastM]??cashNoTaxB;
   const cashEndB=cashNoTaxB;
@@ -2549,7 +2681,7 @@ function renderKPIs(){
   // ── Series para sparklines (año en curso) ──
   const revSeries=_cyrMo.map(m=>isActM(m)?P.modelTot.rev[m]:(S.revT[m]||0));
   const ebSeries=_cyrMo.map(m=>{const e=isActM(m)?P.modelTot.ebitda[m]:(S.ebitda[m]||0);return e+(P.modelTot.ajustes[m]||0);});
-  const niSeries=_cyrMo.map(m=>isActM(m)?P.modelTot.ni[m]:(S.ni[m]||0));
+  const niSeries=_cyrMo.map(m=>isActM(m)?(P.modelTot.ni[m]||0):((S.ni[m]||0)+(P.modelTot.incomeTax[m]||0)));
   const cashSeries=_cyrMo.map(m=>isActM(m)?(P.modelTot.cashBS[m]||P.modelTot.cashEOP[m]||0):(S.cashEOP[m]||0));
   const arrSeries=_cyrMo.map(m=>BRIDGE.filter(p=>p!=='ramaflex').reduce((s,p)=>{
     const mrr=isActM(m)?(P.model.mrrUF[p]?.[m]||0):(S.mrrUF[p]?.[m]||0);
@@ -2601,7 +2733,7 @@ function renderKPIs(){
   const row1=[
     {l:`Revenue ${cy}`,v:`${f0(revSc)}<span class="unit">${curUnit}</span>`,c:'',icon:'$',delta:deltaEl(revSc,revBc),spark:sparkline(revSeries,90,26,'#2563eb')},
     {l:`EBITDA Adj. ${cy}`,v:ebAdjValHtml,c:'grn',icon:'∎',delta:deltaEl(ebAdjSc,ebAdjBc),spark:sparkline(ebSeries,90,26,'#059669')},
-    {l:`Net Income ${cy} (s/Imp)`,v:`${f0(niSc)}<span class="unit">${curUnit}</span>`,c:'grn',icon:'▲',delta:deltaEl(niSc,niBc),spark:sparkline(niSeries,90,26,'#10b981')},
+    {l:`Net Income ${cy}`,v:`${f0(niSc)}<span class="unit">${curUnit}</span>`,c:'grn',icon:'▲',delta:deltaEl(niSc,niBc),spark:sparkline(niSeries,90,26,'#10b981')},
     {l:`Caja al 31-Dic-${String(cy).slice(2)}`,v:`${f0(cashNoTaxSc)}<span class="unit">${curUnit}</span>`,c:'amb',icon:'◆',delta:cashFoot,spark:sparkline(cashSeries,90,26,'#d97706')},
   ];
   // ── Row 2: ARR, Rule of 40 (con gauge), Growth YoY, Deuda/EBITDA ──
@@ -2612,7 +2744,7 @@ function renderKPIs(){
   const debtEbitdaKpi=ebAdjS>0?totalDebtKpi/ebAdjS:0;
   const debtEbColor=ebAdjS<=0?'':debtEbitdaKpi<2?'grn':debtEbitdaKpi<3?'amb':'red';
   const row2=[
-    {l:`ARR Anualizado ${getCurrYear()}`,v:`${f0(arrLastC)}<span class="unit">${curUnit}</span>`,c:'',icon:'∞',delta:deltaEl(arrLastC,arrBaseC),spark:sparkline(arrSeries,90,26,'#3b82f6')},
+    {l:`ARR ${getCurrYear()}`,v:`${f0(arrLastC)}<span class="unit">${curUnit}</span>`,c:'',icon:'∞',delta:'',spark:''},
     {l:`Rule of 40 ${getCurrYear()}`,v:`${ruleS.toFixed(0)}<span class="unit">%</span>`,c:ruleS>=40?'grn':ruleS>=20?'amb':'red',icon:'⟁',delta:deltaPct(ruleS,ruleB),spark:`<div class="kpi-gauge ${ruleClass}"><div class="kpi-gauge-fill" style="width:${rulePct}%"></div></div>`},
     {l:`Growth YoY ${getCurrYear()}`,v:growthYoY!=null?`${growthYoY.toFixed(1)}<span class="unit">%</span>`:'—',c:'purp',icon:'↗',delta:growthYoY!=null?deltaPct(growthYoY,growthYoYBase):'',spark:''},
     {l:`Deuda / EBITDA ${getCurrYear()}`,v:ebAdjS>0?`${debtEbitdaKpi.toFixed(2)}<span class="unit">x</span>`:'—',c:debtEbColor,icon:'⚖',delta:`<span class="kpi-delta fl">Saldo ${f0(convV(totalDebtKpi,_cyrLast))} ${curUnit}</span>`,spark:''},
@@ -2625,7 +2757,6 @@ function renderKPIs(){
   [
     ['dash-title-rev',`Revenue mensual por producto · ${_cy}`],
     ['dash-title-ebit',`EBITDA mensual · margen % · ${_cy}`],
-    ['dash-title-cash',`Saldo caja EOP · ${_cy}`],
   ].forEach(([id,txt])=>{const el=document.getElementById(id);if(el)el.textContent=txt;});
 }
 
@@ -2701,19 +2832,28 @@ function renderDeudaKPIs(){
   // OJO: NO sumamos "Devolución Préstamo" (r1306) porque ese flujo es POSITIVO
   // (es un cobro de un préstamo a relacionados, no un pago de deuda nuestra).
   const existingAmort=cyMo.reduce((t,m)=>t+Math.abs(P.modelTot.debtAm[m]||0),0);
+  // Intereses existentes (del modelo, R1196 "Financial Interest Expense")
+  const existingInt=cyMo.reduce((t,m)=>t+Math.abs(P.modelTot.intExp?.[m]||0),0);
   // Tramos nuevos (si hay)
   const scheds=getDeudaScheds();
+  // Saldo TOTAL nueva deuda al cierre (lastM), NO el monto inicial — alineado con chart Dic-26
+  const newDebtAtLastM=scheds.reduce((t,s)=>t+Math.abs(s.sched[lastM]?.bal||0),0);
+  // Mantengo newTotal (monto inicial agregado) para mostrar en KPI "Tramos Nuevos · Capital"
   const newTotal=scheds.reduce((t,s)=>t+s.amount/1e6,0);
   const newAm=scheds.reduce((t,s)=>t+cyMo.reduce((tt,m)=>tt+Math.abs(s.sched[m]?.am||0),0),0);
   const newInt=scheds.reduce((t,s)=>t+cyMo.reduce((tt,m)=>tt+Math.abs(s.sched[m]?.int||0),0),0);
-  // EBITDA del año (real + proyección)
-  const ebAn=cyMo.reduce((t,m)=>t+((isActM(m)?P.modelTot.ebitda[m]:S?.ebitda?.[m])||0),0);
-  const totalService=existingAmort+newAm+newInt;
+  // EBITDA Adj. del año (EBITDA + ajustes), alineado con chart LTM
+  const ebAn=cyMo.reduce((t,m)=>{
+    const eb=(isActM(m)?P.modelTot.ebitda[m]:S?.ebitda?.[m])||0;
+    return t+eb+(P.modelTot.ajustes?.[m]||0);
+  },0);
+  // Servicio total = amortizaciones (existente+nuevo) + intereses (existente+nuevo)
+  const totalService=existingAmort+newAm+existingInt+newInt;
   const dscr=totalService>0?ebAn/totalService:0;
   const u=currUnitLbl();
-  // Apalancamiento Deuda / EBITDA — métrica clásica de leverage
+  // Apalancamiento Deuda / EBITDA Adj — métrica clásica de leverage
   // Convención: <2x sano, 2-3x moderado, 3-4x alto, >4x crítico
-  const totalDebt=existingDebt+newTotal;
+  const totalDebt=existingDebt+newDebtAtLastM;
   const debtEbitda=ebAn>0?totalDebt/ebAn:0;
   const debtEbitdaColor=ebAn<=0?'':debtEbitda<2?'grn':debtEbitda<3?'amb':'red';
   const items=[
@@ -2746,14 +2886,14 @@ function chartRevProd(){
     {key:'otros',    label:'Other',        prods:['otros'],                 color:PCOL.otros},
     {key:'random',   label:'Random',       prods:['rcl','rpe'],             color:PCOL.rcl},
   ];
-  const values=[],labels=[],colors=[];
-  for(const def of erpDefs){
-    const v=def.prods.reduce((t,p)=>t+revOf(p),0);
-    if(Math.abs(v)<0.05)continue;
-    values.push(convYearly(v,MM));
-    labels.push(def.label);
-    colors.push(def.color);
-  }
+  // Build entries, filter empty, sort desc by value
+  const entries=erpDefs.map(def=>({
+    v:convYearly(def.prods.reduce((t,p)=>t+revOf(p),0),MM),
+    label:def.label,color:def.color,
+  })).filter(e=>Math.abs(e.v)>=0.05).sort((a,b)=>b.v-a.v);
+  const values=entries.map(e=>e.v);
+  const labels=entries.map(e=>e.label);
+  const colors=entries.map(e=>e.color);
   const isDark=document.documentElement.getAttribute('data-theme')==='dark';
   const fg=isDark?'#e5e7eb':'#111827';
   // Responsivo según ancho del contenedor:
@@ -2896,26 +3036,38 @@ function chartCashFC(){
   ],{...LO,shapes,yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:unit,font:{size:10}}},annotations:actCount?[{x:allLb[actCount-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[]},cfg);
 }
 function chartCashFCAnual(){
-  const earliestAMOYr=+AMO[0].slice(0,4);
-  const years=[...new Set([...P.annualYears,...AMO.map(m=>+m.slice(0,4))])].filter(y=>!isNaN(y)&&y>=earliestAMOYr).sort((a,b)=>a-b);
+  // 3 barras: Caja EoP Dic-26, Dic-27, Dic-28 (los 3 años proyectados clave).
+  // Si algún año no está en AMO (modelo no llega), se omite esa barra.
+  const targetYears=[2026,2027,2028];
   const unit=currUnitLbl();
-  const getDec=(yr,src)=>{
+  const getDec=yr=>{
     const dec=yr+'-12';
-    if(yr<earliestAMOYr) return convV(P.bs?.cash?.[dec]||0,dec);
-    if(isActM(dec)) return convV(P.modelTot.cashBS[dec]||P.modelTot.cashEOP[dec]||0,dec);
-    return convV((src==='base'?B.cashEOP[dec]:S.cashEOP[dec])||0,dec);
+    if(!AMO.includes(dec))return null;
+    if(isActM(dec))return convV(P.modelTot.cashBS[dec]||P.modelTot.cashEOP[dec]||0,dec);
+    return convV(S.cashEOP[dec]||0,dec);
   };
-  const lbYrs=years.map(y=>`${y}`);
-  const baseVals=years.map(yr=>getDec(yr,'base'));
-  const scenVals=years.map(yr=>getDec(yr,'scen'));
-  // Boundary between actuals and projected (last actual year index)
-  const lastActIdx=years.reduce((last,yr,i)=>{const dec=yr+'-12';return(yr<earliestAMOYr||isActM(dec))?i:last;},-1);
-  const shapes=lastActIdx>=0?[{type:'rect',x0:-.5,x1:lastActIdx+0.5,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
-  const annot=lastActIdx>=0?[{x:lbYrs[lastActIdx],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[];
-  Plotly.react('ch-cash-fc-an',[
-    {x:lbYrs,y:baseVals,name:'Modelo · sin ajustes',mode:'lines+markers',line:{color:'#c8d3e8',width:1.5},fill:'tozeroy',fillcolor:'rgba(203,213,225,0.18)',marker:{size:5},hovertemplate:`<b>%{x}</b><br>Sin ajustes: %{y:,.0f} ${unit}<extra></extra>`},
-    {x:lbYrs,y:scenVals,name:'Con ajustes en inputs',mode:'lines+markers',line:{color:'#2563eb',width:2},fill:'tozeroy',fillcolor:'rgba(37,99,235,0.10)',marker:{size:5},hovertemplate:`<b>%{x}</b><br>Con ajustes: %{y:,.0f} ${unit}<extra></extra>`},
-  ],{...LO,shapes,yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:unit,font:{size:10}}},annotations:annot},cfg);
+  const yrs=targetYears.filter(y=>getDec(y)!=null);
+  const vals=yrs.map(y=>getDec(y));
+  const lbls=yrs.map(y=>`Dic-${String(y).slice(2)}`);
+  // Gradiente azul → verde para destacar progresión
+  const colors=['#3b82f6','#2563eb','#059669'].slice(0,yrs.length);
+  const textLabels=vals.map(v=>Math.round(v).toLocaleString('es-CL'));
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  Plotly.react('ch-cash-fc-an',[{
+    x:lbls,y:vals,type:'bar',
+    marker:{color:colors,opacity:0.9,line:{color:colors,width:0}},
+    text:textLabels,
+    textposition:'outside',
+    textfont:{size:13,family:"'DM Mono',monospace",color:isDark?'#f1f5f9':'#0f172a',weight:700},
+    hovertemplate:`<b>%{x}</b><br>Caja: %{y:,.0f} ${unit}<extra></extra>`,
+    cliponaxis:false,
+  }],{
+    ...LO,
+    margin:{...LO.margin,t:30,b:30},
+    bargap:0.45,
+    yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:unit,font:{size:10}},range:[0,Math.max(...vals)*1.18]},
+    showlegend:false,
+  },cfg);
 }
 function chartClients(){
   if(!P.model.clients)return;
@@ -2949,17 +3101,32 @@ function chartARPA(){
   Plotly.react('ch-arpa',traces,{...LO,shapes,yaxis:{...LO.yaxis,rangemode:'tozero',ticksuffix:' UF'}},cfg);
 }
 
+let METRICS_UNIT='UF';
+function setMetricsUnit(u){
+  METRICS_UNIT=u;
+  const btnUF=document.getElementById('btn-metrics-uf'),btnCLP=document.getElementById('btn-metrics-clp');
+  if(btnUF){btnUF.style.background=u==='UF'?'var(--blue3)':'';btnUF.style.color=u==='UF'?'#fff':'';btnUF.style.borderColor=u==='UF'?'var(--blue3)':'';}
+  if(btnCLP){btnCLP.style.background=u==='CLP'?'var(--blue3)':'';btnCLP.style.color=u==='CLP'?'#fff':'';btnCLP.style.borderColor=u==='CLP'?'var(--blue3)':'';}
+  tableMetrics();
+}
 function tableMetrics(){
   if(!P.model.clients||!P.actualMonths.length)return;
   const lastAct=P.actualMonths[P.actualMonths.length-1];
   const prevAct=P.actualMonths[P.actualMonths.length-2];
-  let h=`<thead><tr><th>Producto</th><th>Clientes EoP</th><th>Δ MoM</th><th>Logo Retention</th><th>Logo Churn</th><th>ARPA New (UF)</th><th>ARPA Old (UF)</th><th>ARPA Total (UF)</th><th>MRR EoP (UF)</th></tr></thead><tbody>`;
+  const useClp=METRICS_UNIT==='CLP';
+  const ufRate=P.uf?.[lastAct]||0;
+  // Convertidor: valor en UF → unidad activa
+  const cv=v=>useClp?(v*ufRate/1e6):v;
+  const u=useClp?'M CLP':'UF';
+  const fmtA=v=>useClp?f1(v,2):f1(v,2);
+  let h=`<thead><tr><th>Producto</th><th>Clientes EoP</th><th>Δ vs Per. Ant.</th><th>Logo Retention</th><th>Logo Churn</th><th>ARPA New (${u})</th><th>ARPA Old (${u})</th><th>ARPA Total (${u})</th><th>MRR EoP (${u})</th><th>ARR EoP (${u})</th></tr></thead><tbody>`;
   for(const p of BRIDGE){
     if(p==='ramaflex')continue;
     const c=P.model.clients[p]?.[lastAct]||{};
     const cp=prevAct?P.model.clients[p]?.[prevAct]||{}:{};
     const a=P.model.arpa[p]?.[lastAct]||{};
     const mrr=P.model.mrrUF[p]?.[lastAct]||0;
+    const arr=mrr*12;
     const dCli=(c.eop||0)-(cp.eop||0);
     h+=`<tr>
       <td><strong>${PRODS[p]}</strong></td>
@@ -2967,17 +3134,74 @@ function tableMetrics(){
       <td class="${dCli<0?'neg':dCli>0?'pos':''}">${dCli>0?'+':''}${f0(dCli)}</td>
       <td class="pos">${((c.logoRet||0)*100).toFixed(1)}%</td>
       <td class="neg">${((c.logoChurn||0)*100).toFixed(1)}%</td>
-      <td>${f1(a.newC||0,2)}</td>
-      <td>${f1(a.old||0,2)}</td>
-      <td><strong>${f1(a.total||0,2)}</strong></td>
-      <td>${f0(mrr)}</td>
+      <td>${fmtA(cv(a.newC||0))}</td>
+      <td>${fmtA(cv(a.old||0))}</td>
+      <td><strong>${fmtA(cv(a.total||0))}</strong></td>
+      <td>${useClp?f1(cv(mrr),1):f0(mrr)}</td>
+      <td><strong>${useClp?f1(cv(arr),1):f0(arr)}</strong></td>
     </tr>`;
   }
   document.getElementById('t-metrics').innerHTML=h+'</tbody>';
 }
 
+// Mantengo qué preset está activo (para resaltarlo). Null = rango custom.
+let _rprodActivePreset='2026';
+function setRprodRange(desde,hasta,presetKey=null){
+  const sd=document.getElementById('rprod-desde'),sh=document.getElementById('rprod-hasta');
+  if(!sd||!sh)return;
+  sd.value=desde;sh.value=hasta;
+  _rprodActivePreset=presetKey;
+  renderRprodPresetChips();
+  chartRevByProd();
+}
+function onRprodSelectorChange(){
+  // Si el usuario tocó los selectores manualmente, ya no está en un preset
+  _rprodActivePreset=null;
+  renderRprodPresetChips();
+  chartRevByProd();
+}
+function renderRprodPresetChips(){
+  const cont=document.getElementById('rprod-presets');
+  if(!cont||!AMO.length)return;
+  // Determinar años disponibles en AMO
+  const yrs=[...new Set(AMO.map(m=>+m.slice(0,4)))].sort((a,b)=>a-b);
+  // Solo mostrar años con al menos 1 mes en AMO. Y agregar combos comunes.
+  const presets=[];
+  for(const y of yrs) presets.push({key:String(y),label:String(y),desde:y+'-01',hasta:y+'-12'});
+  // Combos consecutivos comunes (2026-2027, 2026-2028, todo)
+  if(yrs.includes(2026)&&yrs.includes(2027)) presets.push({key:'2026-27',label:'26+27',desde:'2026-01',hasta:'2027-12'});
+  if(yrs.includes(2026)&&yrs.includes(2028)) presets.push({key:'2026-28',label:'26→28',desde:'2026-01',hasta:'2028-12'});
+  presets.push({key:'all',label:'Todo',desde:AMO[0],hasta:AMO[AMO.length-1]});
+  const baseBtn='padding:3px 9px;font-size:10px;border:1px solid var(--border);border-radius:12px;cursor:pointer;font-family:var(--mono);background:var(--surface);color:var(--text2);transition:all .15s';
+  const activeBtn='padding:3px 9px;font-size:10px;border:1px solid var(--blue3);border-radius:12px;cursor:pointer;font-family:var(--mono);background:var(--blue3);color:#fff;font-weight:700;transition:all .15s';
+  cont.innerHTML=presets.map(p=>{
+    const active=p.key===_rprodActivePreset;
+    return `<button onclick="setRprodRange('${p.desde}','${p.hasta}','${p.key}')" style="${active?activeBtn:baseBtn}">${p.label}</button>`;
+  }).join('');
+}
+function populateRevProdSelectors(){
+  const sd=document.getElementById('rprod-desde'),sh=document.getElementById('rprod-hasta');
+  if(!sd||!sh||!AMO.length)return;
+  // Solo poblar si está vacío (para no perder selección del usuario)
+  if(!sd.options.length){
+    const opts=AMO.map(m=>`<option value="${m}">${fmtM(m)}</option>`).join('');
+    sd.innerHTML=opts;sh.innerHTML=opts;
+    // Default: desde Ene-2026 (o primer mes ≥2026), hasta Dic-2026 (o último mes de 2026)
+    const ene26='2026-01',dic26='2026-12';
+    sd.value=AMO.includes(ene26)?ene26:AMO.find(m=>+m.slice(0,4)>=2026)||AMO[0];
+    sh.value=AMO.includes(dic26)?dic26:[...AMO].reverse().find(m=>+m.slice(0,4)===2026)||AMO[AMO.length-1];
+    _rprodActivePreset='2026';
+  }
+  renderRprodPresetChips();
+}
 function chartRevByProd(){
-  const allLb=AMO.map(fmtM);
+  populateRevProdSelectors();
+  // Filtro Desde / Hasta para elegir rango libre.
+  const desde=document.getElementById('rprod-desde')?.value||AMO[0];
+  const hasta=document.getElementById('rprod-hasta')?.value||AMO[AMO.length-1];
+  const filteredMO=AMO.filter(m=>m>=desde&&m<=hasta);
+  const useMO=filteredMO.length?filteredMO:AMO;
+  const allLb=useMO.map(fmtM);
   const unit=currUnitLbl();
   // Agrupaciones idénticas al pie chart: Rex+ = rex+bnovus+gaxu, Random = rcl+rpe
   const erpDefs=[
@@ -2992,13 +3216,59 @@ function chartRevByProd(){
     {label:'Random',      prods:['rcl','rpe'],           color:PCOL.rcl},
   ];
   const revOf=(p,m)=>isActM(m)?(P.model.rev[p]?.[m]||0):(S.rev[p]?.[m]||0);
-  const traces=erpDefs.map(def=>({
+  // Calcular total acumulado por ERP y ordenar de mayor a menor.
+  // En Plotly stacked bar, el PRIMER trace queda abajo del stack. Para que el
+  // producto más grande esté abajo (típico), iteramos en orden descendente.
+  const enriched=erpDefs.map(def=>{
+    const monthly=useMO.map(m=>convV(def.prods.reduce((s,p)=>s+revOf(p,m),0),m));
+    const total=monthly.reduce((s,v)=>s+v,0);
+    return {def,monthly,total};
+  }).filter(e=>e.total>0.05).sort((a,b)=>b.total-a.total);
+  const traces=enriched.map(({def,monthly})=>({
     x:allLb,
-    y:AMO.map(m=>convV(def.prods.reduce((s,p)=>s+revOf(p,m),0),m)),
+    y:monthly,
     name:def.label,type:'bar',marker:{color:def.color},
     hovertemplate:`<b>%{x}</b><br>${def.label}: %{y:,.1f} ${unit}<extra></extra>`,
   }));
-  Plotly.react('ch-rprod',traces,{...LO,barmode:'stack',yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}},cfg);
+  // Total mensual mostrado arriba de cada barra — labels adaptativos según cantidad de meses
+  const monthlyTotals=useMO.map((m,i)=>enriched.reduce((s,e)=>s+e.monthly[i],0));
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const n=useMO.length;
+  // Configuración adaptativa para evitar superposición. Plotly auto-oculta texto que
+  // se solapa, así que para ≤12 meses usamos formato compacto "1,15k" (cabe en 4 chars
+  // vs "1.234" que ocupa 5+) para que se muestren todos.
+  //   ≤9  meses: valor entero "1.234" — fuente 12px (caben holgados)
+  //   10-14: formato corto "1,15k" — fuente 12px (entran todos)
+  //   15-24: cada 2 meses, formato corto, fuente 10px
+  //   25+ : cada 3 meses, formato corto, fuente 10px
+  const fmtShort=v=>(v/1000).toFixed(2).replace('.',',')+'k';
+  const fmtLong=v=>Math.round(v).toLocaleString('es-CL');
+  let labelEvery, fontSize, fmt;
+  if(n<=9){labelEvery=1;fontSize=12;fmt=fmtLong;}
+  else if(n<=14){labelEvery=1;fontSize=12;fmt=fmtShort;}
+  else if(n<=24){labelEvery=2;fontSize=10;fmt=fmtShort;}
+  else {labelEvery=3;fontSize=10;fmt=fmtShort;}
+  const labelText=useMO.map((m,i)=>i%labelEvery===0?fmt(monthlyTotals[i]):'');
+  const totalsTrace={
+    x:allLb,
+    y:monthlyTotals,
+    text:labelText,
+    mode:'text',
+    textposition:'top center',
+    textfont:{size:fontSize,family:"'DM Mono',monospace",color:isDark?'#f1f5f9':'#0f172a',weight:700},
+    type:'scatter',
+    showlegend:false,
+    hoverinfo:'skip',
+    cliponaxis:false,
+  };
+  // Expand y-axis to leave breathing room for the labels
+  const yMax=Math.max(...monthlyTotals)*1.12;
+  Plotly.react('ch-rprod',[...traces,totalsTrace],{
+    ...LO,
+    barmode:'stack',
+    margin:{...LO.margin,t:30},
+    yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}},range:[0,yMax]},
+  },cfg);
 }
 
 // Populate bridge desde/hasta selectors from AMO
@@ -3275,6 +3545,27 @@ function tableRevAnnual(){
     if(isHist(yr)){const v=P.annual?.revProd?.[p]?.[yr];return v!==undefined?v:null;}
     return msOfYr(yr).reduce((t,m)=>t+(isActM(m)?(P.model.rev[p]?.[m]||0):(S.rev[p]?.[m]||0)),0);
   };
+  // Productos con desagregación Recurrente / No Recurrente
+  const RECURRING_PRODS=['time','mgrplus','flex','rcl'];
+  // Recurrente = MRR * UF * factorA (porción facturada del MRR). Por mes.
+  const revRecPM=(p,m)=>{
+    const mrr=isActM(m)?(P.model.mrrUF[p]?.[m]||0):(S.mrrUF[p]?.[m]||0);
+    if(!mrr)return 0;
+    const factor=P.nonRec?.[p]?.factorA??1;
+    return mrr*(P.uf?.[m]||0)/1e6*factor;
+  };
+  // Suma anual de recurrente para un producto. Para histórico no tenemos breakdown
+  // por mes confiable → retornamos null (mostraremos '-').
+  const revRecY=(yr,p)=>{
+    if(isHist(yr))return null;
+    return msOfYr(yr).reduce((t,m)=>t+revRecPM(p,m),0);
+  };
+  const revNRY=(yr,p)=>{
+    if(isHist(yr))return null;
+    const tot=revPY(yr,p);
+    const rec=revRecY(yr,p);
+    return (tot==null||rec==null)?null:tot-rec;
+  };
   const revMgrY=yr=>{
     if(isHist(yr)){const vals=MGR_PRODS.map(p=>revPY(yr,p));return vals.some(v=>v!==null)?vals.reduce((s,v)=>s+(v||0),0):0;}
     return MGR_PRODS.reduce((t,p)=>t+revPY(yr,p),0);
@@ -3287,29 +3578,63 @@ function tableRevAnnual(){
   let h=`<table><thead><tr><th>Segmento / Producto (${unit})</th>`;
   for(const yr of years)h+=`<th class="${isHist(yr)?'act-h':''}">${yr}${isHist(yr)?' <span class="act-badge">Real</span>':' <span class="fc-badge">F</span>'}</th>`;
   h+='</tr></thead><tbody>';
+  // Helper para renderizar la fila de un producto con subfilas Recurrente/No Recurrente
+  const renderProdRow=(p,segTag)=>{
+    if(!years.some(yr=>revPY(yr,p)!==null&&Math.abs(revPY(yr,p))>0.05))return '';
+    const hasBreakdown=RECURRING_PRODS.includes(p);
+    let s='';
+    if(hasBreakdown){
+      const prodTag=segTag+'-'+p;
+      s+=`<tr class="exp-row hide exp-hdr" data-exp="${segTag}" data-exp-tag="${prodTag}" onclick="window.expRow(this,'${prodTag}')"><td style="padding-left:14px">${PRODS[p]||p} <span style="color:var(--text3);font-size:10px">▸</span></td>`;
+      for(const yr of years)s+=cell(revPY(yr,p),yr);
+      s+='</tr>';
+      // Sub-fila Recurrente
+      s+=`<tr class="exp-row hide" data-exp="${prodTag}"><td style="padding-left:28px;color:var(--text3);font-size:10px">· Recurrente</td>`;
+      for(const yr of years)s+=cell(revRecY(yr,p),yr);
+      s+='</tr>';
+      // Sub-fila No Recurrente
+      s+=`<tr class="exp-row hide" data-exp="${prodTag}"><td style="padding-left:28px;color:var(--text3);font-size:10px">· No Recurrente</td>`;
+      for(const yr of years)s+=cell(revNRY(yr,p),yr);
+      s+='</tr>';
+      // % Recurrente del producto
+      s+=`<tr class="exp-row hide" data-exp="${prodTag}"><td style="padding-left:28px;color:var(--text3);font-size:10px">· % Recurrente</td>`;
+      for(const yr of years){
+        const t=revPY(yr,p),r=revRecY(yr,p);
+        if(t==null||r==null||!t){s+='<td class="ac">-</td>';continue;}
+        const pct=r/t*100;
+        s+=`<td class="${isHist(yr)?'ac':''}">${pct.toFixed(1)}%</td>`;
+      }
+      s+='</tr>';
+    }else{
+      s+=`<tr class="exp-row hide" data-exp="${segTag}"><td style="padding-left:14px">${PRODS[p]||p}</td>`;
+      for(const yr of years)s+=cell(revPY(yr,p),yr);
+      s+='</tr>';
+    }
+    return s;
+  };
   // L1 Manager
   h+=`<tr class="exp-hdr" data-exp-tag="rva-mgr" onclick="window.expRow(this,'rva-mgr')"><td>Ingresos Manager <span style="color:var(--text3);font-size:10px">▸</span></td>`;
   for(const yr of years)h+=cell(revMgrY(yr),yr);
   h+='</tr>';
-  for(const p of MGR_PRODS){
-    if(!years.some(yr=>revPY(yr,p)!==null&&Math.abs(revPY(yr,p))>0.05))continue;
-    h+=`<tr class="exp-row hide" data-exp="rva-mgr"><td style="padding-left:14px">${PRODS[p]||p}</td>`;
-    for(const yr of years)h+=cell(revPY(yr,p),yr);
-    h+='</tr>';
-  }
+  for(const p of MGR_PRODS) h+=renderProdRow(p,'rva-mgr');
   // L1 Sistemica
   h+=`<tr class="exp-hdr" data-exp-tag="rva-sis" onclick="window.expRow(this,'rva-sis')"><td>Ingresos Sistemica <span style="color:var(--text3);font-size:10px">▸</span></td>`;
   for(const yr of years)h+=cell(revSisY(yr),yr);
   h+='</tr>';
-  for(const p of SIS_PRODS){
-    if(!years.some(yr=>revPY(yr,p)!==null&&Math.abs(revPY(yr,p))>0.05))continue;
-    h+=`<tr class="exp-row hide" data-exp="rva-sis"><td style="padding-left:14px">${PRODS[p]||p}</td>`;
-    for(const yr of years)h+=cell(revPY(yr,p),yr,true);
-    h+='</tr>';
-  }
+  for(const p of SIS_PRODS) h+=renderProdRow(p,'rva-sis');
   // Total + YoY
   h+=`<tr class="tot"><td><strong>Ingresos Totales</strong></td>`;
   for(const yr of years)h+=cell(revTotY(yr),yr);
+  h+='</tr>';
+  // % Recurrente total: suma de recurring de los 4 productos / total
+  h+=`<tr class="sub"><td>· % Recurrente</td>`;
+  for(const yr of years){
+    if(isHist(yr)){h+='<td class="ac">-</td>';continue;}
+    const totRec=RECURRING_PRODS.reduce((s,p)=>s+(revRecY(yr,p)||0),0);
+    const tot=revTotY(yr);
+    if(!tot){h+='<td>-</td>';continue;}
+    h+=`<td>${(totRec/tot*100).toFixed(1)}%</td>`;
+  }
   h+='</tr>';
   h+=`<tr class="sub"><td>· YoY %</td>`;
   for(let i=0;i<years.length;i++){
@@ -4556,7 +4881,9 @@ function _bsSectionSum(section,m){
 }
 function renderBSKPIs(){
   if(!P.bs){document.getElementById('bs-kpis').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:24px;font-size:12px">Cargá el modelo Excel para ver el Balance</div>';return;}
-  const lastM=AMO[AMO.length-1];
+  // Default a Dic-2026 si está disponible. Si no, último mes proyectado.
+  const targetM='2026-12';
+  const lastM=AMO.includes(targetM)?targetM:AMO[AMO.length-1];
   const ta=_bsV('totalAssets',lastM)||_bsSectionSum('ca',lastM)+_bsSectionSum('nca',lastM);
   const tl=_bsV('totalLiab',lastM)||_bsSectionSum('cl',lastM)+_bsSectionSum('ncl',lastM);
   const te=_bsV('totalEquity',lastM)||_bsSectionSum('eq',lastM);
@@ -4593,7 +4920,7 @@ function tableBS(){
   const rowCell=(v,m,extraCls='')=>`<td class="${v<0?'neg':''} ${isActM(m)?'ac':''} ${extraCls}">${fmtMoney(v,m,1)}</td>`;
   const lineRow=(k)=>{
     const def=P.bsDef[k];
-    const dyn=def.dynamic?`<span class="dyn-badge">dyn</span>`:'';
+    const dyn='';
     const hasAny=monthlyCols.some(m=>Math.abs(_bsV(k,m))>0.05);
     if(!hasAny)return '';
     let r=`<tr><td>${def.label}${dyn}</td>`;
@@ -4662,7 +4989,7 @@ function tableBSAnnual(){
   const cell=(v,yr)=>`<td class="${v<0?'neg':''} ${isHist(yr)?'ac':''}">${fmtMoney(v,refM(yr),1)}</td>`;
   const lineRow=(k)=>{
     const def=P.bsDef[k];
-    const dyn=def.dynamic?`<span class="dyn-badge">dyn</span>`:'';
+    const dyn='';
     const hasAny=years.some(yr=>Math.abs(_bsV(k,refM(yr)))>0.05);
     if(!hasAny)return '';
     let r=`<tr><td>${def.label}${dyn}</td>`;
@@ -4810,6 +5137,171 @@ function chartCuota(){
     yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}
   },cfg);
 }
+
+// ═══ Chart: Deuda / EBITDA Adj. LTM — barras, solo 2026 ═══
+// Para cada mes m de 2026: deuda actual al cierre del mes / EBITDA Adj. últimos 12 meses (incluyendo m).
+function chartDebtEbitda12M(){
+  if(!P.bs||!P.modelTot){Plotly.purge('ch-debt-ebitda-12m');return;}
+  const scheds=getDeudaScheds();
+  const ebAdjM=m=>{
+    const eb=isActM(m)?(P.modelTot.ebitda[m]||0):(S?.ebitda?.[m]||P.modelTot.ebitda[m]||0);
+    const aj=P.modelTot.ajustes[m]||0;
+    return eb+aj;
+  };
+  const debtM=m=>{
+    const exist=(P.bs.otherFinL?.[m]||0)+(P.bs.debtLT?.[m]||0);
+    const nuevos=scheds.reduce((s,sc)=>s+Math.abs(sc.sched[m]?.bal||0),0);
+    return exist+nuevos;
+  };
+  // Genero LTM usando MT directo (tiene history desde 2023+), no AMO (que puede empezar tarde)
+  const ebAdjFromMT=m=>(P.modelTot.ebitda?.[m]||0)+(P.modelTot.ajustes?.[m]||0);
+  const months2026=AMO.filter(m=>m.startsWith('2026'));
+  const labels=[],ratios=[];
+  for(const m of months2026){
+    let ebTtm=0;
+    for(let i=0;i<12;i++){
+      const mm=addM(m,-i);
+      // Si el mes está en AMO, usar valor que respeta scenario; sino MT directo.
+      if(AMO.includes(mm))ebTtm+=ebAdjM(mm);
+      else ebTtm+=ebAdjFromMT(mm);
+    }
+    if(ebTtm<=0)continue;
+    labels.push(fmtM(m));
+    ratios.push(debtM(m)/ebTtm);
+  }
+  if(!labels.length){Plotly.purge('ch-debt-ebitda-12m');return;}
+  const colors=ratios.map(r=>r<2?'#059669':r<3?'#d97706':'#dc2626');
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  // Eje Y auto-ajustado al valor real (con 20% de aire arriba). Las líneas de umbral solo
+  // aparecen si caen dentro del rango visible.
+  const rMax=Math.max(...ratios);
+  const yMax=rMax*1.22;
+  const shapes=[],annotations=[];
+  if(yMax>=2){
+    shapes.push({type:'line',x0:-0.5,x1:labels.length-0.5,y0:2,y1:2,line:{color:'#d97706',width:1,dash:'dot'}});
+    annotations.push({x:labels.length-1,y:2,text:'2x',showarrow:false,font:{size:9,color:'#d97706'},xanchor:'right',yshift:8});
+  }
+  if(yMax>=3){
+    shapes.push({type:'line',x0:-0.5,x1:labels.length-0.5,y0:3,y1:3,line:{color:'#dc2626',width:1,dash:'dot'}});
+    annotations.push({x:labels.length-1,y:3,text:'3x',showarrow:false,font:{size:9,color:'#dc2626'},xanchor:'right',yshift:8});
+  }
+  Plotly.react('ch-debt-ebitda-12m',[{
+    x:labels,y:ratios,type:'bar',
+    marker:{color:colors,opacity:0.9},
+    text:ratios.map(r=>r.toFixed(2)+'x'),
+    textposition:'outside',
+    textfont:{size:13,family:"'DM Mono',monospace",color:isDark?'#f1f5f9':'#0f172a',weight:700},
+    cliponaxis:false,
+    hovertemplate:'<b>%{x}</b><br>Deuda/EBITDA LTM: %{y:.2f}x<extra></extra>',
+  }],{
+    ...LO,
+    shapes,
+    annotations,
+    margin:{...LO.margin,t:30,b:50},
+    bargap:0.35,
+    xaxis:{...LO.xaxis,tickangle:0,automargin:true,tickfont:{size:9}},
+    yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:'x',font:{size:10}},range:[0,yMax]},
+  },cfg);
+}
+
+// ═══ Chart: DSCR LTM — barras, solo 2026 ═══
+// DSCR LTM = Σ EBITDA Adj últimos 12 meses / Σ Servicio de deuda últimos 12 meses.
+// Alineado con la lógica del KPI anual (sum/sum) → más estable que mensual puntual.
+function chartDSCR(){
+  if(!P.modelTot){Plotly.purge('ch-dscr');return;}
+  const scheds=getDeudaScheds();
+  const ebAdjM=m=>{
+    const eb=isActM(m)?(P.modelTot.ebitda[m]||0):(S?.ebitda?.[m]||P.modelTot.ebitda[m]||0);
+    const aj=P.modelTot.ajustes[m]||0;
+    return eb+aj;
+  };
+  const servM=m=>{
+    const intEx=Math.abs(P.modelTot.intExp?.[m]||0);
+    const amEx=Math.abs(P.modelTot.debtAm[m]||0);
+    const intNew=scheds.reduce((s,sc)=>s+Math.abs(sc.sched[m]?.int||0),0);
+    const amNew=scheds.reduce((s,sc)=>s+Math.abs(sc.sched[m]?.am||0),0);
+    return intEx+amEx+intNew+amNew;
+  };
+  // LTM con history de MT (cubre desde 2023)
+  const ebAdjFromMT=m=>(P.modelTot.ebitda?.[m]||0)+(P.modelTot.ajustes?.[m]||0);
+  const servFromMT=m=>Math.abs(P.modelTot.intExp?.[m]||0)+Math.abs(P.modelTot.debtAm?.[m]||0);
+  const months2026=AMO.filter(m=>m.startsWith('2026'));
+  const labels=[],vals=[];
+  for(const m of months2026){
+    let ebTtm=0,servTtm=0;
+    for(let i=0;i<12;i++){
+      const mm=addM(m,-i);
+      if(AMO.includes(mm)){ebTtm+=ebAdjM(mm);servTtm+=servM(mm);}
+      else {ebTtm+=ebAdjFromMT(mm);servTtm+=servFromMT(mm);}
+    }
+    if(servTtm<0.01)continue;
+    labels.push(fmtM(m));
+    vals.push(ebTtm/servTtm);
+  }
+  if(!labels.length){Plotly.purge('ch-dscr');return;}
+  const colors=vals.map(v=>v>2?'#059669':v>1.25?'#d97706':'#dc2626');
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  // Cap del eje Y. Si hay valores extremos (típicamente en meses donde el LTM cubre 2025
+  // sin servicio de deuda), capamos a 20x para mantener el rango legible.
+  // Las barras que excedan se muestran "truncadas" visualmente con el valor real arriba.
+  const sortedVals=[...vals].sort((a,b)=>a-b);
+  const median=sortedVals[Math.floor(sortedVals.length/2)];
+  // Usamos max(median × 2.5, 15) y nunca más de 25x
+  const yMax=Math.min(Math.max(median*2.5,15),25);
+  const shapes=[
+    {type:'line',x0:-0.5,x1:labels.length-0.5,y0:1.25,y1:1.25,line:{color:'#dc2626',width:1,dash:'dot'}},
+  ];
+  // Barras que se exceden del cap: número adentro (con ↑) para que el valor real
+  // siga visible aunque visualmente esté truncado al techo del eje.
+  const capLimit=yMax*0.95;
+  const textArr=vals.map(v=>v>capLimit?v.toFixed(2)+'x ↑':v.toFixed(2)+'x');
+  const textPos=vals.map(v=>v>capLimit?'inside':'outside');
+  const textColor=vals.map(v=>v>capLimit?'#fff':(isDark?'#f1f5f9':'#0f172a'));
+  const yTruncated=vals.map(v=>Math.min(v,yMax));
+  Plotly.react('ch-dscr',[{
+    x:labels,y:yTruncated,type:'bar',
+    marker:{color:colors,opacity:0.9},
+    text:textArr,
+    textposition:textPos,
+    textfont:{size:12,family:"'DM Mono',monospace",color:textColor,weight:700},
+    insidetextanchor:'middle',
+    cliponaxis:false,
+    customdata:vals,
+    hovertemplate:'<b>%{x}</b><br>DSCR LTM: %{customdata:.2f}x<extra></extra>',
+  }],{
+    ...LO,
+    shapes,
+    margin:{...LO.margin,t:30,b:50},
+    bargap:0.35,
+    xaxis:{...LO.xaxis,tickangle:0,automargin:true,tickfont:{size:9}},
+    yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:'x',font:{size:10}},range:[0,yMax]},
+    annotations:[
+      {x:labels.length-1,y:1.25,text:'1,25x covenant',showarrow:false,font:{size:9,color:'#dc2626'},xanchor:'right',yshift:-12},
+    ],
+  },cfg);
+}
+
+// ═══ Chart: Intereses mensual (existentes + tramos nuevos) ═══
+function chartIntereses(){
+  if(!P.modelTot){Plotly.purge('ch-intereses');return;}
+  const scheds=getDeudaScheds();
+  const unit=currUnitLbl();
+  const intExist=AMO.map(m=>convV(-Math.abs(P.modelTot.intExp?.[m]||0),m));
+  const intNew=AMO.map(m=>convV(-scheds.reduce((s,sc)=>s+Math.abs(sc.sched[m]?.int||0),0),m));
+  const lb=AMO.map(fmtM);
+  const traces=[{x:lb,y:intExist,name:'Existente (modelo)',type:'bar',marker:{color:'rgba(37,99,235,.75)'},hovertemplate:`<b>%{x}</b><br>Int. existente: %{y:,.0f} ${unit}<extra></extra>`}];
+  if(scheds.length)traces.push({x:lb,y:intNew,name:'Tramos nuevos',type:'bar',marker:{color:'rgba(220,38,38,.65)'},hovertemplate:`<b>%{x}</b><br>Int. nuevos: %{y:,.0f} ${unit}<extra></extra>`});
+  const actCount=AMO.filter(m=>isActM(m)).length;
+  const actIdx=actCount-0.5;
+  const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
+  Plotly.react('ch-intereses',traces,{
+    ...LO,barmode:'stack',shapes,
+    margin:{...LO.margin,b:60},
+    xaxis:{...LO.xaxis,tickangle:-45,automargin:true,nticks:Math.min(lb.length,18),tickfont:{size:9}},
+    yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}}
+  },cfg);
+}
+
 function tableAmort(){
   if(!P.modelTot){
     document.getElementById('t-amort').innerHTML='<tbody><tr><td style="text-align:center;color:var(--text3);padding:16px">Cargá el modelo primero</td></tr></tbody>';
@@ -4837,6 +5329,284 @@ function tableAmort(){
     h+=months.map(m=>{const v=s.sched[m]?.bal;return `<td>${v!=null?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
   }
   document.getElementById('t-amort').innerHTML=h+'</tbody>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PESTAÑA KPIs MENSUALES — hasta Dic-2026, total compañía
+// ═══════════════════════════════════════════════════════════════
+function renderKpisPage(){
+  const el=document.getElementById('t-kpis');
+  if(!el||!P.modelTot){
+    if(el)el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px">Cargá el modelo Excel para ver los KPIs.</div>';
+    return;
+  }
+  // Solo meses hasta Dic-2026
+  const months=AMO.filter(m=>m<='2026-12');
+  if(!months.length){el.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3)">Sin meses ≤ Dic-2026.</div>';return;}
+  const MT=P.modelTot;
+  const valOf=(arrAct,arrScen,m)=>isActM(m)?(arrAct?.[m]||0):(arrScen?.[m]||arrAct?.[m]||0);
+  // Helpers de KPIs
+  const rev=m=>valOf(MT.rev,S?.revT,m);
+  const cogs=m=>valOf(MT.cogs,S?.cogsT,m);
+  const sga=m=>valOf(MT.sga,S?.sgaT,m);
+  const ebitda=m=>valOf(MT.ebitda,S?.ebitda,m);
+  const ebAdj=m=>ebitda(m)+(MT.ajustes[m]||0);
+  const niPost=m=>{
+    // NI post-tax: actuals = MT.ni; proyectados (shortTerm) = MT.ni - 0 (ya post-tax via modelo)
+    if(isActM(m))return MT.ni[m]||0;
+    return (S?.ni?.[m]||0)+(MT.incomeTax[m]||0); // pre-tax + tax(negativo) = post-tax
+  };
+  // MRR Total y ARR (UF). MRR por producto en UF; sumamos todos los BRIDGE excluding ramaflex.
+  const bridgeProds=BRIDGE.filter(p=>p!=='ramaflex');
+  const mrrUFTot=m=>bridgeProds.reduce((s,p)=>{
+    const v=isActM(m)?(P.model.mrrUF?.[p]?.[m]||0):(S?.mrrUF?.[p]?.[m]||P.model.mrrUF?.[p]?.[m]||0);
+    return s+v;
+  },0);
+  const arrUFTot=m=>mrrUFTot(m)*12;
+  // MRR en M CLP (× UF)
+  const mrrCLPTot=m=>mrrUFTot(m)*(P.uf?.[m]||0)/1e6;
+  // Clientes totales (sumando productos del bridge — modelo solo tiene actuals con detalle)
+  const cliEoP=m=>{
+    if(!P.model.clients)return null;
+    let t=0,any=false;
+    for(const p of bridgeProds){
+      const v=P.model.clients[p]?.[m]?.eop;
+      if(v!=null){t+=v;any=true;}
+    }
+    return any?t:null;
+  };
+  // Bridge components (modelo solo provee para actuals)
+  const bridgeOf=(m,k)=>{
+    if(!P.model.bridge)return null;
+    let t=0,any=false;
+    for(const p of bridgeProds){
+      const v=P.model.bridge[p]?.[m]?.[k];
+      if(v!=null){t+=v;any=true;}
+    }
+    return any?t:null;
+  };
+  const bopUF=m=>bridgeOf(m,'bop');
+  const chUF=m=>bridgeOf(m,'ch');
+  const dsUF=m=>bridgeOf(m,'ds');
+  const upUF=m=>bridgeOf(m,'up');
+  const newUF=m=>bridgeOf(m,'new');
+  // Caja EoP
+  const caja=m=>isActM(m)?(MT.cashBS[m]||MT.cashEOP[m]||0):(S?.cashEOP?.[m]||0);
+  // Deuda total (corriente + no corriente + tramos nuevos)
+  const scheds=getDeudaScheds();
+  const deuda=m=>{
+    const exist=(P.bs?.otherFinL?.[m]||0)+(P.bs?.debtLT?.[m]||0);
+    const nuevos=scheds.reduce((s,sc)=>s+Math.abs(sc.sched[m]?.bal||0),0);
+    return exist+nuevos;
+  };
+  // EBITDA TTM (12 meses incluyendo m). Si no hay 12 meses previos, suma lo que haya × 12/n.
+  const ebTTM=m=>{
+    const idx=AMO.indexOf(m);
+    if(idx<0)return 0;
+    const start=Math.max(0,idx-11);
+    const slice=AMO.slice(start,idx+1);
+    return slice.reduce((s,mm)=>s+ebAdj(mm),0);
+  };
+  // Months of OPEX Coverage: meses de operación que la caja actual aguanta a costos
+  // operativos actuales (COGS + SGA). Siempre finito, útil para empresas rentables.
+  const opexCoverage=m=>{
+    const c=Math.abs(cogs(m));const s=Math.abs(sga(m));
+    const opex=c+s;if(opex<=0)return null;
+    return caja(m)/opex;
+  };
+  // ARR YoY %
+  const arrYoY=m=>{
+    const idx=AMO.indexOf(m);if(idx<12)return null;
+    const prev=AMO[idx-12];
+    const a=arrUFTot(m),b=arrUFTot(prev);
+    if(!b)return null;
+    return (a/b-1)*100;
+  };
+  // Rule of 40 = Revenue YoY + EBITDA margen %
+  const revYoY=m=>{
+    const idx=AMO.indexOf(m);if(idx<12)return null;
+    const prev=AMO[idx-12];
+    const a=rev(m),b=rev(prev);
+    if(!b)return null;
+    return (a/b-1)*100;
+  };
+  const ruleOf40=m=>{
+    const r=revYoY(m);const margen=rev(m)>0?ebAdj(m)/rev(m)*100:0;
+    return r!=null?r+margen:null;
+  };
+  // ──── CAC & LTV ────
+  // Marketing total = sum sobre todos los productos (model.sgaLines[prod]['Marketing'][m])
+  const marketingTot=m=>{
+    if(!P.model.sgaLines)return null;
+    let t=0,any=false;
+    for(const p of Object.keys(P.model.sgaLines)){
+      const v=P.model.sgaLines[p]?.['Marketing']?.[m];
+      if(v!=null){t+=v;any=true;}
+    }
+    return any?Math.abs(t):null;
+  };
+  const nuevosTot=m=>{
+    if(!P.model.clients)return null;
+    let t=0,any=false;
+    for(const p of bridgeProds){const v=P.model.clients[p]?.[m]?.new_;if(v!=null){t+=v;any=true;}}
+    return any?t:null;
+  };
+  const cac=m=>{
+    const mk=marketingTot(m),nu=nuevosTot(m);
+    if(mk==null||nu==null||nu<=0)return null;
+    return mk/nu;
+  };
+  // Margen Bruto % = (Revenue + COGS) / Revenue (COGS es negativo)
+  const margenBruto=m=>{
+    const r=rev(m);if(r<=0)return 0;
+    const c=cogs(m); // negativo
+    return (r+c)/r;
+  };
+  // LTV = (MRR por cliente en M CLP) × Duración (meses) × Margen Bruto
+  // MRR/cliente = MRR Total (M CLP) / Clientes
+  // Duración = 1 / churnRate mensual (de los logos)
+  const ltv=m=>{
+    const cli=cliEoP(m);if(!cli||cli<=0)return null;
+    if(!P.model.clients)return null;
+    let bop=0,ch=0,any=false;
+    for(const p of bridgeProds){
+      const c=P.model.clients[p]?.[m];if(!c)continue;
+      bop+=c.bop||0;ch+=(c.logoChurn||0)*(c.bop||0);any=true;
+    }
+    if(!any||bop<=0)return null;
+    const churnRate=ch/bop; // fracción mensual
+    if(churnRate<=0)return null;
+    const duracion=1/churnRate;
+    const mrrPorCli=mrrCLPTot(m)/cli;
+    const mb=margenBruto(m);
+    return mrrPorCli*duracion*mb;
+  };
+  const ltvCac=m=>{
+    const l=ltv(m),c=cac(m);
+    if(l==null||c==null||c<=0)return null;
+    return l/c;
+  };
+  // CAC Payback (meses) = CAC / (MRR/cliente × Margen Bruto)
+  const cacPayback=m=>{
+    const c=cac(m);if(c==null||c<=0)return null;
+    const cli=cliEoP(m);if(!cli||cli<=0)return null;
+    const mrrPorCli=mrrCLPTot(m)/cli;
+    const mb=margenBruto(m);
+    if(mrrPorCli<=0||mb<=0)return null;
+    return c/(mrrPorCli*mb);
+  };
+  // ──── Definición de las filas KPI ────
+  // type: 'money'=M CLP, 'mrr'=UF (mostrar UF y M CLP segun toggle), 'pct'=%, 'num'=integer, 'ratio'=x, 'months'=meses
+  const rows=[
+    {sec:'INGRESOS / RENTABILIDAD'},
+    {l:'Revenue mensual',f:rev,t:'money'},
+    {l:'EBITDA',f:ebitda,t:'money'},
+    {l:'EBITDA Adj.',f:ebAdj,t:'money'},
+    {l:'· Margen EBITDA Adj.',f:m=>rev(m)>0?ebAdj(m)/rev(m)*100:0,t:'pct'},
+    {l:'Net Income (post-tax)',f:niPost,t:'money'},
+    {sec:'MRR / ARR'},
+    {l:'MRR Total (UF)',f:mrrUFTot,t:'mrrUF'},
+    {l:'MRR Total (M CLP)',f:mrrCLPTot,t:'money'},
+    {l:'ARR Anualizado (UF)',f:arrUFTot,t:'mrrUF'},
+    {l:'ARR Growth YoY',f:arrYoY,t:'pct'},
+    {sec:'CLIENTES / RETENCIÓN'},
+    {l:'Clientes EoP',f:cliEoP,t:'num'},
+    {l:'Nuevos clientes',f:m=>{
+      if(!P.model.clients)return null;
+      let t=0,any=false;
+      for(const p of bridgeProds){const v=P.model.clients[p]?.[m]?.new_;if(v!=null){t+=v;any=true;}}
+      return any?t:null;
+    },t:'num'},
+    {l:'Logo Churn (clientes)',f:m=>{
+      if(!P.model.clients)return null;
+      let t=0,any=false;
+      for(const p of bridgeProds){const v=P.model.clients[p]?.[m]?.logoChurn;if(v!=null){t+=v*(P.model.clients[p]?.[m]?.bop||0);any=true;}}
+      return any?-t:null;
+    },t:'num'},
+    {l:'Logo Churn Rate',f:m=>{
+      if(!P.model.clients)return null;
+      let bop=0,ch=0,any=false;
+      for(const p of bridgeProds){
+        const c=P.model.clients[p]?.[m];if(!c)continue;
+        bop+=c.bop||0;ch+=(c.logoChurn||0)*(c.bop||0);any=true;
+      }
+      return any&&bop>0?(ch/bop*100):null;
+    },t:'pct',inverse:true},
+    {l:'Revenue Churn Rate',f:m=>{
+      const bop=bopUF(m),ch=chUF(m);
+      if(bop==null||ch==null||bop<=0)return null;
+      return Math.abs(ch)/bop*100;
+    },t:'pct',inverse:true},
+    {l:'Gross Retention',f:m=>{
+      const bop=bopUF(m),ch=chUF(m),ds=dsUF(m);
+      if(bop==null||ch==null||ds==null||bop<=0)return null;
+      return (bop-Math.abs(ch)-Math.abs(ds))/bop*100;
+    },t:'pct'},
+    {l:'NRR (Net Retention)',f:m=>{
+      const bop=bopUF(m),ch=chUF(m),ds=dsUF(m),up=upUF(m);
+      if(bop==null||bop<=0)return null;
+      return (bop-Math.abs(ch||0)-Math.abs(ds||0)+(up||0))/bop*100;
+    },t:'pct'},
+    {l:'ARPA Total (UF)',f:m=>{const c=cliEoP(m);return c>0?mrrUFTot(m)/c:null;},t:'mrrUF'},
+    {l:'Duración promedio (meses)',f:m=>{
+      if(!P.model.clients)return null;
+      let bop=0,ch=0,any=false;
+      for(const p of bridgeProds){
+        const c=P.model.clients[p]?.[m];if(!c)continue;
+        bop+=c.bop||0;ch+=(c.logoChurn||0)*(c.bop||0);any=true;
+      }
+      if(!any||bop<=0||ch<=0)return null;
+      return bop/ch;
+    },t:'months'},
+    {l:'C LTV (M CLP)',f:ltv,t:'money'},
+    {sec:'CAJA / SOLVENCIA'},
+    {l:'Caja EoP',f:caja,t:'money'},
+    {l:'Deuda Total',f:deuda,t:'money'},
+    {l:'Deuda / EBITDA LTM',f:m=>{const e=ebTTM(m);return e>0?deuda(m)/e:null;},t:'ratio',inverse:true},
+    {l:'Months of OPEX Coverage',f:opexCoverage,t:'months'},
+    {sec:'EFICIENCIA / CRECIMIENTO'},
+    {l:'Revenue Growth YoY',f:revYoY,t:'pct'},
+    {l:'Rule of 40',f:ruleOf40,t:'pct'},
+    {l:'Margen Bruto %',f:m=>margenBruto(m)*100,t:'pct'},
+    {l:'Gasto Marketing (M CLP)',f:marketingTot,t:'money'},
+    {l:'CAC (M CLP)',f:cac,t:'money'},
+    {l:'CAC Payback (meses)',f:cacPayback,t:'months',inverse:true},
+    {l:'C LTV / CAC',f:ltvCac,t:'ratio'},
+  ];
+  // ──── Formateo y render ────
+  const fmtV=(v,t,m,inv)=>{
+    if(v==null||isNaN(v))return '<td class="ac">-</td>';
+    if(v===Infinity)return '<td>∞</td>';
+    let s='',cls=isActM(m)?'ac':'';
+    if(t==='money'){s=fmtMoney(v,m,1);}
+    else if(t==='mrrUF'){s=f0(v);}
+    else if(t==='pct'){
+      const sign=v>=0?'+':'';
+      s=`${sign}${v.toFixed(1)}%`;
+      if(inv)cls+=v>0?' neg':' pos';
+      else cls+=v>0?' pos':v<0?' neg':'';
+    }
+    else if(t==='num'){s=f0(v);if(v<0)cls+=' neg';else if(v>0)cls+=' pos';}
+    else if(t==='ratio'){s=`${v.toFixed(2)}x`;if(inv)cls+=v>3?' neg':v>2?'':' pos';}
+    else if(t==='months'){s=v>240?'>20a':v.toFixed(0);}
+    if(v<0&&t==='money')cls+=' neg';
+    return `<td class="${cls.trim()}">${s}</td>`;
+  };
+  const badge='<span class="act-badge">Real</span>';
+  let h='<table><thead><tr><th>KPI</th>';
+  for(const m of months)h+=`<th ${isActM(m)?'class="act-h"':''}>${fmtM(m)}${isActM(m)?' '+badge:''}</th>`;
+  h+='</tr></thead><tbody>';
+  const sec=lbl=>`<tr><td colspan="${months.length+1}" style="background:var(--surface2);font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text4);padding:8px 11px;font-weight:700;border-top:1px solid var(--border)">${lbl}</td></tr>`;
+  for(const r of rows){
+    if(r.sec){h+=sec(r.sec);continue;}
+    h+=`<tr><td>${r.l}</td>`;
+    for(const m of months){
+      const v=r.f(m);
+      h+=fmtV(v,r.t,m,r.inverse);
+    }
+    h+='</tr>';
+  }
+  el.innerHTML=h+'</tbody></table>';
 }
 
 // Init
