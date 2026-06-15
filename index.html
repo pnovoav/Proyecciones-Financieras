@@ -355,10 +355,10 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
     <div class="ctrl-row" id="cutoff-row" style="display:none"><div class="ctrl-label">Actuals desde</div><select id="desde-month" onchange="onCutoffChange()"></select></div>
     <div class="ctrl-row" id="hasta-row" style="display:none"><div class="ctrl-label">Actuals hasta (cutoff)</div><select id="cutoff-month" onchange="onCutoffChange()"></select></div>
     <div class="ctrl-row" id="horizon-row" style="display:none"><div class="ctrl-label">Proyectar hasta</div><select id="horizon-month" onchange="onHorizonChange()"><option value="2026-12">Dic-26</option><option value="2027-06">Jun-27</option><option value="2027-12">Dic-27</option><option value="2028-06">Jun-28</option><option value="2028-12" selected>Dic-28</option></select></div>
-    <button class="btn btn-outline" onclick="document.getElementById('xlsx-input').click()">↑ Cargar modelo .xlsx</button>
+    <button class="btn btn-outline" id="btn-upload-xlsx" onclick="document.getElementById('xlsx-input').click()">↑ Cargar modelo .xlsx</button>
     <input type="file" id="xlsx-input" accept=".xlsx" style="display:none" onchange="handleXlsx(this)">
     <div id="mrr-detail-status" style="font-size:10px;color:var(--text4);margin:8px 0 4px;font-family:var(--mono)">Detalle MRR: no cargado</div>
-    <button class="btn btn-outline" onclick="document.getElementById('mrr-detail-input').click()">↑ Cargar detalle MRR .xlsx</button>
+    <button class="btn btn-outline" id="btn-upload-mrr" onclick="document.getElementById('mrr-detail-input').click()">↑ Cargar detalle MRR .xlsx</button>
     <input type="file" id="mrr-detail-input" accept=".xlsx" style="display:none" onchange="handleMrrDetailXlsx(this)">
   </div>
   <div class="ctrl-section">
@@ -466,11 +466,6 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
   <div class="card"><div class="card-title"><span data-curr-title>Balance Sheet mensual</span> · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">hasta Dic-26</span></div><div class="tw" id="t-bs"></div></div>
 </div>
 <div id="pg-deuda" class="pg">
-  <div class="card gmb" style="padding:16px 20px">
-    <div class="card-title" style="margin-bottom:12px">Tramos de deuda nueva</div>
-    <div id="dc" style="display:flex;flex-direction:column;gap:10px"></div>
-    <button class="btn btn-outline" style="margin-top:10px;width:auto;padding:7px 18px" onclick="addD()">＋ Agregar tramo</button>
-  </div>
   <div class="g4" id="deuda-kpis"></div>
   <div class="card gmb"><div class="card-title">Deuda / EBITDA Adj. LTM · 2026</div><div id="ch-debt-ebitda-12m" style="height:280px"></div></div>
   <div class="card gmb"><div class="card-title">DSCR LTM · 2026</div><div id="ch-dscr" style="height:280px"></div></div>
@@ -480,6 +475,11 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
   </div>
   <div class="card"><div class="card-title">Intereses · Mensual</div><div id="ch-intereses" style="height:220px"></div></div>
   <div class="card"><div class="card-title"><span data-curr-title>Tabla de amortización</span></div><div class="tw"><table id="t-amort"></table></div></div>
+  <div class="card gmb" style="padding:16px 20px">
+    <div class="card-title" style="margin-bottom:12px">Tramos de deuda nueva</div>
+    <div id="dc" style="display:flex;flex-direction:column;gap:10px"></div>
+    <button class="btn btn-outline" style="margin-top:10px;width:auto;padding:7px 18px" onclick="addD()">＋ Agregar tramo</button>
+  </div>
 </div>
 <div id="pg-kpis" class="pg">
   <div class="card gmb"><div class="card-title">KPIs Mensuales · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">total compañía, hasta Dic-26</span></div><div class="tw" id="t-kpis"></div></div>
@@ -3118,8 +3118,10 @@ function tableMetrics(){
   // Convertidor: valor en UF → unidad activa
   const cv=v=>useClp?(v*ufRate/1e6):v;
   const u=useClp?'M CLP':'UF';
-  const fmtA=v=>useClp?f1(v,2):f1(v,2);
-  let h=`<thead><tr><th>Producto</th><th>Clientes EoP</th><th>Δ vs Per. Ant.</th><th>Logo Retention</th><th>Logo Churn</th><th>ARPA New (${u})</th><th>ARPA Old (${u})</th><th>ARPA Total (${u})</th><th>MRR EoP (${u})</th><th>ARR EoP (${u})</th></tr></thead><tbody>`;
+  // ARPA: en CLP se muestra en pesos enteros (no millones), porque dividir por 1e6 lo deja ilegible.
+  const uArpa=useClp?'CLP':'UF';
+  const fmtA=v=>useClp?f0(v*ufRate):f1(v,2); // v viene en UF; en CLP → pesos completos
+  let h=`<thead><tr><th>Producto</th><th>Clientes EoP</th><th>Δ vs Per. Ant.</th><th>Logo Retention</th><th>Logo Churn</th><th>ARPA New (${uArpa})</th><th>ARPA Old (${uArpa})</th><th>ARPA Total (${uArpa})</th><th>MRR EoP (${u})</th><th>ARR EoP (${u})</th></tr></thead><tbody>`;
   for(const p of BRIDGE){
     if(p==='ramaflex')continue;
     const c=P.model.clients[p]?.[lastAct]||{};
@@ -3134,9 +3136,9 @@ function tableMetrics(){
       <td class="${dCli<0?'neg':dCli>0?'pos':''}">${dCli>0?'+':''}${f0(dCli)}</td>
       <td class="pos">${((c.logoRet||0)*100).toFixed(1)}%</td>
       <td class="neg">${((c.logoChurn||0)*100).toFixed(1)}%</td>
-      <td>${fmtA(cv(a.newC||0))}</td>
-      <td>${fmtA(cv(a.old||0))}</td>
-      <td><strong>${fmtA(cv(a.total||0))}</strong></td>
+      <td>${fmtA(a.newC||0)}</td>
+      <td>${fmtA(a.old||0)}</td>
+      <td><strong>${fmtA(a.total||0)}</strong></td>
       <td>${useClp?f1(cv(mrr),1):f0(mrr)}</td>
       <td><strong>${useClp?f1(cv(arr),1):f0(arr)}</strong></td>
     </tr>`;
@@ -5320,11 +5322,15 @@ function tableAmort(){
   h+=months.map(m=>{const v=_exBal(m);return `<td><strong>${fmtMoney(v,m,1)}</strong></td>`;}).join('')+'</tr>';
   h+=`<tr><td colspan="4" style="color:var(--text3);font-size:10px;padding-left:20px">└ Amortización mensual (capital)</td>`;
   h+=months.map(m=>{const v=-Math.abs(P.modelTot.debtAm[m]||0);return `<td class="${v<0?'neg':''}" style="font-size:10px;color:var(--text3)">${Math.abs(v)>0.05?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
+  h+=`<tr><td colspan="4" style="color:var(--text3);font-size:10px;padding-left:20px">└ Interés mensual</td>`;
+  h+=months.map(m=>{const v=-Math.abs(P.modelTot.intExp?.[m]||0);return `<td class="${v<0?'neg':''}" style="font-size:10px;color:var(--text3)">${Math.abs(v)>0.05?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
   // Tramos nuevos
   const tpLbl=t=>t==='bullet'?'Bullet':t==='zero'?'Cero Cupón':'Francés';
   for(const s of scheds){
     h+=`<tr class="sub"><td>${s.label}</td><td>${tpLbl(s.tipo)}</td><td>${f0(convV(s.amount/1e6,months[0]))}</td><td>${(s.rate*100).toFixed(2)}%</td>`;
     h+=months.map(m=>{const v=s.sched[m]?.am||0;return `<td class="${v<0?'neg':''}">${v?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
+    h+=`<tr><td colspan="4" style="color:var(--text3);font-size:10px;padding-left:20px">└ Interés</td>`;
+    h+=months.map(m=>{const v=s.sched[m]?.int||0;return `<td class="${v<0?'neg':''}" style="font-size:10px;color:var(--text3)">${v?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
     h+=`<tr><td colspan="4" style="color:var(--text3);font-size:10px;padding-left:20px">└ Saldo</td>`;
     h+=months.map(m=>{const v=s.sched[m]?.bal;return `<td>${v!=null?fmtMoney(v,m,1):'-'}</td>`;}).join('')+'</tr>';
   }
@@ -5435,7 +5441,9 @@ function renderKpisPage(){
     return r!=null?r+margen:null;
   };
   // ──── CAC & LTV ────
-  // Marketing total = sum sobre todos los productos (model.sgaLines[prod]['Marketing'][m])
+  // Marketing total = sum sobre TODOS los productos (incl. corp). Los de terceros (rex,bnovus,
+  // gaxu,geo,otros,ramaflex,rpe) se venden como add-on y no tienen gasto de marketing propio
+  // ($0), así que sumar todo == sumar los del bridge, y de paso captura el marketing corp.
   const marketingTot=m=>{
     if(!P.model.sgaLines)return null;
     let t=0,any=false;
@@ -5805,6 +5813,20 @@ async function loadState(){
     console.error('[loadState]:',e);
   }
 }
+
+// ── MODO NUBE: si se abre desde GitHub Pages (host *.github.io) ocultamos la carga
+// de Excel. La data viene sola del gist vía loadState(). En local (localhost / file://)
+// se mantienen los botones de subir modelo. Mismo archivo, comportamiento según el host.
+const ES_NUBE = location.hostname.endsWith('github.io');
+function applyEnvMode(){
+  if(!ES_NUBE)return;
+  ['btn-upload-xlsx','btn-upload-mrr','mrr-detail-status'].forEach(id=>{
+    const el=document.getElementById(id); if(el)el.style.display='none';
+  });
+  const st=document.getElementById('upload-status');
+  if(st)st.textContent='Data desde la nube';
+}
+applyEnvMode();
 
 if(sessionStorage.getItem('sable_auth')==='1'){
   document.getElementById('login-screen').style.display='none';
