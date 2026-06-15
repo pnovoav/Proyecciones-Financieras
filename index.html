@@ -5171,11 +5171,13 @@ function chartCuota(){
   // Capital existente: solo "Debt Amortization" (r1303) — egreso real de amortización bancaria.
   // Excluimos "Devolución Préstamo" (r1306) porque es positivo (cobro), no egreso.
   const existingCap=AMO.map(m=>convV(-Math.abs(P.modelTot.debtAm[m]||0),m));
+  const existingInt=AMO.map(m=>convV(-Math.abs(P.modelTot.intExp?.[m]||0),m));
   const scheds=getDeudaScheds();
   const newCap=AMO.map(m=>{let t=0;for(const s of scheds)t+=Math.abs(s.sched[m]?.am||0);return convV(-t,m);});
   const newInt=AMO.map(m=>{let t=0;for(const s of scheds)t+=Math.abs(s.sched[m]?.int||0);return convV(-t,m);});
   const traces=[
     {x:allLb,y:existingCap,name:'Capital existente',type:'bar',marker:{color:'rgba(37,99,235,.75)'},hovertemplate:`<b>%{x}</b><br>Capital ex.: %{y:,.0f} ${unit}<extra></extra>`},
+    {x:allLb,y:existingInt,name:'Intereses existentes',type:'bar',marker:{color:'rgba(37,99,235,.35)'},hovertemplate:`<b>%{x}</b><br>Intereses ex.: %{y:,.0f} ${unit}<extra></extra>`},
   ];
   if(scheds.length){
     traces.push({x:allLb,y:newCap,name:'Capital nuevos',type:'bar',marker:{color:'rgba(124,58,237,.75)'},hovertemplate:`<b>%{x}</b><br>Capital nuevos: %{y:,.0f} ${unit}<extra></extra>`});
