@@ -5496,16 +5496,23 @@ function renderKpisPage(){
     if(!b)return null;
     return (a/b-1)*100;
   };
-  // Rule of 40 = Revenue YoY + EBITDA margen %
+  // Revenue Growth YoY — YTD (acumulado del año hasta el mes m) vs mismo período del año anterior.
+  // En Diciembre = año completo, que reconcilia con la caluga anual del dashboard (FY vs FY).
+  // Suaviza el ruido del YoY mensual puro y solo requiere historia 2025 (ya cargada).
   const revYoY=m=>{
-    const prev=addM(m,-12); // historia 2025 ya cargada en P.modelTot.rev
-    const a=rev(m),b=rev(prev);
-    if(!b)return null;
-    return (a/b-1)*100;
+    const yr=+m.slice(0,4), mo=+m.slice(5);
+    let a=0,b=0;
+    for(let i=1;i<=mo;i++){const mm=String(i).padStart(2,'0');a+=rev(yr+'-'+mm)||0;b+=rev((yr-1)+'-'+mm)||0;}
+    return b>0?(a/b-1)*100:null;
   };
+  // Rule of 40 YTD = crecimiento YTD + margen EBITDA Adj YTD (acumulados). En Dic calza con la caluga.
   const ruleOf40=m=>{
-    const r=revYoY(m);const margen=rev(m)>0?ebAdj(m)/rev(m)*100:0;
-    return r!=null?r+margen:null;
+    const r=revYoY(m);if(r==null)return null;
+    const yr=+m.slice(0,4), mo=+m.slice(5);
+    let rv=0,eb=0;
+    for(let i=1;i<=mo;i++){const mm=yr+'-'+String(i).padStart(2,'0');rv+=rev(mm)||0;eb+=ebAdj(mm)||0;}
+    const margen=rv>0?eb/rv*100:0;
+    return r+margen;
   };
   // ──── CAC & LTV ────
   // Marketing total = sum sobre TODOS los productos (incl. corp). Los de terceros (rex,bnovus,
