@@ -2343,13 +2343,15 @@ function project(ov={}, _forceEngine=false){
     const formulaBaseDiv=ebtModel>0?-divPctBase*ebtModel:0;
     const modelDivs=MT.divs[m]||0;
     const isDivManual=Math.abs(modelDivs-formulaBaseDiv)>0.5;
-    let scenDivs, baseDivs;
-    if(isDivManual){scenDivs=modelDivs;baseDivs=modelDivs;}
-    else if(divFix>0){scenDivs=-divFix;baseDivs=-divFix;}
-    else{
-      scenDivs=ni[m]>0?-divPct*ni[m]:0;
-      baseDivs=_bRef?(niRef>0?-divPct*niRef:0):(MT.divs[m]||0);
-    }
+    let scenDivs;
+    if(isDivManual){scenDivs=modelDivs;}
+    else if(divFix>0){scenDivs=-divFix;}
+    else{scenDivs=ni[m]>0?-divPct*ni[m]:0;}
+    // baseDivs = dividendo REAL de la proyección base (_bRef: ratio por defecto, sin monto fijo),
+    // anclado igual que dNI/dWC. Antes se recalculaba con el divPct del slider, lo que hacía que
+    // scenDivs y baseDivs se movieran juntos y el delta quedara en 0 (el slider/monto fijo no
+    // movía la caja). Con el ancla a _bRef.divs, mover el ratio o el monto fijo sí genera delta.
+    const baseDivs=_bRef?(_bRef.divs[m]||0):(MT.divs[m]||0);
     const dDivs=scenDivs-baseDivs;
     const newDebtCF=ndIn(m)+ndA(m);
     const wcS=P.ar_days*revT[m]/30-P.ap_days*cogsT[m]/30;
