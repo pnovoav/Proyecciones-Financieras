@@ -5764,9 +5764,12 @@ function applyState(state){
     if(ums.length){
       const status=document.getElementById('upload-status');
       if(status)status.textContent=`✓ Restaurado desde nube · Actuals: ${fmtM(ums[0])}→${fmtM(ums[ums.length-1])}`;
-      document.getElementById('cutoff-row').style.display='';
-      document.getElementById('hasta-row').style.display='';
-      document.getElementById('horizon-row').style.display='';
+      // En modo nube (GitHub) no mostramos los selectores de cutoff/horizonte: se controlan desde local.
+      if(!ES_NUBE){
+        document.getElementById('cutoff-row').style.display='';
+        document.getElementById('hasta-row').style.display='';
+        document.getElementById('horizon-row').style.display='';
+      }
     }
   }
 }
@@ -5820,7 +5823,7 @@ async function loadState(){
 const ES_NUBE = location.hostname.endsWith('github.io');
 function applyEnvMode(){
   if(!ES_NUBE)return;
-  ['btn-upload-xlsx','btn-upload-mrr','mrr-detail-status'].forEach(id=>{
+  ['btn-upload-xlsx','btn-upload-mrr','mrr-detail-status','cutoff-row','hasta-row','horizon-row'].forEach(id=>{
     const el=document.getElementById(id); if(el)el.style.display='none';
   });
   const st=document.getElementById('upload-status');
