@@ -52,6 +52,7 @@ input[type=number]:focus,select:focus{border-color:var(--blue3);background:#fff;
 .ir{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
 .il{font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
 .pg{display:none}.pg.on{display:block}
+.co-hidden{display:none !important}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
 .g5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
@@ -349,6 +350,15 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
 <div class="body">
 <div class="sidebar-scrim" id="sidebar-scrim" onclick="toggleDrawer(false)"></div>
 <aside class="sidebar" id="sidebar">
+  <div class="ctrl-section">
+    <div class="ctrl-section-title">Empresas</div>
+    <label class="co-row" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:12px">
+      <input type="checkbox" id="co-erps" checked onchange="onCompanyChange()"> ERPs
+    </label>
+    <label class="co-row" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:12px">
+      <input type="checkbox" id="co-icar" onchange="onCompanyChange()"> I-Car <span style="font-size:9px;color:var(--text4)">(sin datos)</span>
+    </label>
+  </div>
   <div class="ctrl-section">
     <div class="ctrl-section-title">Modelo Excel</div>
     <div id="upload-status" style="font-size:10px;color:var(--text4);margin-bottom:8px;font-family:var(--mono)">Sin modelo cargado</div>
@@ -2575,8 +2585,40 @@ function renderAll(){
     if(document.getElementById('pg-'+id)?.classList.contains('on'))renderTab(id);
   });
 }
+// ── Selector de empresas ──
+// Hoy solo "ERPs" tiene datos; I-Car es placeholder (sin data → no aporta nada).
+// Si ERPs no está seleccionada, no hay nada que mostrar → cada pestaña muestra un cartelito.
+function erpsSelected(){const cb=document.getElementById('co-erps');return cb?cb.checked:true;}
+function showEmptyState(pgId){
+  const pg=document.getElementById('pg-'+pgId);if(!pg)return;
+  // Ocultamos con la clase .co-hidden (display:none !important) en vez de tocar style.display,
+  // para NO pisar estilos inline como el display:grid de #kpis2.
+  pg.querySelectorAll(':scope > *:not(.empty-state)').forEach(el=>el.classList.add('co-hidden'));
+  let es=pg.querySelector(':scope > .empty-state');
+  if(!es){
+    es=document.createElement('div');es.className='empty-state card';
+    es.style.cssText='text-align:center;padding:48px 24px;color:var(--text3)';
+    es.innerHTML='<div style="font-size:28px;margin-bottom:10px;opacity:.5">🏢</div>'
+      +'<div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:4px">Sin empresas con datos seleccionadas</div>'
+      +'<div style="font-size:12px">Seleccioná al menos una empresa con datos en los <strong>Inputs</strong> (☰) para ver esta sección.</div>';
+    pg.appendChild(es);
+  }
+  es.classList.remove('co-hidden');
+}
+function clearEmptyState(pgId){
+  const pg=document.getElementById('pg-'+pgId);if(!pg)return;
+  const es=pg.querySelector(':scope > .empty-state');if(es)es.classList.add('co-hidden');
+  pg.querySelectorAll(':scope > *:not(.empty-state)').forEach(el=>el.classList.remove('co-hidden'));
+}
+function onCompanyChange(){
+  // Cambiar la selección no recalcula nada (la data es la misma); solo re-renderiza con/sin gate.
+  document.querySelectorAll('.pg').forEach(p=>{if(erpsSelected())clearEmptyState(p.id.replace('pg-',''));});
+  if(B&&S)renderAll();
+}
 function renderTab(id){
   if(!B||!S)return;
+  if(!erpsSelected()){showEmptyState(id);return;}
+  clearEmptyState(id);
   if(id==='dash'){renderKPIs();chartRevProd();chartWaterfall();chartCashWaterfall('ch-cash-wf-dash');chartSaldo('ch-saldo-dash');chartEBIT();tableMetrics();}
   else if(id==='ing'){tableRevAnnual();chartRevByProd();chartBridge();tableBridge();tableMRR();}
   else if(id==='eerr'){renderEERRKPIs();chartMargins();chartCostos();tableEERRAnnual();chartEERRAnnual();tableEERR();}
