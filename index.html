@@ -1619,6 +1619,14 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
         modelTot.ajustes[m]=rowAjustes>0?numV(wsE,rowAjustes,c)/1e6:0;
         modelTot.debtAm[m]=numV(wsE,rowDebtAm,c)/1e6;
         modelTot.intExp[m]=rowIntExp>0?numV(wsE,rowIntExp,c)/1e6:0;
+        // Revenue/COGS/SGA del año previo → habilita Revenue Growth YoY y Rule of 40 (necesitan
+        // el mismo mes del año anterior). MRR por producto del año previo → ARR Growth YoY.
+        modelTot.rev[m]=numV(wsE,rowRev,c)/1e6;
+        modelTot.cogs[m]=numV(wsE,rowCOGS,c)/1e6;
+        modelTot.sga[m]=numV(wsE,rowSGA,c)/1e6;
+        for(const p of BRIDGE){
+          if(brigs[p])model.mrrUF[p][m]=numV(wsE,brigs[p].eop_uf,c);
+        }
       }
     }
 
@@ -5483,16 +5491,14 @@ function renderKpisPage(){
   };
   // ARR YoY %
   const arrYoY=m=>{
-    const idx=AMO.indexOf(m);if(idx<12)return null;
-    const prev=AMO[idx-12];
+    const prev=addM(m,-12); // mismo mes del año anterior (la historia 2025 ya está en P.model.mrrUF)
     const a=arrUFTot(m),b=arrUFTot(prev);
     if(!b)return null;
     return (a/b-1)*100;
   };
   // Rule of 40 = Revenue YoY + EBITDA margen %
   const revYoY=m=>{
-    const idx=AMO.indexOf(m);if(idx<12)return null;
-    const prev=AMO[idx-12];
+    const prev=addM(m,-12); // historia 2025 ya cargada en P.modelTot.rev
     const a=rev(m),b=rev(prev);
     if(!b)return null;
     return (a/b-1)*100;
