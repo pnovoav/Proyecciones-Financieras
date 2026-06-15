@@ -5260,8 +5260,13 @@ function chartDSCR(){
   // Las barras que excedan se muestran "truncadas" visualmente con el valor real arriba.
   const sortedVals=[...vals].sort((a,b)=>a-b);
   const median=sortedVals[Math.floor(sortedVals.length/2)];
-  // Usamos max(median × 2.5, 15) y nunca más de 25x
-  const yMax=Math.min(Math.max(median*2.5,15),25);
+  const maxVal=Math.max(...vals);
+  const p90=sortedVals[Math.floor((sortedVals.length-1)*0.9)];
+  // Eje ajustado a los datos reales: máximo + ~20% de aire. Si hay un outlier muy por encima del
+  // p90 (típico en meses cuyo LTM cubre 2025 sin servicio de deuda → DSCR gigante), acotamos al
+  // p90 para que las barras normales no queden enanas; ese outlier se muestra truncado con ↑.
+  const cap=maxVal>p90*1.8?p90*1.25:maxVal*1.2;
+  const yMax=Math.max(Math.min(cap,25),2.5);
   const shapes=[
     {type:'line',x0:-0.5,x1:labels.length-0.5,y0:1.25,y1:1.25,line:{color:'#dc2626',width:1,dash:'dot'}},
   ];
