@@ -3009,10 +3009,16 @@ function chartCash(){
   const actCount=MM.filter(m=>isActM(m)).length;
   const actIdx=actCount-0.5;
   const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
-  Plotly.react('ch-cash',[
+  // Si el escenario no difiere del modelo base (no se movió ningún input), mostramos una sola
+  // línea neutra "Proyección". Solo cuando hay ajustes reales aparece la comparación base vs ajustada.
+  const diverges=scen.some((v,i)=>Math.abs(v-base[i])>0.5);
+  const cashTraces=diverges?[
     {x:allLb,y:base,name:'Modelo · sin ajustes',   line:{color:'#d0d5dd',width:2},mode:'lines+markers',marker:{size:3},hovertemplate:`<b>%{x}</b><br>Sin ajustes: %{y:,.0f} ${unit}<extra></extra>`},
     {x:allLb,y:scen,name:'Con ajustes en inputs',line:{color:'#2563eb',width:2},mode:'lines+markers',fill:'tonexty',fillcolor:'rgba(37,99,235,.06)',marker:{size:3},hovertemplate:`<b>%{x}</b><br>Con ajustes: %{y:,.0f} ${unit}<extra></extra>`},
-  ],{...LO,shapes,yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}},annotations:actCount?[{x:allLb[actCount-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[]},cfg);
+  ]:[
+    {x:allLb,y:scen,name:'Proyección',line:{color:'#2563eb',width:2},mode:'lines+markers',fill:'tozeroy',fillcolor:'rgba(37,99,235,.06)',marker:{size:3},hovertemplate:`<b>%{x}</b><br>Saldo: %{y:,.0f} ${unit}<extra></extra>`},
+  ];
+  Plotly.react('ch-cash',cashTraces,{...LO,shapes,yaxis:{...LO.yaxis,title:{text:unit,font:{size:10}}},annotations:actCount?[{x:allLb[actCount-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[]},cfg);
 }
 
 function chartCashFC(){
@@ -3030,10 +3036,14 @@ function chartCashFC(){
   const actIdx=actCount-0.5;
   const shapes=actCount?[{type:'rect',x0:-.5,x1:actIdx,y0:0,y1:1,yref:'paper',fillcolor:'rgba(37,99,235,.04)',line:{color:'transparent'}}]:[];
   document.getElementById('cash-fc-title').textContent=`Saldo caja EOP · ${cy}`;
-  Plotly.react('ch-cash-fc',[
+  const diverges=scen.some((v,i)=>Math.abs(v-base[i])>0.5);
+  const fcTraces=diverges?[
     {x:allLb,y:base,name:'Modelo · sin ajustes',line:{color:'#c8d3e8',width:1.5},mode:'lines+markers',fill:'tozeroy',fillcolor:'rgba(203,213,225,0.18)',marker:{size:3},hovertemplate:`<b>%{x}</b><br>Sin ajustes: %{y:,.0f} ${unit}<extra></extra>`},
     {x:allLb,y:scen,name:'Con ajustes en inputs',line:{color:'#2563eb',width:2},mode:'lines+markers',fill:'tozeroy',fillcolor:'rgba(37,99,235,0.10)',marker:{size:3},hovertemplate:`<b>%{x}</b><br>Con ajustes: %{y:,.0f} ${unit}<extra></extra>`},
-  ],{...LO,shapes,yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:unit,font:{size:10}}},annotations:actCount?[{x:allLb[actCount-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[]},cfg);
+  ]:[
+    {x:allLb,y:scen,name:'Proyección',line:{color:'#2563eb',width:2},mode:'lines+markers',fill:'tozeroy',fillcolor:'rgba(37,99,235,0.10)',marker:{size:3},hovertemplate:`<b>%{x}</b><br>Saldo: %{y:,.0f} ${unit}<extra></extra>`},
+  ];
+  Plotly.react('ch-cash-fc',fcTraces,{...LO,shapes,yaxis:{...LO.yaxis,rangemode:'tozero',title:{text:unit,font:{size:10}}},annotations:actCount?[{x:allLb[actCount-1],y:1,yref:'paper',text:'← Real',showarrow:false,font:{size:9,color:'#2563eb'},xanchor:'right'}]:[]},cfg);
 }
 function chartCashFCAnual(){
   // 3 barras: Caja EoP Dic-26, Dic-27, Dic-28 (los 3 años proyectados clave).
