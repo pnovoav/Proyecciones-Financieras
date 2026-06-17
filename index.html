@@ -173,9 +173,9 @@ html[data-theme="dark"] tr.tot td.ac{background:rgba(37,99,235,.22)!important}
 .kpi-premium.amb .kpi-icon{background:rgba(217,119,6,.1);color:#d97706}
 .kpi-premium.red .kpi-icon{background:rgba(220,38,38,.08);color:#dc2626}
 .kpi-premium.purp .kpi-icon{background:rgba(124,58,237,.08);color:#7c3aed}
-.kpi-val2{font-family:'Instrument Serif',serif;font-size:34px;font-weight:400;color:#0a0e1a;line-height:1;letter-spacing:-.02em;margin:4px 0 2px}
-.kpi-val2 .unit{font-family:'DM Mono',monospace;font-size:13px;color:#6b7280;font-weight:500;margin-left:4px;letter-spacing:0}
-.kpi-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:22px}
+.kpi-val2{font-family:'Instrument Serif',serif;font-size:46px;font-weight:400;color:#0a0e1a;line-height:1.05;letter-spacing:-.02em;margin:14px 0 8px;text-align:center}
+.kpi-val2 .unit{font-family:'DM Mono',monospace;font-size:14px;color:#6b7280;font-weight:500;margin-left:4px;letter-spacing:0}
+.kpi-foot{display:flex;align-items:center;justify-content:center;gap:8px;min-height:18px}
 .kpi-delta{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;display:flex;align-items:center;gap:4px}
 .kpi-delta.up{color:#059669}
 .kpi-delta.dn{color:#dc2626}
@@ -2745,7 +2745,8 @@ function renderKPIs(){
   const curUnit=currUnitLbl();
   const deltaEl=(sv,bv,unit=curUnit,dec=0)=>{
     const d=sv-bv;
-    if(Math.abs(d)<0.05)return `<span class="kpi-delta fl">— sin ajustes</span>`;
+    if(Math.abs(d)<0.05)return ``; // sin ajustes → no mostrar nada
+
     const cls=d>0?'up':'dn';const sg=d>0?'+':'';
     const pct=bv&&Math.abs(bv)>0.01?(d/Math.abs(bv)*100):0;
     const arr=d>0?'↑':'↓';
@@ -2753,7 +2754,8 @@ function renderKPIs(){
   };
   const deltaPct=(sv,bv)=>{
     const d=(sv??0)-(bv??0);
-    if(Math.abs(d)<0.05)return `<span class="kpi-delta fl">— sin ajustes</span>`;
+    if(Math.abs(d)<0.05)return ``; // sin ajustes → no mostrar nada
+
     const cls=d>0?'up':'dn';const sg=d>0?'+':'';
     const arr=d>0?'↑':'↓';
     return `<span class="kpi-delta ${cls}"><span class="arr">${arr}</span> ${sg}${d.toFixed(1)} pp</span>`;
@@ -2783,10 +2785,10 @@ function renderKPIs(){
   const marginPillBg=ebMarginS>=25?'rgba(5,150,105,.10)':ebMarginS>=15?'rgba(217,119,6,.10)':'rgba(220,38,38,.10)';
   const ebAdjValHtml=`${f0(ebAdjSc)}<span class="unit">${curUnit}</span> <span style="display:inline-block;font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${marginPillColor};background:${marginPillBg};padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:middle;letter-spacing:0">${ebMarginS.toFixed(1)}%</span>`;
   const row1=[
-    {l:`Revenue ${cy}`,v:`${f0(revSc)}<span class="unit">${curUnit}</span>`,c:'',icon:'$',delta:deltaEl(revSc,revBc),spark:sparkline(revSeries,90,26,'#2563eb')},
-    {l:`EBITDA Adj. ${cy}`,v:ebAdjValHtml,c:'grn',icon:'∎',delta:deltaEl(ebAdjSc,ebAdjBc),spark:sparkline(ebSeries,90,26,'#059669')},
-    {l:`Net Income ${cy}`,v:`${f0(niSc)}<span class="unit">${curUnit}</span>`,c:'grn',icon:'▲',delta:deltaEl(niSc,niBc),spark:sparkline(niSeries,90,26,'#10b981')},
-    {l:`Caja al 31-Dic-${String(cy).slice(2)}`,v:`${f0(cashNoTaxSc)}<span class="unit">${curUnit}</span>`,c:'amb',icon:'◆',delta:cashFoot,spark:sparkline(cashSeries,90,26,'#d97706')},
+    {l:`Revenue ${cy}`,v:`${f0(revSc)}<span class="unit">${curUnit}</span>`,c:'',icon:'$',delta:deltaEl(revSc,revBc),spark:''},
+    {l:`EBITDA Adj. ${cy}`,v:ebAdjValHtml,c:'grn',icon:'∎',delta:deltaEl(ebAdjSc,ebAdjBc),spark:''},
+    {l:`Net Income ${cy}`,v:`${f0(niSc)}<span class="unit">${curUnit}</span>`,c:'grn',icon:'▲',delta:deltaEl(niSc,niBc),spark:''},
+    {l:`Caja al 31-Dic-${String(cy).slice(2)}`,v:`${f0(cashNoTaxSc)}<span class="unit">${curUnit}</span>`,c:'amb',icon:'◆',delta:cashFoot,spark:''},
   ];
   // ── Row 2: ARR, Rule of 40 (con gauge), Growth YoY, Deuda/EBITDA ──
   const ruleClass=ruleS>=40?'ok':ruleS>=20?'warn':'bad';
