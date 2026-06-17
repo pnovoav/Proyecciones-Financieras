@@ -155,7 +155,7 @@ html[data-theme="dark"] tr.tot td.ac{background:rgba(37,99,235,.22)!important}
   box-shadow:0 1px 3px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.04);
   padding:18px 20px;position:relative;overflow:hidden;
   transition:transform .2s,box-shadow .2s;
-  display:flex;flex-direction:column;gap:6px;
+  display:flex;flex-direction:column;gap:6px;min-height:132px;
 }
 .kpi-premium:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.06),0 12px 32px rgba(0,0,0,.06)}
 .kpi-premium::before{
@@ -173,7 +173,7 @@ html[data-theme="dark"] tr.tot td.ac{background:rgba(37,99,235,.22)!important}
 .kpi-premium.amb .kpi-icon{background:rgba(217,119,6,.1);color:#d97706}
 .kpi-premium.red .kpi-icon{background:rgba(220,38,38,.08);color:#dc2626}
 .kpi-premium.purp .kpi-icon{background:rgba(124,58,237,.08);color:#7c3aed}
-.kpi-val2{font-family:'Instrument Serif',serif;font-size:46px;font-weight:400;color:#0a0e1a;line-height:1.05;letter-spacing:-.02em;margin:14px 0 8px;text-align:center}
+.kpi-val2{font-family:'Instrument Serif',serif;font-size:46px;font-weight:400;color:#0a0e1a;line-height:1.05;letter-spacing:-.02em;margin:2px 0;text-align:center;flex:1;display:flex;align-items:center;justify-content:center}
 .kpi-val2 .unit{font-family:'DM Mono',monospace;font-size:14px;color:#6b7280;font-weight:500;margin-left:4px;letter-spacing:0}
 .kpi-foot{display:flex;align-items:center;justify-content:center;gap:8px;min-height:18px}
 .kpi-delta{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;display:flex;align-items:center;gap:4px}
@@ -2766,7 +2766,7 @@ function renderKPIs(){
   const mkKPI=({l,v,c,icon,delta,spark})=>`
     <div class="kpi-premium ${c||''}">
       <div class="kpi-head"><div class="kpi-lbl2">${l}</div><div class="kpi-icon">${icon||''}</div></div>
-      <div class="kpi-val2">${v}</div>
+      <div class="kpi-val2"><span>${v}</span></div>
       <div class="kpi-foot">${delta||'<span class="kpi-delta fl"></span>'}${spark||''}</div>
     </div>`;
   // Convert sums to current currency
@@ -2783,10 +2783,12 @@ function renderKPIs(){
   // EBITDA Adj. con margen inline (pill arriba del valor)
   const marginPillColor=ebMarginS>=25?'#059669':ebMarginS>=15?'#d97706':'#dc2626';
   const marginPillBg=ebMarginS>=25?'rgba(5,150,105,.10)':ebMarginS>=15?'rgba(217,119,6,.10)':'rgba(220,38,38,.10)';
-  const ebAdjValHtml=`${f0(ebAdjSc)}<span class="unit">${curUnit}</span> <span style="display:inline-block;font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${marginPillColor};background:${marginPillBg};padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:middle;letter-spacing:0">${ebMarginS.toFixed(1)}%</span>`;
+  const ebAdjValHtml=`${f0(ebAdjSc)}<span class="unit">${curUnit}</span>`;
+  // Pill de margen movido al lado del label (arriba), para que el número quede limpio como las demás
+  const marginPill=`<span style="display:inline-block;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:${marginPillColor};background:${marginPillBg};padding:1px 6px;border-radius:5px;margin-left:6px;vertical-align:middle;letter-spacing:0;text-transform:none">${ebMarginS.toFixed(1)}%</span>`;
   const row1=[
     {l:`Revenue ${cy}`,v:`${f0(revSc)}<span class="unit">${curUnit}</span>`,c:'',icon:'$',delta:deltaEl(revSc,revBc),spark:''},
-    {l:`EBITDA Adj. ${cy}`,v:ebAdjValHtml,c:'grn',icon:'∎',delta:deltaEl(ebAdjSc,ebAdjBc),spark:''},
+    {l:`EBITDA Adj. ${cy}${marginPill}`,v:ebAdjValHtml,c:'grn',icon:'∎',delta:deltaEl(ebAdjSc,ebAdjBc),spark:''},
     {l:`Net Income ${cy}`,v:`${f0(niSc)}<span class="unit">${curUnit}</span>`,c:'grn',icon:'▲',delta:deltaEl(niSc,niBc),spark:''},
     {l:`Caja al 31-Dic-${String(cy).slice(2)}`,v:`${f0(cashNoTaxSc)}<span class="unit">${curUnit}</span>`,c:'amb',icon:'◆',delta:cashFoot,spark:''},
   ];
