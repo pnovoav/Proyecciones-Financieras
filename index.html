@@ -5521,17 +5521,17 @@ function renderKpisPage(){
     const mg=rv>0?eb/rv*100:0;
     return g+mg;
   };
-  // ──── CAC & LTV ────
-  // Marketing total = sum sobre TODOS los productos (incl. corp). Los de terceros (rex,bnovus,
-  // gaxu,geo,otros,ramaflex,rpe) se venden como add-on y no tienen gasto de marketing propio
-  // ($0), así que sumar todo == sumar los del bridge, y de paso captura el marketing corp.
+  // ──── CAC & LTV — ventana acumulada del año (YTD) ────
+  // Se acumula del año en curso (no el mes puntual) para sacar el ruido del lag marketing↔ventas
+  // y del churn mensual. En Diciembre = el CAC/LTV del año completo. Una ventana móvil 12m "pura"
+  // necesitaría cargar clientes+marketing de 2025 (re-subir); el YTD da el mismo suavizado con la
+  // data 2026 ya cargada.
+  const ytdMonths=m=>{const yr=m.slice(0,4),mo=+m.slice(5);const out=[];for(let i=1;i<=mo;i++)out.push(yr+'-'+String(i).padStart(2,'0'));return out;};
+  // Marketing del mes = sum sobre todos los productos (los de terceros aportan $0; capta corp).
   const marketingTot=m=>{
     if(!P.model.sgaLines)return null;
     let t=0,any=false;
-    for(const p of Object.keys(P.model.sgaLines)){
-      const v=P.model.sgaLines[p]?.['Marketing']?.[m];
-      if(v!=null){t+=v;any=true;}
-    }
+    for(const p of Object.keys(P.model.sgaLines)){const v=P.model.sgaLines[p]?.['Marketing']?.[m];if(v!=null){t+=v;any=true;}}
     return any?Math.abs(t):null;
   };
   const nuevosTot=m=>{
@@ -5540,47 +5540,39 @@ function renderKpisPage(){
     for(const p of bridgeProds){const v=P.model.clients[p]?.[m]?.new_;if(v!=null){t+=v;any=true;}}
     return any?t:null;
   };
+  // CAC YTD = marketing acumulado del año / altas acumuladas del año
   const cac=m=>{
-    const mk=marketingTot(m),nu=nuevosTot(m);
-    if(mk==null||nu==null||nu<=0)return null;
-    return mk/nu;
+    let mk=0,nu=0;for(const mm of ytdMonths(m)){mk+=marketingTot(mm)||0;nu+=nuevosTot(mm)||0;}
+    return nu>0?mk/nu:null;
   };
-  // Margen Bruto % = (Revenue + COGS) / Revenue (COGS es negativo)
+  // Margen Bruto % YTD = (ΣRevenue + ΣCOGS) / ΣRevenue (COGS negativo)
   const margenBruto=m=>{
-    const r=rev(m);if(r<=0)return 0;
-    const c=cogs(m); // negativo
-    return (r+c)/r;
+    let r=0,c=0;for(const mm of ytdMonths(m)){r+=rev(mm)||0;c+=cogs(mm)||0;}
+    return r>0?(r+c)/r:0;
   };
-  // LTV = (MRR por cliente en M CLP) × Duración (meses) × Margen Bruto
-  // MRR/cliente = MRR Total (M CLP) / Clientes
-  // Duración = 1 / churnRate mensual (de los logos)
-  const ltv=m=>{
-    const cli=cliEoP(m);if(!cli||cli<=0)return null;
+  // Duración (meses) = 1 / churn mensual promedio del año (YTD), con TOPE de 60 meses (5 años),
+  // para que un mes de churn casi-cero no dispare el LTV a las nubes.
+  const DURCAP=60;
+  const duracionMeses=m=>{
     if(!P.model.clients)return null;
     let bop=0,ch=0,any=false;
-    for(const p of bridgeProds){
-      const c=P.model.clients[p]?.[m];if(!c)continue;
-      bop+=c.bop||0;ch+=(c.logoChurn||0)*(c.bop||0);any=true;
-    }
-    if(!any||bop<=0)return null;
-    const churnRate=ch/bop; // fracción mensual
-    if(churnRate<=0)return null;
-    const duracion=1/churnRate;
+    for(const mm of ytdMonths(m))for(const p of bridgeProds){const c=P.model.clients[p]?.[mm];if(!c)continue;bop+=c.bop||0;ch+=(c.logoChurn||0)*(c.bop||0);any=true;}
+    if(!any||bop<=0||ch<=0)return null;
+    return Math.min(bop/ch, DURCAP); // bop/ch = 1/churn promedio
+  };
+  // LTV = (MRR por cliente, M CLP) × Duración (con tope) × Margen Bruto YTD
+  const ltv=m=>{
+    const cli=cliEoP(m);if(!cli||cli<=0)return null;
+    const dur=duracionMeses(m);if(dur==null)return null;
     const mrrPorCli=mrrCLPTot(m)/cli;
-    const mb=margenBruto(m);
-    return mrrPorCli*duracion*mb;
+    return mrrPorCli*dur*margenBruto(m);
   };
-  const ltvCac=m=>{
-    const l=ltv(m),c=cac(m);
-    if(l==null||c==null||c<=0)return null;
-    return l/c;
-  };
-  // CAC Payback (meses) = CAC / (MRR/cliente × Margen Bruto)
+  const ltvCac=m=>{const l=ltv(m),c=cac(m);return (l!=null&&c>0)?l/c:null;};
+  // CAC Payback (meses) = CAC YTD / (MRR/cliente × Margen Bruto YTD)
   const cacPayback=m=>{
     const c=cac(m);if(c==null||c<=0)return null;
     const cli=cliEoP(m);if(!cli||cli<=0)return null;
-    const mrrPorCli=mrrCLPTot(m)/cli;
-    const mb=margenBruto(m);
+    const mrrPorCli=mrrCLPTot(m)/cli;const mb=margenBruto(m);
     if(mrrPorCli<=0||mb<=0)return null;
     return c/(mrrPorCli*mb);
   };
