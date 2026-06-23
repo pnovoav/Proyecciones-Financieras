@@ -5654,6 +5654,7 @@ function renderKpisPage(){
     {l:'Deuda / EBITDA LTM',f:m=>{const e=ebTTM(m);return e>0?deuda(m)/e:null;},t:'ratio',inverse:true},
     {l:'Months of OPEX Coverage',f:opexCoverage,t:'months'},
     {sec:'EFICIENCIA / CRECIMIENTO'},
+    {l:'Crecimiento Ingresos YoY',f:revYoY,t:'pct'},
     {l:'Rule of 40',f:ruleOf40,t:'pct'},
     {l:'Margen Bruto %',f:m=>margenBruto(m)*100,t:'pct'},
     {l:'Gasto Marketing (M CLP)',f:marketingTot,t:'money'},
