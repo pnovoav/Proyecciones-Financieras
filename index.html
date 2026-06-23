@@ -1607,9 +1607,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     {
       const [dy,dm]=desdeYM.split('-').map(Number);
       const histMonths=[];
-      // 24 meses de historia (2 años antes del cutoff): el de 12-24 atrás habilita el
-      // crecimiento EBITDA LTM (trailing 12m YoY) que necesita comparar contra el LTM previo.
-      for(let i=24;i>=1;i--){
+      for(let i=12;i>=1;i--){
         let y=dy,mo=dm-i;
         while(mo<1){mo+=12;y--;}
         histMonths.push(y+'-'+(mo<10?'0':'')+mo);
@@ -5511,15 +5509,16 @@ function renderKpisPage(){
     for(let i=1;i<=mo;i++){const mm=String(i).padStart(2,'0');a+=rev(yr+'-'+mm)||0;b+=rev((yr-1)+'-'+mm)||0;}
     return b>0?(a/b-1)*100:null;
   };
-  // Crecimiento EBITDA LTM (trailing 12m YoY): EBITDA Adj de los últimos 12 meses vs los 12
-  // anteriores. Suave (no salta como el mensual) y requiere historia 2024+2025 (24 meses).
-  const ltmEbAdj=m=>{let t=0;for(let i=0;i<12;i++)t+=ebAdj(addM(m,-i))||0;return t;};
-  const ltmRev=m=>{let t=0;for(let i=0;i<12;i++)t+=rev(addM(m,-i))||0;return t;};
-  const ebGrowthLTM=m=>{const a=ltmEbAdj(m),b=ltmEbAdj(addM(m,-12));return b>0?(a/b-1)*100:null;};
-  // Rule of 40 (LTM) = crecimiento EBITDA LTM + margen EBITDA Adj LTM. Métrica trailing, estable.
+  // Rule of 40 (YTD) = crecimiento de ingresos YTD + margen EBITDA Adj YTD (acumulados del año).
+  // Usa la MISMA definición que la caluga del dashboard (revenue growth + margen EBITDA): por eso
+  // en Diciembre da exactamente lo mismo que la caluga (año completo vs año completo). Solo necesita
+  // historia 2025 (ya cargada) — no requiere 2024 ni re-subir.
   const ruleOf40=m=>{
-    const g=ebGrowthLTM(m);if(g==null)return null;
-    const r=ltmRev(m);const mg=r>0?ltmEbAdj(m)/r*100:0;
+    const g=revYoY(m);if(g==null)return null;
+    const yr=+m.slice(0,4), mo=+m.slice(5);
+    let rv=0,eb=0;
+    for(let i=1;i<=mo;i++){const mm=yr+'-'+String(i).padStart(2,'0');rv+=rev(mm)||0;eb+=ebAdj(mm)||0;}
+    const mg=rv>0?eb/rv*100:0;
     return g+mg;
   };
   // ──── CAC & LTV ────
@@ -5655,8 +5654,7 @@ function renderKpisPage(){
     {l:'Deuda / EBITDA LTM',f:m=>{const e=ebTTM(m);return e>0?deuda(m)/e:null;},t:'ratio',inverse:true},
     {l:'Months of OPEX Coverage',f:opexCoverage,t:'months'},
     {sec:'EFICIENCIA / CRECIMIENTO'},
-    {l:'Crecimiento EBITDA LTM',f:ebGrowthLTM,t:'pct'},
-    {l:'Rule of 40 (LTM)',f:ruleOf40,t:'pct'},
+    {l:'Rule of 40',f:ruleOf40,t:'pct'},
     {l:'Margen Bruto %',f:m=>margenBruto(m)*100,t:'pct'},
     {l:'Gasto Marketing (M CLP)',f:marketingTot,t:'money'},
     {l:'CAC (M CLP)',f:cac,t:'money'},
