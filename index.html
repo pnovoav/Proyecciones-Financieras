@@ -371,7 +371,7 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
     <button class="btn btn-outline" id="btn-upload-mrr" onclick="document.getElementById('mrr-detail-input').click()">↑ Cargar detalle MRR .xlsx</button>
     <input type="file" id="mrr-detail-input" accept=".xlsx" style="display:none" onchange="handleMrrDetailXlsx(this)">
   </div>
-  <div class="ctrl-section">
+  <div class="ctrl-section" id="sec-div">
     <div class="ctrl-section-title">Política de dividendos</div>
     <div class="ctrl-row">
       <div class="ctrl-label">Ratio pago <strong id="div-lbl">30%</strong></div>
@@ -383,7 +383,7 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
     </div>
     <div style="font-size:9px;color:var(--text4);margin-top:4px;line-height:1.3">Los meses con override manual en el Excel se respetan siempre.</div>
   </div>
-  <div class="ctrl-section">
+  <div class="ctrl-section" id="sec-mrr">
     <div class="ctrl-section-title">Crecimiento MRR (mensual)</div>
     <div id="mrr-ctrls"></div>
   </div>
@@ -485,7 +485,7 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
   </div>
   <div class="card"><div class="card-title">Intereses · Mensual</div><div id="ch-intereses" style="height:220px"></div></div>
   <div class="card"><div class="card-title"><span data-curr-title>Tabla de amortización</span></div><div class="tw"><table id="t-amort"></table></div></div>
-  <div class="card gmb" style="padding:16px 20px">
+  <div class="card gmb" style="padding:16px 20px" id="debt-tranche-panel">
     <div class="card-title" style="margin-bottom:12px">Tramos de deuda nueva</div>
     <div id="dc" style="display:flex;flex-direction:column;gap:10px"></div>
     <button class="btn btn-outline" style="margin-top:10px;width:auto;padding:7px 18px" onclick="addD()">＋ Agregar tramo</button>
@@ -5890,13 +5890,19 @@ async function loadState(){
   }
 }
 
-// ── MODO NUBE: si se abre desde GitHub Pages (host *.github.io) ocultamos la carga
-// de Excel. La data viene sola del gist vía loadState(). En local (localhost / file://)
-// se mantienen los botones de subir modelo. Mismo archivo, comportamiento según el host.
+// ── MODO NUBE / SOLO-VISTA: si se abre desde GitHub Pages (host *.github.io) el visor queda
+// como puro lector. Se ocultan TODOS los controles editables (subir Excel, cutoff/horizonte,
+// política de dividendos, crecimiento MRR, panel de tramos de deuda nueva y el botón Guardar).
+// Se mantienen los controles de SOLO VISTA: selector de empresas, toggle UF/CLP, tema y los
+// selectores de rango de fechas de los gráficos. En local (localhost / file://) está todo.
+// Mismo archivo, comportamiento según el host. La data viene del gist vía loadState().
 const ES_NUBE = location.hostname.endsWith('github.io');
 function applyEnvMode(){
   if(!ES_NUBE)return;
-  ['btn-upload-xlsx','btn-upload-mrr','mrr-detail-status','cutoff-row','hasta-row','horizon-row'].forEach(id=>{
+  [
+    'btn-upload-xlsx','btn-upload-mrr','mrr-detail-status','cutoff-row','hasta-row','horizon-row',
+    'sec-div','sec-mrr','debt-tranche-panel','save-btn'
+  ].forEach(id=>{
     const el=document.getElementById(id); if(el)el.style.display='none';
   });
   const st=document.getElementById('upload-status');
