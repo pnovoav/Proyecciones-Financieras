@@ -500,9 +500,10 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
 <div id="pg-ppto" class="pg">
   <div class="card gmb"><div class="card-title">Visor vs Presupuesto · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">año 2026 · Visor en vivo vs PPTO ERPs</span></div><div class="tw"><table id="t-ppto"></table></div>
     <div style="margin-top:10px;font-size:10px;color:var(--text3);line-height:1.5">
-      Columna <b>Visor</b> = cálculo en vivo del modelo cargado (se mueve con los sliders). Columna <b>PPTO</b> = presupuesto 2026 fijo (EERR Consolidado + Proyección MRR). <b>Dif = Visor − PPTO</b>.
+      Columna <b>Visor</b> = cálculo en vivo del modelo cargado (se mueve con los sliders). Columna <b>PPTO</b> = presupuesto 2026 fijo (EERR Consolidado + Proyección MRR). <b>Dif = Visor − PPTO</b> · <span class="pos">verde</span> = mejor que presupuesto, <span class="neg">rojo</span> = peor.
     </div>
   </div>
+  <div class="card gmb" id="ppto-analysis"></div>
 </div>
 </main>
 </div></div>
@@ -2815,16 +2816,44 @@ function renderPPTO(){
     }
     const dif=(r.v==null||r.p==null)?null:(r.v-r.p);
     const difPct=(dif==null||!r.p)?null:(dif/r.p*100);
+    // Semáforo: como todo va con signo consistente, favorable = Visor mejor que PPTO (Dif>0).
+    // Zona neutra para diferencias no materiales (<0,5%).
+    const fav=(dif==null||Math.abs(difPct)<0.5)?'':(dif>0?'pos':'neg');
     const nm=r.bold?`<strong>${r.l}</strong>`:r.l;
     h+=`<tr${r.tot?' class="tot"':''}>`;
     h+=`<td>${nm}</td>`;
     h+=`<td class="r">${r.f(r.v)}</td>`;
     h+=`<td class="r" style="color:var(--text3)">${r.f(r.p)}</td>`;
-    h+=`<td class="r"><strong>${dif==null?'—':r.f(dif)}</strong></td>`;
-    h+=`<td class="r">${difPct==null?'—':(difPct>0?'+':'')+f1(difPct,1)+'%'}</td>`;
+    h+=`<td class="r ${fav}"><strong>${dif==null?'—':r.f(dif)}</strong></td>`;
+    h+=`<td class="r ${fav}">${difPct==null?'—':(difPct>0?'+':'')+f1(difPct,1)+'%'}</td>`;
     h+='</tr>';
   }
   el.innerHTML=h+'</tbody>';
+
+  // ── Lectura / análisis de desviaciones ──
+  const an=document.getElementById('ppto-analysis');
+  if(an){
+    const uL=currUnitLbl();
+    const sg=v=>v==null?'—':(v>=0?'+':'')+moneyY(v)+' '+uL;          // con signo
+    const ab=v=>v==null?'—':'+'+moneyY(Math.abs(v))+' '+uL;          // magnitud (framed +)
+    const pc=v=>(v>=0?'+':'')+f1(v,1)+'%';
+    const difIng=vIngresos-PPTO_2026.ingresos, difIngPct=difIng/PPTO_2026.ingresos*100;
+    const difEb=vEbitdaAdj-PPTO_2026.ebitdaAdj, difEbPct=difEb/PPTO_2026.ebitdaAdj*100;
+    const difPpm=vPpm-PPTO_2026.ppm;
+    const difInt=rd.int==null?null:rd.int-PPTO_2026.intRandom;
+    const difAm=rd.am==null?null:rd.am-PPTO_2026.amortRandom;
+    an.innerHTML=`
+      <div class="card-title">Lectura del análisis · 2026</div>
+      <ul style="margin:10px 0 0;padding-left:18px;font-size:12px;line-height:1.75;color:var(--text2)">
+        <li><b>Operativo en línea con el presupuesto.</b> Los ingresos difieren del PPTO en apenas <b>${sg(difIng)}</b> (${pc(difIngPct)}), así que el <b>EBITDA Ajustado también queda prácticamente en línea</b> (<b>${sg(difEb)}</b> · ${pc(difEbPct)}). El resultado operativo va según lo presupuestado.</li>
+        <li style="margin-top:6px"><b>El gap está por debajo de la línea operativa</b>, y se explica principalmente por dos cosas:
+          <ul style="margin:5px 0 0;padding-left:16px;list-style:'– '">
+            <li style="margin-top:3px"><b>PPM Manager — cambio de tasa (${ab(difPpm)} de mayor pago).</b> El presupuesto asumía una tasa de PPM de <b>2%</b>; el modelo actual la tiene en <b>3,7%</b>. Ese cambio de tasa explica el mayor PPM.</li>
+            <li style="margin-top:3px"><b>Deuda Random — adelanto de timing (${ab(difInt)} intereses · ${ab(difAm)} capital).</b> La deuda de Random entró en <b>junio</b> en vez de <b>agosto</b> (2 meses antes), lo que suma intereses y amortización adicionales en 2026.</li>
+          </ul>
+        </li>
+      </ul>`;
+  }
 }
 
 // ═══ Display periods: monthly until Dec-2026, annual for 2027+ ═══
