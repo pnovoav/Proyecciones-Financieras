@@ -517,17 +517,17 @@ function convV(vMM_CLP, m){
   if(vMM_CLP==null||isNaN(vMM_CLP))return vMM_CLP;
   if(CURR==='CLP')return vMM_CLP;
   const uf = (P.uf && P.uf[m]) || 39000;
-  return vMM_CLP*1e6/uf/1e3; // MUF (miles de UF)
+  return vMM_CLP*1e6/uf; // UF (raw, no miles) — consistente con el MRR que ya está en UF
 }
-function currUnitLbl(){return CURR==='CLP'?'M CLP':'MUF';}
-function currLongLbl(){return CURR==='CLP'?'M CLP':'miles de UF';}
+function currUnitLbl(){return CURR==='CLP'?'M CLP':'UF';}
+function currLongLbl(){return CURR==='CLP'?'M CLP':'UF';}
 // For annual totals: use avg UF of months within year (approx). Fallback: dec UF.
 function convYearly(sumMM_CLP, months){
   if(CURR==='CLP')return sumMM_CLP;
   if(!months||!months.length)return sumMM_CLP;
   let tot=0,n=0;for(const m of months){const u=(P.uf&&P.uf[m])||0;if(u){tot+=u;n++;}}
   const avgUF=n?tot/n:39000;
-  return sumMM_CLP*1e6/avgUF/1e3;
+  return sumMM_CLP*1e6/avgUF; // UF raw (no miles)
 }
 function setCurr(c){
   if(c!=='CLP'&&c!=='UF')return;
@@ -3319,9 +3319,8 @@ function chartRevByProd(){
   //   10-14: formato corto "1,15k" — fuente 12px (entran todos)
   //   15-24: cada 2 meses, formato corto, fuente 10px
   //   25+ : cada 3 meses, formato corto, fuente 10px
-  // Formato adaptativo a la magnitud: CLP (~1.170 M) muestra el número completo con separador de
-  // miles ("1.170", que se lee como millones por la unidad del eje), UF (MUF ~29,4) con 1 decimal
-  // para ver la tendencia. Antes usaba "k" y confundía ("1,2k" en CLP, "0,03k" en UF).
+  // Número completo con separador de miles: CLP (~1.170 M) → "1.170", UF raw (~29.250) → "29.250".
+  // Para valores chicos (<100) muestra 1 decimal. Antes usaba "k"/MUF y confundía.
   const fmtShort=v=>{const a=Math.abs(v);
     return a>=100?Math.round(v).toLocaleString('es-CL'):v.toFixed(1).replace('.',',');};
   const fmtLong=v=>Math.round(v).toLocaleString('es-CL');
