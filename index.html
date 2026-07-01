@@ -402,6 +402,12 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
   <div class="card gmb"><div class="card-title">Métricas por producto — último mes real</div><div class="tw"><table id="t-metrics"></table></div></div>
 </div>
 <div id="pg-ing" class="pg">
+  <div class="card gmb" style="padding:12px 16px" id="ing-prod-filter">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text4)">Productos</span>
+      <div id="ing-prod-chips" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"></div>
+    </div>
+  </div>
   <div class="card gmb"><div class="card-title">Revenue anual por segmento · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">2023-2028 con históricos reales y proyección — click para expandir por producto</span></div><div class="tw" id="t-rev-annual"></div></div>
   <div class="card gmb">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px">
@@ -585,6 +591,37 @@ const MGR_PRODS=['time','flex','mgrplus','einv','ramaflex','rex','bnovus','gaxu'
 const SIS_PRODS=['rcl','rpe'];
 const PRODS={time:'Time',flex:'Flexline',mgrplus:'Manager+',einv:'E-Invoicing',ramaflex:'Ramaflex',rex:'Rex+',bnovus:'Bnovus',gaxu:'Gaxu',geo:'GeoVictoria',otros:'Other',rcl:'Random CL',rpe:'Random Perú'};
 const PCOL={time:'#2563eb',flex:'#059669',mgrplus:'#7c3aed',einv:'#f59e0b',ramaflex:'#be185d',rex:'#6366f1',bnovus:'#8b5cf6',gaxu:'#f472b6',geo:'#14b8a6',otros:'#9ca3af',rcl:'#0891b2',rpe:'#06b6d4'};
+// ─── Filtro de productos (pestaña Ingresos) ───
+// Grupos = mismos que el chart/pie (Rex+ = rex+bnovus+gaxu, Random = rcl+rpe).
+const PROD_GROUPS=[
+  {key:'time',label:'Time',prods:['time'],color:PCOL.time},
+  {key:'flex',label:'Flexline',prods:['flex'],color:PCOL.flex},
+  {key:'mgrplus',label:'Manager+',prods:['mgrplus'],color:PCOL.mgrplus},
+  {key:'einv',label:'E-Invoicing',prods:['einv'],color:PCOL.einv},
+  {key:'ramaflex',label:'Ramaflex',prods:['ramaflex'],color:PCOL.ramaflex},
+  {key:'rex',label:'Rex+',prods:['rex','bnovus','gaxu'],color:PCOL.rex},
+  {key:'geo',label:'GeoVictoria',prods:['geo'],color:PCOL.geo},
+  {key:'otros',label:'Other',prods:['otros'],color:PCOL.otros},
+  {key:'random',label:'Random',prods:['rcl','rpe'],color:PCOL.rcl},
+];
+let SELECTED_GROUPS=new Set(PROD_GROUPS.map(g=>g.key)); // default: todos
+const _prodToGroup={};PROD_GROUPS.forEach(g=>g.prods.forEach(p=>_prodToGroup[p]=g.key));
+function prodSel(p){const g=_prodToGroup[p];return g?SELECTED_GROUPS.has(g):true;} // ¿producto en grupo seleccionado?
+function toggleProdGroup(k){
+  if(SELECTED_GROUPS.has(k)){if(SELECTED_GROUPS.size>1)SELECTED_GROUPS.delete(k);}else SELECTED_GROUPS.add(k);
+  renderProdChips();
+  tableRevAnnual();chartRevByProd();tableMRR(); // filtra la pestaña Ingresos (el Bridge queda con su selector propio)
+}
+function setAllProdGroups(on){SELECTED_GROUPS=new Set(on?PROD_GROUPS.map(g=>g.key):[PROD_GROUPS[0].key]);renderProdChips();tableRevAnnual();chartRevByProd();tableMRR();}
+function renderProdChips(){
+  const cont=document.getElementById('ing-prod-chips');if(!cont)return;
+  cont.innerHTML=PROD_GROUPS.map(g=>{
+    const on=SELECTED_GROUPS.has(g.key);
+    return `<button onclick="toggleProdGroup('${g.key}')" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;border:1px solid ${on?g.color:'var(--border)'};background:${on?g.color+'1a':'transparent'};color:${on?g.color:'var(--text4)'};font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans);opacity:${on?1:.55}">`
+      +`<span style="width:8px;height:8px;border-radius:50%;background:${on?g.color:'var(--text4)'};display:inline-block"></span>${g.label}</button>`;
+  }).join('')
+   +`<button onclick="setAllProdGroups(${SELECTED_GROUPS.size<PROD_GROUPS.length})" style="padding:4px 10px;border-radius:20px;border:1px dashed var(--border);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);margin-left:4px">${SELECTED_GROUPS.size<PROD_GROUPS.length?'Todos':'Ninguno'}</button>`;
+}
 const MNAMES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 // ═══ UTILS ═══
@@ -2638,7 +2675,7 @@ function renderTab(id){
   if(!erpsSelected()){showEmptyState(id);return;}
   clearEmptyState(id);
   if(id==='dash'){renderKPIs();chartRevProd();chartWaterfall();chartCashWaterfall('ch-cash-wf-dash');chartSaldo('ch-saldo-dash');chartEBIT();tableMetrics();}
-  else if(id==='ing'){tableRevAnnual();chartRevByProd();chartBridge();tableBridge();tableMRR();}
+  else if(id==='ing'){renderProdChips();tableRevAnnual();chartRevByProd();chartBridge();tableBridge();tableMRR();}
   else if(id==='eerr'){renderEERRKPIs();chartMargins();chartCostos();tableEERRAnnual();chartEERRAnnual();tableEERR();}
   else if(id==='fc'){renderCFKPIs();chartCashFC();chartCashFCAnual();tableFCAnnual();chartCashWaterfall();tableFC();}
   else if(id==='bs'){renderBSKPIs();tableBSAnnual();tableBS();}
@@ -3307,7 +3344,7 @@ function chartRevByProd(){
     const monthly=useMO.map(m=>convV(def.prods.reduce((s,p)=>s+revOf(p,m),0),m));
     const total=monthly.reduce((s,v)=>s+v,0);
     return {def,monthly,total};
-  }).filter(e=>e.total>0.05).sort((a,b)=>b.total-a.total);
+  }).filter(e=>e.total>0.05 && e.def.prods.some(prodSel)).sort((a,b)=>b.total-a.total); // respeta el filtro de productos de arriba
   const traces=enriched.map(({def,monthly})=>({
     x:allLb,
     y:monthly,
@@ -3653,20 +3690,31 @@ function tableRevAnnual(){
     const rec=revRecY(yr,p);
     return (tot==null||rec==null)?null:tot-rec;
   };
+  // Filtro de productos: las sumas de segmento/total respetan los productos seleccionados arriba.
+  const _mgrSel=MGR_PRODS.filter(prodSel), _sisSel=SIS_PRODS.filter(prodSel);
+  const _filterOn=SELECTED_GROUPS.size<PROD_GROUPS.length;
   const revMgrY=yr=>{
-    if(isHist(yr)){const vals=MGR_PRODS.map(p=>revPY(yr,p));return vals.some(v=>v!==null)?vals.reduce((s,v)=>s+(v||0),0):0;}
-    return MGR_PRODS.reduce((t,p)=>t+revPY(yr,p),0);
+    if(isHist(yr)){const vals=_mgrSel.map(p=>revPY(yr,p));return vals.some(v=>v!==null)?vals.reduce((s,v)=>s+(v||0),0):0;}
+    return _mgrSel.reduce((t,p)=>t+revPY(yr,p),0);
   };
   const revSisY=yr=>{
-    if(isHist(yr)){const vals=SIS_PRODS.map(p=>revPY(yr,p));return vals.some(v=>v!==null)?vals.reduce((s,v)=>s+(v||0),0):0;}
-    return SIS_PRODS.reduce((t,p)=>t+revPY(yr,p),0);
+    if(isHist(yr)){const vals=_sisSel.map(p=>revPY(yr,p));return vals.some(v=>v!==null)?vals.reduce((s,v)=>s+(v||0),0):0;}
+    return _sisSel.reduce((t,p)=>t+revPY(yr,p),0);
   };
-  const revTotY=yr=>isHist(yr)?(P.annual.rev[yr]||0):[...MGR_PRODS,...SIS_PRODS].reduce((t,p)=>t+revPY(yr,p),0);
+  const revTotY=yr=>{
+    const ps=[..._mgrSel,..._sisSel];
+    if(isHist(yr)){
+      if(!_filterOn)return P.annual.rev[yr]||0; // sin filtro: total del modelo
+      const vals=ps.map(p=>revPY(yr,p));return vals.some(v=>v!==null)?vals.reduce((s,v)=>s+(v||0),0):0;
+    }
+    return ps.reduce((t,p)=>t+revPY(yr,p),0);
+  };
   let h=`<table><thead><tr><th>Segmento / Producto (${unit})</th>`;
   for(const yr of years)h+=`<th class="${isHist(yr)?'act-h':''}">${yr}${isHist(yr)?' <span class="act-badge">Real</span>':' <span class="fc-badge">F</span>'}</th>`;
   h+='</tr></thead><tbody>';
   // Helper para renderizar la fila de un producto con subfilas Recurrente/No Recurrente
   const renderProdRow=(p,segTag)=>{
+    if(!prodSel(p))return ''; // filtro de productos
     if(!years.some(yr=>revPY(yr,p)!==null&&Math.abs(revPY(yr,p))>0.05))return '';
     const hasBreakdown=RECURRING_PRODS.includes(p);
     let s='';
@@ -3840,6 +3888,7 @@ function tableMRR(){
   const yrCells=years.map(yr=>{const m=closeM(yr);return{yr,m,lbl:yr.toString()};});
   let h='<thead><tr><th>Producto / Métrica</th>'+yrCells.map(c=>`<th>${c.lbl}</th>`).join('')+'</tr></thead><tbody>';
   for(const p of BRIDGE){
+    if(!prodSel(p))continue; // filtro de productos
     // UF (real - EOP Dic)
     h+=`<tr><td><strong>${PRODS[p]}</strong> · MRR UF (EoP Dic)</td>`+yrCells.map(c=>{
       const v=c.m?getUF(p,c.m):0;
