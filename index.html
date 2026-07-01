@@ -346,6 +346,7 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
   <button class="tab" onclick="showTab('bs',this)">Balance</button>
   <button class="tab" onclick="showTab('deuda',this)">Deuda</button>
   <button class="tab" onclick="showTab('kpis',this)">KPIs</button>
+  <button class="tab" onclick="showTab('ppto',this)">vs PPTO</button>
 </nav>
 <div class="body">
 <div class="sidebar-scrim" id="sidebar-scrim" onclick="toggleDrawer(false)"></div>
@@ -495,6 +496,13 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
 </div>
 <div id="pg-kpis" class="pg">
   <div class="card gmb"><div class="card-title">KPIs Mensuales · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">total compañía, hasta Dic-26</span></div><div class="tw" id="t-kpis"></div></div>
+</div>
+<div id="pg-ppto" class="pg">
+  <div class="card gmb"><div class="card-title">Visor vs Presupuesto · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">año 2026 · Visor en vivo vs PPTO ERPs</span></div><div class="tw"><table id="t-ppto"></table></div>
+    <div style="margin-top:10px;font-size:10px;color:var(--text3);line-height:1.5">
+      Columna <b>Visor</b> = cálculo en vivo del modelo cargado (se mueve con los sliders). Columna <b>PPTO</b> = presupuesto 2026 fijo (EERR Consolidado + Proyección MRR). <b>Dif = Visor − PPTO</b>.
+    </div>
+  </div>
 </div>
 </main>
 </div></div>
@@ -1364,6 +1372,25 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     const rowIvaDev=findRowAny(['Net VAT accrual for the month (Output VAT − Input VAT generated)','Devengo IVA neto del mes (DF − CF generado)']);
     const rowIvaPag=findRowAny(['F29 VAT payment to SII (prior month)','Pago F29 IVA al SII (mes anterior)']);
     const rowPpm=findRow(wsE,'PPM',1283);
+    // PPM SOLO de Manager (para la tabla vs PPTO): el PPM consolidado (rowPpm) suma
+    // Manager + Random. En el bloque de cálculo del PPM hay una fila sin label que es
+    // ≈ -tasa × "Revenue Manager". La ubicamos por esa relación económica (robusto a que
+    // se muevan filas): fila con ratio pequeño-negativo y ESTABLE contra Revenue Manager.
+    let rowPpmMgr=-1;
+    (()=>{
+      const rowRevMgr=findRow(wsE,'Revenue Manager');
+      if(rowRevMgr<0||rowPpm<0)return;
+      const cs=['2026-08','2026-10','2026-12'].map(ymCol);
+      const rs=cs.map(c=>numV(wsE,rowRevMgr,c));
+      if(rs.some(x=>x<=0))return;
+      // El PPM Manager es -tasa × RevManager → ratio CONSTANTE mes a mes. El consolidado
+      // (rowPpm) varía (lag + Random), así que exigir el ratio idéntico en 3 meses lo aísla.
+      for(let r=rowPpm+1;r<rowPpm+450;r++){
+        const ks=cs.map((c,i)=>numV(wsE,r,c)/rs[i]);
+        if(ks[0]>=-0.005||ks[0]<=-0.12)continue;      // PPM ~ 0.5%–12% de ingresos Manager
+        if(Math.max(...ks)-Math.min(...ks)<0.0003){rowPpmMgr=r;break;} // tasa constante = PPM Manager
+      }
+    })();
     const rowRentaPag=findRowAny(['Income Tax payment to SII (April of following year)','Pago Operación Renta SII (Abril año siguiente)']);
     const rowDevolImp=findRowAny(['Tax Refund','Devolución Impuestos']);
     const rowReversoTax=findRowAny(['Reversal Income Tax accrual (non-cash)','Reverso Income Tax devengo (no cash)']);
@@ -1637,7 +1664,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     // Use findRow (not findDataRow) since probeC=2024-01 might be empty for BS
     const rowCashBS=findRow(wsE,'Cash and Cash Equivalents');
     console.log('[Cash BS] rowCashBS=',rowCashBS,'test Jan-26 value=',numV(wsE,rowCashBS,ymCol('2026-01')));
-    const modelTot={rev:{},cogs:{},sga:{},ebitda:{},ni:{},cashEOP:{},cashBS:{},dep:{},amort:{},capex:{},ma:{},debtAm:{},incDebt:{},devolBPO:{},divs:{},ajustes:{},cfop:{},cfinv:{},cffin:{},incomeTax:{},wcPure:{},ivaDev:{},ivaPag:{},ppm:{},rentaPag:{},devolImp:{},reversoTax:{},intExp:{},cfNi:{},revIntIC:{},cfDebtAm:{}};
+    const modelTot={rev:{},cogs:{},sga:{},ebitda:{},ni:{},cashEOP:{},cashBS:{},dep:{},amort:{},capex:{},ma:{},debtAm:{},incDebt:{},devolBPO:{},divs:{},ajustes:{},cfop:{},cfinv:{},cffin:{},incomeTax:{},wcPure:{},ivaDev:{},ivaPag:{},ppm:{},ppmManager:{},rentaPag:{},devolImp:{},reversoTax:{},intExp:{},cfNi:{},revIntIC:{},cfDebtAm:{}};
     for(const m of allMonths){
       const c=ymCol(m);
       modelTot.rev[m]=numV(wsE,rowRev,c)/1e6;
@@ -1665,6 +1692,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       modelTot.ivaDev[m]=rowIvaDev>0?numV(wsE,rowIvaDev,c)/1e6:0;
       modelTot.ivaPag[m]=rowIvaPag>0?numV(wsE,rowIvaPag,c)/1e6:0;
       modelTot.ppm[m]=rowPpm>0?numV(wsE,rowPpm,c)/1e6:0;
+      modelTot.ppmManager[m]=rowPpmMgr>=0?numV(wsE,rowPpmMgr,c)/1e6:0;
       modelTot.rentaPag[m]=rowRentaPag>0?numV(wsE,rowRentaPag,c)/1e6:0;
       modelTot.devolImp[m]=rowDevolImp>0?numV(wsE,rowDevolImp,c)/1e6:0;
       modelTot.reversoTax[m]=rowReversoTax>0?numV(wsE,rowReversoTax,c)/1e6:0;
@@ -2067,6 +2095,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       priorYearRev,priorYearEbitda,
       bs,bsDef:BS_ROWS,annual,annualYears:ANNUAL_YEARS,
       histRev,histBridge,
+      existingDebt:(_xlsxExistingDebt||[]).map(t=>({label:t.label,sched:t.sched})),
     };
     MO=projMonths;AMO=[...actualMonths,...projMonths];lb=projMonths.map(fmtM);
 
@@ -2718,6 +2747,84 @@ function renderTab(id){
   else if(id==='bs'){renderBSKPIs();tableBSAnnual();tableBS();}
   else if(id==='deuda'){renderDeudaKPIs();chartDebtEbitda12M();chartDSCR();chartSaldo();chartCuota();chartIntereses();tableAmort();}
   else if(id==='kpis'){renderKpisPage();}
+  else if(id==='ppto'){renderPPTO();}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VISOR vs PPTO — comparación 2026
+// ═══════════════════════════════════════════════════════════════
+// Presupuesto 2026 fijo (snapshot). P&L y MRR salen del Excel PPTO
+// (EERR Consolidado + Proyección MRR); Caja/PPM/Deuda no están como
+// línea en ese archivo → tomados de la tabla de referencia. La columna
+// "Visor" es 100% viva (se calcula del modelo cargado en memoria).
+const PPTO_2026={
+  ingresos:14183, cogs:-8079, margenBruto:6105, ebitdaAdj:4034,  // M CLP (EERR Consolidado)
+  caja:724, ppm:-149, intRandom:-30, amortRandom:-210,           // M CLP (referencia)
+  mrr:{time:6224, flex:4091, mgrplus:3414, rcl:6374},            // UF (EoP Dic-26)
+};
+// Interés + amortización 2026 del tramo de deuda Random ("Nuevo Credito 3").
+function _pptoRandomDebt2026(){
+  const list=P.existingDebt||[];
+  const tr=list.find(t=>/nuevo\s*cr[eé]dito\s*3/i.test(t.label))||list.find(t=>/random/i.test(t.label));
+  if(!tr||!tr.sched)return {int:null,am:null};
+  let int=0,am=0;
+  for(const ym in tr.sched){if(ym.slice(0,4)==='2026'){int+=tr.sched[ym].int||0;am+=tr.sched[ym].am||0;}}
+  return {int:-int,am:-am}; // el schedule guarda magnitudes → egreso negativo
+}
+function renderPPTO(){
+  const el=document.getElementById('t-ppto');
+  if(!el||!P.months||!S)return;
+  const m26=P.months.filter(m=>m.slice(0,4)==='2026');
+  const sum=o=>m26.reduce((t,m)=>t+((o&&o[m])||0),0);
+  const MT=P.modelTot||{};
+  // ── Columna Visor (viva) ──
+  const vIngresos=sum(S.revT), vCogs=sum(S.cogsT), vMB=vIngresos+vCogs;
+  const vEbitdaAdj=sum(S.ebitda)+sum(S.ajustes||{});
+  const vCaja=(S.cashEOP&&S.cashEOP['2026-12'])||0;
+  // PPM SOLO de Manager (el consolidado incluye Random). Fallback al consolidado si no se ubicó.
+  const _ppmMgr=sum(MT.ppmManager);
+  const vPpm=_ppmMgr!==0?_ppmMgr:sum(MT.ppm);
+  const rd=_pptoRandomDebt2026();
+  const mrrV=p=>(S.mrrUF[p]&&S.mrrUF[p]['2026-12'])||(P.model.mrrUF[p]&&P.model.mrrUF[p]['2026-12'])||0;
+  // ── Formatos (flujos anuales convierten con UF promedio; Caja con UF de Dic-26) ──
+  const moneyY=v=>v==null?'—':fmtMoneyY(v,m26,0);
+  const moneySnap=v=>v==null?'—':fmtMoney(v,'2026-12',0);
+  const uf=v=>v==null?'—':f0(v);
+  const rows=[
+    {grp:'Resultado · 2026'},
+    {l:'Ingresos',        v:vIngresos, p:PPTO_2026.ingresos,    f:moneyY, bold:true},
+    {l:'COGS',            v:vCogs,     p:PPTO_2026.cogs,        f:moneyY},
+    {l:'Margen Bruto',    v:vMB,       p:PPTO_2026.margenBruto, f:moneyY, bold:true},
+    {l:'EBITDA Ajustado', v:vEbitdaAdj,p:PPTO_2026.ebitdaAdj,   f:moneyY, bold:true, tot:true},
+    {grp:'Caja · Impuestos · Deuda · 2026'},
+    {l:'Caja (saldo Dic-26)',          v:vCaja,  p:PPTO_2026.caja,        f:moneySnap},
+    {l:'PPM (Manager)',                v:vPpm,   p:PPTO_2026.ppm,         f:moneyY},
+    {l:'Intereses (Deuda Random)',     v:rd.int, p:PPTO_2026.intRandom,   f:moneyY},
+    {l:'Amortización deuda (Random)',  v:rd.am,  p:PPTO_2026.amortRandom, f:moneyY},
+    {grp:'MRR por producto · EoP Dic-26 (UF)'},
+    {l:'Time',     v:mrrV('time'),    p:PPTO_2026.mrr.time,    f:uf},
+    {l:'Flexline', v:mrrV('flex'),    p:PPTO_2026.mrr.flex,    f:uf},
+    {l:'Manager+', v:mrrV('mgrplus'), p:PPTO_2026.mrr.mgrplus, f:uf},
+    {l:'Random',   v:mrrV('rcl'),     p:PPTO_2026.mrr.rcl,     f:uf},
+  ];
+  let h=`<thead><tr><th>Concepto</th><th class="r">Visor</th><th class="r">PPTO</th><th class="r">Dif</th><th class="r">Dif %</th></tr></thead><tbody>`;
+  for(const r of rows){
+    if(r.grp){
+      h+=`<tr style="background:var(--bg2)"><td colspan="5" style="font-size:10px;letter-spacing:.06em;color:var(--text3);font-weight:600;padding:8px 10px 4px">${r.grp.toUpperCase()}</td></tr>`;
+      continue;
+    }
+    const dif=(r.v==null||r.p==null)?null:(r.v-r.p);
+    const difPct=(dif==null||!r.p)?null:(dif/r.p*100);
+    const nm=r.bold?`<strong>${r.l}</strong>`:r.l;
+    h+=`<tr${r.tot?' class="tot"':''}>`;
+    h+=`<td>${nm}</td>`;
+    h+=`<td class="r">${r.f(r.v)}</td>`;
+    h+=`<td class="r" style="color:var(--text3)">${r.f(r.p)}</td>`;
+    h+=`<td class="r"><strong>${dif==null?'—':r.f(dif)}</strong></td>`;
+    h+=`<td class="r">${difPct==null?'—':(difPct>0?'+':'')+f1(difPct,1)+'%'}</td>`;
+    h+='</tr>';
+  }
+  el.innerHTML=h+'</tbody>';
 }
 
 // ═══ Display periods: monthly until Dec-2026, annual for 2027+ ═══
