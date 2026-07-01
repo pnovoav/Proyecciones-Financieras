@@ -399,7 +399,7 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
   <div class="card gmb"><div class="card-title" id="dash-title-cash-wf">Flujo de Caja proyectado</div><div id="ch-cash-wf-dash" style="height:360px"></div></div>
   <div class="card gmb"><div class="card-title">Evolución de la deuda financiera</div><div id="ch-saldo-dash" style="height:240px"></div></div>
   <div class="card gmb"><div class="card-title" id="dash-title-ebit">EBITDA mensual · margen %</div><div id="ch-ebit" style="height:200px"></div></div>
-  <div class="card gmb"><div class="card-title" style="display:flex;align-items:center;justify-content:space-between">Métricas por producto — último mes real<span><button id="btn-metrics-uf" class="btn btn-outline" style="padding:4px 10px;font-size:10px;background:var(--blue3);color:#fff;border-color:var(--blue3)" onclick="setMetricsUnit('UF')">UF</button> <button id="btn-metrics-clp" class="btn btn-outline" style="padding:4px 10px;font-size:10px" onclick="setMetricsUnit('CLP')">M CLP</button></span></div><div class="tw"><table id="t-metrics"></table></div></div>
+  <div class="card gmb"><div class="card-title">Métricas por producto — último mes real</div><div class="tw"><table id="t-metrics"></table></div></div>
 </div>
 <div id="pg-ing" class="pg">
   <div class="card gmb"><div class="card-title">Revenue anual por segmento · <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500;font-size:10px">2023-2028 con históricos reales y proyección — click para expandir por producto</span></div><div class="tw" id="t-rev-annual"></div></div>
@@ -435,10 +435,6 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
           </select></div>
         <div><div class="il">Desde</div><select id="bp-desde" onchange="chartBridge()"></select></div>
         <div><div class="il">Hasta</div><select id="bp-hasta" onchange="chartBridge()"></select></div>
-        <div style="display:flex;gap:4px;align-items:flex-end">
-          <button id="btn-bridge-uf" class="btn btn-outline" style="padding:4px 10px;font-size:10px;background:var(--acc);color:#fff;border-color:var(--acc)" onclick="setBridgeUnit('UF')">UF</button>
-          <button id="btn-bridge-clp" class="btn btn-outline" style="padding:4px 10px;font-size:10px" onclick="setBridgeUnit('CLP')">M CLP</button>
-        </div>
       </div>
     </div>
     <div id="ch-bridge" style="height:260px"></div>
@@ -551,6 +547,9 @@ function applyCurrLabels(){
   document.querySelectorAll('[data-curr-title-mrr]').forEach(el=>{
     el.textContent=`MRR por producto (UF y ${u}) · EoP Dic anual`;
   });
+  // Label del MRR Bridge sigue el toggle global
+  const bl=document.getElementById('bridge-unit-lbl');
+  if(bl)bl.textContent=CURR==='CLP'?'M CLP':'UF';
 }
 document.addEventListener('DOMContentLoaded',applyCurrLabels);
 // Theme toggle
@@ -1025,7 +1024,7 @@ function openMrrDetailModal(prod,bucket,desde,hasta){
   if(!window.MRR_DETAIL){alert('Cargá primero el detalle MRR en la barra lateral.');return;}
   const months=AMO.filter(m=>m>=desde&&m<=hasta&&isActM(m));
   if(!months.length){alert('Sin meses actuales en el rango seleccionado.');return;}
-  const useClp=MRR_UNIT==='CLP';
+  const useClp=CURR==='CLP'; // sigue el toggle global del header
   const prods=prod==='all'?BRIDGE.filter(p=>window.MRR_DETAIL[p]):[prod];
   const PROD_LBL={time:'Time',flex:'Flex',mgrplus:'Mgr+',einv:'E-Inv',rcl:'Random',ramaflex:'Ramaflex'};
   const BUCKET_LBL={new:'Nuevos',churn:'Churn',up:'Upsell',ds:'Downsell'};
@@ -3179,7 +3178,7 @@ function tableMetrics(){
   if(!P.model.clients||!P.actualMonths.length)return;
   const lastAct=P.actualMonths[P.actualMonths.length-1];
   const prevAct=P.actualMonths[P.actualMonths.length-2];
-  const useClp=METRICS_UNIT==='CLP';
+  const useClp=CURR==='CLP'; // sigue el toggle global del header
   const ufRate=P.uf?.[lastAct]||0;
   // Convertidor: valor en UF → unidad activa
   const cv=v=>useClp?(v*ufRate/1e6):v;
@@ -3399,7 +3398,7 @@ function chartBridge(){
   const bd=getBridgeData(prod,desde,hasta);
   if(!bd||!bd.months.length){Plotly.purge('ch-bridge');return;}
   const{months,data}=bd;
-  const useClp=MRR_UNIT==='CLP';
+  const useClp=CURR==='CLP'; // sigue el toggle global del header
   const ufM=m=>P.uf?.[m]||0;
   // ARR siempre: × 12 (tanto UF como CLP). Labels del waterfall dicen "BoP/EoP ARR".
   const cv=(v,m)=>(useClp?v*ufM(m)/1e6:v)*12;
@@ -3722,7 +3721,7 @@ function tableBridge(){
   const prod=document.getElementById('bp-prod')?.value||'time';
   const months=AMO; // full range actuals + projected to 2028
   if(!months.length)return;
-  const useClp=MRR_UNIT==='CLP';
+  const useClp=CURR==='CLP'; // sigue el toggle global del header
   const ufV=m=>P.uf?.[m]||0;
   // ARR siempre: × 12 (tanto UF como CLP)
   const fmtV=(v,m)=>useClp?fmtMoney(v*ufV(m)/1e6*12,m,1):f0(v*12);
