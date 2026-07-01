@@ -1330,6 +1330,11 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     const rowRentaPag=findRowAny(['Income Tax payment to SII (April of following year)','Pago Operación Renta SII (Abril año siguiente)']);
     const rowDevolImp=findRowAny(['Tax Refund','Devolución Impuestos']);
     const rowReversoTax=findRowAny(['Reversal Income Tax accrual (non-cash)','Reverso Income Tax devengo (no cash)']);
+    // NI del PROPIO Flujo de Caja (r~1294), distinto del NI del P&L (r~1228). El modelo nuevo
+    // arranca el CF indirecto de este NI + la línea "Reversal of interest & indexation". Sin esto
+    // la desagregación del CF Operacional no reconcilia con el total del modelo.
+    const rowCfNi=findRow(wsE,'Net Income / (Loss)',1290);
+    const rowRevIntIC=findRowAny(['Reversal of interest & indexation – related-party balances','Reverso interés e indexación – partidas relacionadas']);
 
     const brigs={
       time:findProductBridge(wsE,'Product Time'),
@@ -1565,7 +1570,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
     // Use findRow (not findDataRow) since probeC=2024-01 might be empty for BS
     const rowCashBS=findRow(wsE,'Cash and Cash Equivalents');
     console.log('[Cash BS] rowCashBS=',rowCashBS,'test Jan-26 value=',numV(wsE,rowCashBS,ymCol('2026-01')));
-    const modelTot={rev:{},cogs:{},sga:{},ebitda:{},ni:{},cashEOP:{},cashBS:{},dep:{},amort:{},capex:{},ma:{},debtAm:{},incDebt:{},devolBPO:{},divs:{},ajustes:{},cfop:{},cfinv:{},cffin:{},incomeTax:{},wcPure:{},ivaDev:{},ivaPag:{},ppm:{},rentaPag:{},devolImp:{},reversoTax:{},intExp:{}};
+    const modelTot={rev:{},cogs:{},sga:{},ebitda:{},ni:{},cashEOP:{},cashBS:{},dep:{},amort:{},capex:{},ma:{},debtAm:{},incDebt:{},devolBPO:{},divs:{},ajustes:{},cfop:{},cfinv:{},cffin:{},incomeTax:{},wcPure:{},ivaDev:{},ivaPag:{},ppm:{},rentaPag:{},devolImp:{},reversoTax:{},intExp:{},cfNi:{},revIntIC:{},cfDebtAm:{}};
     for(const m of allMonths){
       const c=ymCol(m);
       modelTot.rev[m]=numV(wsE,rowRev,c)/1e6;
@@ -1596,6 +1601,12 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       modelTot.rentaPag[m]=rowRentaPag>0?numV(wsE,rowRentaPag,c)/1e6:0;
       modelTot.devolImp[m]=rowDevolImp>0?numV(wsE,rowDevolImp,c)/1e6:0;
       modelTot.reversoTax[m]=rowReversoTax>0?numV(wsE,rowReversoTax,c)/1e6:0;
+      // CF: NI del propio flujo, reverso interés/indexación intercompañía, y amortización de deuda
+      // TAL CUAL del CF del modelo (cfDebtAm; modelTot.debtAm luego se sobre-escribe con el schedule
+      // de Financial Debt para el DSCR, pero el CF debe mostrar la cifra real del flujo).
+      modelTot.cfNi[m]=rowCfNi>0?numV(wsE,rowCfNi,c)/1e6:(modelTot.ni[m]||0);
+      modelTot.revIntIC[m]=rowRevIntIC>0?numV(wsE,rowRevIntIC,c)/1e6:0;
+      modelTot.cfDebtAm[m]=numV(wsE,rowDebtAm,c)/1e6;
       modelTot.intExp[m]=rowIntExp>0?numV(wsE,rowIntExp,c)/1e6:0;
     }
 
@@ -4659,9 +4670,10 @@ function tableFC(){
   // CF Operacional — desagregado igual que el modelo Excel
   // NOTA: NI mostrado aquí es POST-impuesto (=MT.ni). La línea "Reverso Income Tax devengo"
   // revierte el tax del NI dentro del CF Op para que la suma matchee MT.cfop sin pago real del tax en Dic.
-  const _fnNi=m=>MT.ni[m]||0; // post-tax NI (igual que Excel CF row)
+  const _fnNi=m=>MT.cfNi[m]??(MT.ni[m]||0); // NI del propio Flujo (r~1294), no el del P&L
   const _fnDep=m=>MT.dep[m]||0;
   const _fnAmort_=m=>MT.amort[m]||0;
+  const _fnRevIntIC=m=>MT.revIntIC[m]||0; // reverso interés/indexación intercompañía (línea nueva)
   const _fnWcPure=m=>MT.wcPure[m]||0;
   const _fnIvaDev=m=>MT.ivaDev[m]||0;
   const _fnIvaPag=m=>MT.ivaPag[m]||0;
@@ -4677,7 +4689,7 @@ function tableFC(){
   const _fnUiAm=m=>_fcGet(m,'ndAm');
   const _fnAmort=m=>_fcGet(m,'debtEx');
   const _fnDivs=m=>_fcGet(m,'divs');
-  const _sumOp=m=>_fnNi(m)+_fnDep(m)+_fnAmort_(m)+_fnWcPure(m)+_fnIvaDev(m)+_fnIvaPag(m)+_fnPpm(m)+_fnRentaPag(m)+_fnDevolImp(m)+_fnReversoTax(m);
+  const _sumOp=m=>_fnNi(m)+_fnDep(m)+_fnAmort_(m)+_fnRevIntIC(m)+_fnWcPure(m)+_fnIvaDev(m)+_fnIvaPag(m)+_fnPpm(m)+_fnRentaPag(m)+_fnDevolImp(m)+_fnReversoTax(m);
   const _sumInv=m=>_fnCapex(m)+_fnMa(m);
   const _sumFin=m=>_fnBpo(m)+_fnRandom(m)+_fnUiIn(m)+_fnUiAm(m)+_fnAmort(m)+_fnDivs(m);
   const rows=[
@@ -4687,6 +4699,7 @@ function tableFC(){
     {l:'Net Income / (Loss)',f:_fnNi},
     {l:'Depreciation',f:_fnDep},
     {l:'Amortization',f:_fnAmort_},
+    {l:'Reverso interés/indexación intercompañía',f:_fnRevIntIC},
     {l:'(Increase) / Decrease In Operating Working Capital',f:_fnWcPure},
     {l:'Devengo IVA neto del mes (DF − CF generado)',f:_fnIvaDev,hl:'green'},
     {l:'Pago F29 IVA al SII (mes anterior)',f:_fnIvaPag,hl:'red'},
@@ -4801,9 +4814,10 @@ function tableFCAnnual(){
   // ─── Helpers alineados al modelo Excel (CF desagregado) ───
   const MT=P.modelTot;
   const _sumOf=(yr,k)=>monthsOfYr(yr).reduce((t,m)=>t+(MT[k]?.[m]||0),0);
-  const sumNi=yr=>_sumOf(yr,'ni'); // post-tax (matchea Excel)
+  const sumNi=yr=>_sumOf(yr,'cfNi'); // NI del propio Flujo de Caja (r~1294), no el del P&L
   const sumDep=yr=>_sumOf(yr,'dep');
   const sumAmort_=yr=>_sumOf(yr,'amort');
+  const sumRevIntIC=yr=>_sumOf(yr,'revIntIC'); // Reverso interés/indexación intercompañía (línea nueva)
   const sumWcPure=yr=>_sumOf(yr,'wcPure');
   const sumIvaDev=yr=>_sumOf(yr,'ivaDev');
   const sumIvaPag=yr=>_sumOf(yr,'ivaPag');
@@ -4817,9 +4831,9 @@ function tableFCAnnual(){
   const sumRandom=yr=>_sumOf(yr,'incDebt');
   const sumUiIn=yr=>monthsOfYr(yr).reduce((t,m)=>t+(S?.ndIn?S.ndIn(m):0),0);
   const sumUiAm=yr=>monthsOfYr(yr).reduce((t,m)=>t+(S?.ndA?S.ndA(m):0),0);
-  const sumAmort=yr=>_sumOf(yr,'debtAm');
+  const sumAmort=yr=>_sumOf(yr,'cfDebtAm'); // amort. de deuda TAL CUAL el CF del modelo (no el schedule)
   const sumDivs=yr=>monthsOfYr(yr).reduce((t,m)=>t+(isActM(m)?(MT.divs[m]||0):(S?.divs?.[m]||0)),0);
-  const sumCFop=yr=>sumNi(yr)+sumDep(yr)+sumAmort_(yr)+sumWcPure(yr)+sumIvaDev(yr)+sumIvaPag(yr)+sumPpm(yr)+sumRentaPag(yr)+sumDevolImp(yr)+sumReversoTax(yr);
+  const sumCFop=yr=>sumNi(yr)+sumDep(yr)+sumAmort_(yr)+sumRevIntIC(yr)+sumWcPure(yr)+sumIvaDev(yr)+sumIvaPag(yr)+sumPpm(yr)+sumRentaPag(yr)+sumDevolImp(yr)+sumReversoTax(yr);
   const sumCFinv=yr=>sumCapex(yr)+sumMa(yr);
   const sumCFfin=yr=>sumBpo(yr)+sumRandom(yr)+sumUiIn(yr)+sumUiAm(yr)+sumAmort(yr)+sumDivs(yr);
   // Caja s/Impuesto y c/Impuesto a fin de año
@@ -4878,6 +4892,7 @@ function tableFCAnnual(){
   h+=rowHl('Net Income / (Loss)',sumNi);
   h+=rowHl('Depreciation',sumDep);
   h+=rowHl('Amortization',sumAmort_);
+  h+=rowHl('Reverso interés/indexación intercompañía',sumRevIntIC);
   h+=rowHl('(Increase) / Decrease In Operating Working Capital',sumWcPure);
   h+=rowHl('Devengo IVA neto del mes (DF − CF generado)',sumIvaDev,{hl:'green'});
   h+=rowHl('Pago F29 IVA al SII (mes anterior)',sumIvaPag,{hl:'red'});
