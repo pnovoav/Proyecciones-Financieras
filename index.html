@@ -391,7 +391,7 @@ html[data-theme="dark"] .tw table tr.tot td:first-child{background:var(--surface
 <main class="main">
 <div id="pg-dash" class="pg on">
   <div class="g4" id="kpis" style="margin-bottom:10px"></div>
-  <div id="kpis2" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px"></div>
+  <div id="kpis2" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px"></div>
   <div class="g2">
     <div class="card"><div class="card-title" id="dash-title-revpie">Distribución de Revenue por ERP</div><div id="ch-rev-pie" style="height:280px"></div></div>
     <div class="card"><div class="card-title">Cascada P&amp;L anual</div><div id="ch-wf" style="height:280px"></div></div>
@@ -2809,10 +2809,16 @@ function renderKPIs(){
   const totalDebtKpi=((P.bs?.otherFinL?.[_cyrLast]||0)+(P.bs?.debtLT?.[_cyrLast]||0));
   const debtEbitdaKpi=ebAdjS>0?totalDebtKpi/ebAdjS:0;
   const debtEbColor=ebAdjS<=0?'':debtEbitdaKpi<2?'grn':debtEbitdaKpi<3?'amb':'red';
+  // Crecimiento REAL de ingresos = Growth YoY nominal (CLP) descontado por inflación asumida (3%
+  // de 2025 a fin de 2026). Real = (1+nominal)/(1+infl) − 1. Muestra si crecés por encima de la
+  // inflación o no.
+  const INFLA=0.03;
+  const realGrowth=growthYoY!=null?((1+growthYoY/100)/(1+INFLA)-1)*100:null;
   const row2=[
     {l:`ARR ${getCurrYear()}`,v:`${f0(arrLastC)}<span class="unit">${curUnit}</span>`,c:'',icon:'∞',delta:'',spark:''},
     {l:`Rule of 40 ${getCurrYear()}`,v:`${ruleS.toFixed(0)}<span class="unit">%</span>`,c:ruleS>=40?'grn':ruleS>=20?'amb':'red',icon:'⟁',delta:deltaPct(ruleS,ruleB),spark:`<div class="kpi-gauge ${ruleClass}"><div class="kpi-gauge-fill" style="width:${rulePct}%"></div></div>`},
     {l:`Growth YoY ${getCurrYear()}`,v:growthYoY!=null?`${growthYoY.toFixed(1)}<span class="unit">%</span>`:'—',c:'purp',icon:'↗',delta:growthYoY!=null?deltaPct(growthYoY,growthYoYBase):'',spark:''},
+    {l:`Crec. Real ${getCurrYear()}`,v:realGrowth!=null?`${realGrowth.toFixed(1)}<span class="unit">%</span>`:'—',c:realGrowth==null?'':realGrowth>=0?'grn':'red',icon:'≈',delta:realGrowth!=null?`<span class="kpi-delta fl">nominal ${growthYoY.toFixed(1)}% − infl ${(INFLA*100).toFixed(0)}%</span>`:'',spark:''},
     {l:`Deuda / EBITDA ${getCurrYear()}`,v:ebAdjS>0?`${debtEbitdaKpi.toFixed(2)}<span class="unit">x</span>`:'—',c:debtEbColor,icon:'⚖',delta:`<span class="kpi-delta fl">Saldo ${f0(convV(totalDebtKpi,_cyrLast))} ${curUnit}</span>`,spark:''},
   ];
   document.getElementById('kpis').innerHTML=row1.map(mkKPI).join('');
