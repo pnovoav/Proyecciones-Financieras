@@ -1480,6 +1480,36 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       }
     }
 
+    // ─── HISTORIA MENSUAL (2023-01 → mes previo a "desde") ──────────────────────
+    // El almacenamiento principal (allMonths) arranca en "desde" (=2026) para no
+    // ensanchar AMO ni el Balance. Para que el gráfico de Revenue por producto pueda
+    // leer desde 2023 y el bridge desde 2025 (primer mes con datos de MRR), rellenamos
+    // SOLO el detalle mensual por producto + UF/IPC de esos meses, sin tocar AMO/modelTot.
+    const _histFloor='2023-01';
+    const histMonths=(desdeYM>_histFloor)?monthRange(_histFloor,addM(desdeYM,-1)):[];
+    for(const m of histMonths){
+      const c=ymCol(m);
+      const _u=numV(wsE,rowUF,c);   if(_u>0)uf[m]=_u;
+      const _i=numV(wsE,rowIPC,c);  ipc[m]=_i||0.0025;
+      for(const p of ALL_PRODS){
+        model.rev[p][m]=numV(wsE,rowProdRev[p],c)/1e6;
+        model.cogs[p][m]=numV(wsE,rowProdCOGS[p],c)/1e6;
+        model.sga[p][m]=numV(wsE,rowProdSGA[p],c)/1e6;
+      }
+      for(const p of BRIDGE){
+        if(!brigs[p])continue;
+        model.mrrUF[p][m]=numV(wsE,brigs[p].eop_uf,c);
+        model.bridge[p][m]={
+          bop:numV(wsE,brigs[p].bop_uf,c),ch:numV(wsE,brigs[p].ch_uf,c),
+          ds:numV(wsE,brigs[p].ds_uf,c),up:numV(wsE,brigs[p].up_uf,c),
+          new:numV(wsE,brigs[p].new_uf,c),eop:numV(wsE,brigs[p].eop_uf,c),
+        };
+      }
+    }
+    // Meses históricos que efectivamente tienen datos (para los selectores de ambos gráficos)
+    const histRev=histMonths.filter(m=>ALL_PRODS.some(p=>Math.abs(model.rev[p][m]||0)>1e-6));
+    const histBridge=histMonths.filter(m=>BRIDGE.some(p=>model.bridge[p]?.[m]?.bop));
+
     // Bridge rates (% churn/downsell/upsell) from first proj col, used for projection decomposition
     const bridgeRates={};
     for(const p of BRIDGE){
@@ -2036,6 +2066,7 @@ function parseAndRebuild(wb,desdeYM,cutoffYM,horizonYM){
       div_pct_base:0.3,
       priorYearRev,priorYearEbitda,
       bs,bsDef:BS_ROWS,annual,annualYears:ANNUAL_YEARS,
+      histRev,histBridge,
     };
     MO=projMonths;AMO=[...actualMonths,...projMonths];lb=projMonths.map(fmtM);
 
@@ -2628,6 +2659,12 @@ function compute(){
   }
 }
 function isActM(m){return P.actualMonths?.includes(m);}
+// Histórico = cualquier mes ANTERIOR al primer mes proyectado (incluye actuals 2026 y la
+// historia 2023-2025 backfilled). Estos meses se leen del MODELO, no del escenario.
+function isHistM(m){return MO.length?m<MO[0]:!!P.actualMonths?.includes(m);}
+// Rango de meses (incl. historia) para los dos gráficos de la pestaña Ingresos.
+function amoRev(){return [...((P&&P.histRev)||[]),...AMO];}       // Revenue por producto: desde 2023
+function amoBridge(){return [...((P&&P.histBridge)||[]),...AMO];} // MRR Bridge: desde 2025
 
 // ═══════════════════════════════════════════════════════════════
 // RENDERERS
@@ -3276,52 +3313,56 @@ function setRprodRange(desde,hasta,presetKey=null){
   chartRevByProd();
 }
 function onRprodSelectorChange(){
-  // Si el usuario tocó los selectores manualmente, ya no está en un preset
-  _rprodActivePreset=null;
+  // Si el usuario tocó los selectores manualmente → modo "Manual"
+  _rprodActivePreset='manual';
   renderRprodPresetChips();
   chartRevByProd();
+}
+function setRprodManual(){
+  // Activa el modo ventana-libre: no cambia el rango, el usuario ajusta con Desde/Hasta.
+  _rprodActivePreset='manual';
+  renderRprodPresetChips();
 }
 function renderRprodPresetChips(){
   const cont=document.getElementById('rprod-presets');
   if(!cont||!AMO.length)return;
-  // Determinar años disponibles en AMO
-  const yrs=[...new Set(AMO.map(m=>+m.slice(0,4)))].sort((a,b)=>a-b);
-  // Solo mostrar años con al menos 1 mes en AMO. Y agregar combos comunes.
-  const presets=[];
-  for(const y of yrs) presets.push({key:String(y),label:String(y),desde:y+'-01',hasta:y+'-12'});
-  // Combos consecutivos comunes (2026-2027, 2026-2028, todo)
-  if(yrs.includes(2026)&&yrs.includes(2027)) presets.push({key:'2026-27',label:'26+27',desde:'2026-01',hasta:'2027-12'});
-  if(yrs.includes(2026)&&yrs.includes(2028)) presets.push({key:'2026-28',label:'26→28',desde:'2026-01',hasta:'2028-12'});
-  presets.push({key:'all',label:'Todo',desde:AMO[0],hasta:AMO[AMO.length-1]});
+  const FULL=amoRev(); // incluye historia desde 2023
+  // Un botón por año disponible (historia + proyección). Sin combos.
+  const yrs=[...new Set(FULL.map(m=>+m.slice(0,4)))].sort((a,b)=>a-b);
+  const presets=yrs.map(y=>({key:String(y),label:String(y),desde:y+'-01',hasta:y+'-12'}));
   const baseBtn='padding:3px 9px;font-size:10px;border:1px solid var(--border);border-radius:12px;cursor:pointer;font-family:var(--mono);background:var(--surface);color:var(--text2);transition:all .15s';
   const activeBtn='padding:3px 9px;font-size:10px;border:1px solid var(--blue3);border-radius:12px;cursor:pointer;font-family:var(--mono);background:var(--blue3);color:#fff;font-weight:700;transition:all .15s';
+  // Botones de año + botón "Manual" (ventana libre con los selectores Desde/Hasta).
   cont.innerHTML=presets.map(p=>{
     const active=p.key===_rprodActivePreset;
     return `<button onclick="setRprodRange('${p.desde}','${p.hasta}','${p.key}')" style="${active?activeBtn:baseBtn}">${p.label}</button>`;
-  }).join('');
+  }).join('')
+   +`<button onclick="setRprodManual()" style="${_rprodActivePreset==='manual'?activeBtn:baseBtn}">Manual</button>`;
 }
 function populateRevProdSelectors(){
   const sd=document.getElementById('rprod-desde'),sh=document.getElementById('rprod-hasta');
   if(!sd||!sh||!AMO.length)return;
   // Solo poblar si está vacío (para no perder selección del usuario)
   if(!sd.options.length){
-    const opts=AMO.map(m=>`<option value="${m}">${fmtM(m)}</option>`).join('');
+    const FULL=amoRev(); // incluye historia desde 2023
+    const opts=FULL.map(m=>`<option value="${m}">${fmtM(m)}</option>`).join('');
     sd.innerHTML=opts;sh.innerHTML=opts;
-    // Default: desde Ene-2026 (o primer mes ≥2026), hasta Dic-2026 (o último mes de 2026)
-    const ene26='2026-01',dic26='2026-12';
-    sd.value=AMO.includes(ene26)?ene26:AMO.find(m=>+m.slice(0,4)>=2026)||AMO[0];
-    sh.value=AMO.includes(dic26)?dic26:[...AMO].reverse().find(m=>+m.slice(0,4)===2026)||AMO[AMO.length-1];
-    _rprodActivePreset='2026';
+    // Default: ventana del año en curso (los botones por año dan acceso a la historia)
+    const curYr=(MO[0]||AMO[0]).slice(0,4);
+    sd.value=FULL.includes(curYr+'-01')?curYr+'-01':FULL[0];
+    sh.value=FULL.includes(curYr+'-12')?curYr+'-12':[...FULL].reverse().find(m=>m.slice(0,4)===curYr)||FULL[FULL.length-1];
+    _rprodActivePreset=curYr;
   }
   renderRprodPresetChips();
 }
 function chartRevByProd(){
   populateRevProdSelectors();
   // Filtro Desde / Hasta para elegir rango libre.
-  const desde=document.getElementById('rprod-desde')?.value||AMO[0];
-  const hasta=document.getElementById('rprod-hasta')?.value||AMO[AMO.length-1];
-  const filteredMO=AMO.filter(m=>m>=desde&&m<=hasta);
-  const useMO=filteredMO.length?filteredMO:AMO;
+  const FULL=amoRev(); // incluye historia mensual desde 2023
+  const desde=document.getElementById('rprod-desde')?.value||FULL[0];
+  const hasta=document.getElementById('rprod-hasta')?.value||FULL[FULL.length-1];
+  const filteredMO=FULL.filter(m=>m>=desde&&m<=hasta);
+  const useMO=filteredMO.length?filteredMO:FULL;
   const allLb=useMO.map(fmtM);
   const unit=currUnitLbl();
   // Agrupaciones idénticas al pie chart: Rex+ = rex+bnovus+gaxu, Random = rcl+rpe
@@ -3336,7 +3377,8 @@ function chartRevByProd(){
     {label:'Other',       prods:['otros'],               color:PCOL.otros},
     {label:'Random',      prods:['rcl','rpe'],           color:PCOL.rcl},
   ];
-  const revOf=(p,m)=>isActM(m)?(P.model.rev[p]?.[m]||0):(S.rev[p]?.[m]||0);
+  // Histórico/actual (2023 → cutoff) se lee del MODELO; proyectado, del escenario.
+  const revOf=(p,m)=>isHistM(m)?(P.model.rev[p]?.[m]||0):(S.rev[p]?.[m]||0);
   // Calcular total acumulado por ERP y ordenar de mayor a menor.
   // En Plotly stacked bar, el PRIMER trace queda abajo del stack. Para que el
   // producto más grande esté abajo (típico), iteramos en orden descendente.
@@ -3399,17 +3441,64 @@ function chartRevByProd(){
 function populateBridgeSelectors(){
   const sd=document.getElementById('bp-desde'),sh=document.getElementById('bp-hasta');
   if(!sd||!sh||!AMO.length)return;
-  const opts=AMO.map(m=>`<option value="${m}">${fmtM(m)}</option>`).join('');
+  const FULL=amoBridge(); // el selector permite volver hasta 2025 (primer mes con MRR)
+  const opts=FULL.map(m=>`<option value="${m}">${fmtM(m)}</option>`).join('');
   sd.innerHTML=opts;sh.innerHTML=opts;
-  // Default: desde = first projected month; hasta = Dic-26 si existe, si no, último disponible
-  sd.value=MO[0]||AMO[0];
-  const dic26='2026-12';
-  sh.value=AMO.includes(dic26)?dic26:(MO[MO.length-1]||AMO[AMO.length-1]);
+  // Default: ventana del año en curso (2025 queda disponible en el selector para retroceder)
+  const curYr=(MO[0]||AMO[0]).slice(0,4);
+  sd.value=FULL.includes(curYr+'-01')?curYr+'-01':FULL[0];
+  sh.value=FULL.includes(curYr+'-12')?curYr+'-12':(MO[MO.length-1]||FULL[FULL.length-1]);
 }
 
+// ─── MRR bridge: descomposición por producto/mes ──────────────────────────────
+// Tasas promedio (churn/downsell/upsell/new como % de BoP) sobre TODOS los meses de
+// bridge que el modelo tiene cacheados. Sirven de fallback para meses proyectados
+// FUERA del rango del modelo (p.ej. 2029+, donde el Excel ya no trae bridge).
+function _bridgeAvgRates(prod){
+  const md=P.model?.bridge?.[prod];
+  if(md){
+    let sb=0,sc=0,sd=0,su=0,sn=0;
+    for(const mm in md){const b=md[mm];if(!b||!b.bop)continue;sb+=b.bop;sc+=b.ch||0;sd+=b.ds||0;su+=b.up||0;sn+=b.new||0;}
+    if(sb)return {ch:sc/sb,ds:sd/sb,up:su/sb,nw:sn/sb};
+  }
+  const r=P.bridgeRates?.[prod]||{ch:0,ds:0,up:0};
+  return {ch:r.ch,ds:r.ds,up:r.up,nw:0};
+}
+// Componentes del bridge para un producto/mes → {bop,ch,ds,up,nw,eop} en UF.
+//  • Meses reales           → componentes cacheados del modelo (tal cual).
+//  • Proyección CON modelo   → churn/downsell/upsell REALES del modelo; Nuevos = cierre
+//                              (coincide con el modelo en base y se mueve con el escenario).
+//  • Proyección SIN modelo   → tasas promedio; el crecimiento neto-de-retención se reparte
+//                              entre Upsell y Nuevos por proporción histórica (Nuevos ≥ 0).
+function _bridgeComponents(prod,m){
+  // Histórico/actual (incl. 2025) se lee del MODELO; proyectado, del escenario.
+  const eop=isHistM(m)?(P.model.mrrUF[prod]?.[m]||0):(S.mrrUF[prod]?.[m]||0);
+  const prevM=addM(m,-1);
+  const bop=isHistM(prevM)?(P.model.mrrUF[prod]?.[prevM]||0):(S.mrrUF[prod]?.[prevM]||P.model.mrrUF[prod]?.[prevM]||0);
+  const md=P.model.bridge?.[prod]?.[m];
+  if(isHistM(m)&&md){
+    return {bop:md.bop||bop,ch:md.ch||0,ds:md.ds||0,up:md.up||0,nw:md.new||0,eop:md.eop||eop};
+  }
+  if(md&&(md.bop||md.eop)){
+    // El modelo trae la descomposición real de este mes proyectado: usamos su
+    // churn/downsell/upsell y dejamos Nuevos como cierre (= Nuevos del modelo en base).
+    const ch=md.ch||0,ds=md.ds||0,up=md.up||0;
+    return {bop,ch,ds,up,nw:eop-(bop+ch+ds+up),eop};
+  }
+  // Fuera del rango del modelo: tasas promedio, repartiendo Upsell vs Nuevos.
+  const ar=_bridgeAvgRates(prod);
+  const ch=bop*ar.ch,ds=bop*ar.ds;
+  const netAfterRet=eop-bop-ch-ds;              // = up + nw
+  const denom=ar.up+ar.nw;
+  const upShare=denom>0?ar.up/denom:0.5;
+  let up=netAfterRet>0?netAfterRet*upShare:bop*ar.up;
+  let nw=netAfterRet-up;
+  if(nw<0){nw=0;up=netAfterRet;}
+  return {bop,ch,ds,up,nw,eop};
+}
 function getBridgeData(prod,desde,hasta){
-  // Use scenario MRR (S.mrrUF) for all months; fall back to model for actuals
-  const months=AMO.filter(m=>m>=desde&&m<=hasta);
+  // Use scenario MRR (S.mrrUF) for all months; fall back to model for actuals+historia
+  const months=amoBridge().filter(m=>m>=desde&&m<=hasta);
   if(!months.length)return null;
   // 'all' → aggregate across BRIDGE products
   if(prod==='all'){
@@ -3417,10 +3506,8 @@ function getBridgeData(prod,desde,hasta){
     for(const m of months){
       let bop=0,ch=0,ds=0,up=0,nw=0,eop=0;
       for(const p of BRIDGE){
-        const sub=getBridgeData(p,desde,hasta);
-        if(!sub||!sub.data[m])continue;
-        const d=sub.data[m];
-        bop+=d.bop||0;ch+=d.ch||0;ds+=d.ds||0;up+=d.up||0;nw+=d.new||0;eop+=d.eop||0;
+        const c=_bridgeComponents(p,m);
+        bop+=c.bop||0;ch+=c.ch||0;ds+=c.ds||0;up+=c.up||0;nw+=c.nw||0;eop+=c.eop||0;
       }
       data[m]={bop,ch,ds,up,new:nw,eop};
     }
@@ -3428,21 +3515,8 @@ function getBridgeData(prod,desde,hasta){
   }
   const data={};
   for(const m of months){
-    const eop=isActM(m)?(P.model.mrrUF[prod]?.[m]||0):(S.mrrUF[prod]?.[m]||0);
-    const prevM=addM(m,-1);
-    const bop=isActM(prevM)?(P.model.mrrUF[prod]?.[prevM]||0):(S.mrrUF[prod]?.[prevM]||P.model.mrrUF[prod]?.[prevM]||0);
-    // For bridge components, read from the model's bridge rows for actuals
-    // For projection: approximate components from scenario MRR change
-    if(isActM(m)&&P.model.bridge&&P.model.bridge[prod]){
-      const bd=P.model.bridge[prod][m]||{};
-      data[m]={bop:bd.bop||bop,ch:bd.ch||0,ds:bd.ds||0,up:bd.up||0,new:bd.new||0,eop:bd.eop||eop};
-    }else{
-      // Projection: derive components from model's bridge ratios at first proj col
-      const rates=P.bridgeRates?.[prod]||{ch:0,ds:0,up:0};
-      const ch=bop*rates.ch,ds=bop*rates.ds,up=bop*rates.up;
-      const nw=eop-(bop+ch+ds+up);
-      data[m]={bop,ch,ds,up,new:nw,eop};
-    }
+    const c=_bridgeComponents(prod,m);
+    data[m]={bop:c.bop,ch:c.ch,ds:c.ds,up:c.up,new:c.nw,eop:c.eop};
   }
   return {months,data};
 }
@@ -3583,7 +3657,7 @@ function tableRetention(){
 
   // ── Helper: build delta columns (last period only) ──
   const prodSel=document.getElementById('bp-prod')?.value||'time';
-  const _mrrOne=(p,m)=>isActM(m)?(P.model.mrrUF[p]?.[m]||0):(S.mrrUF[p]?.[m]||0);
+  const _mrrOne=(p,m)=>isHistM(m)?(P.model.mrrUF[p]?.[m]||0):(S.mrrUF[p]?.[m]||0);
   const mrr=m=>{if(!m)return 0;if(prodSel==='all')return BRIDGE.reduce((s,p)=>s+_mrrOne(p,m),0);return _mrrOne(prodSel,m);};
   const lastLabel=periodLabels[periodLabels.length-1];
   const lastPeriod=periodData[lastLabel];
@@ -3787,24 +3861,13 @@ function tableBridge(){
   const el=document.getElementById('t-bridge');
   if(!el||!P.model)return;
   const prod=document.getElementById('bp-prod')?.value||'time';
-  const months=AMO; // full range actuals + projected to 2028
+  const months=amoBridge(); // historia bridge (2025) + actuals + proyección
   if(!months.length)return;
   const useClp=CURR==='CLP'; // sigue el toggle global del header
   const ufV=m=>P.uf?.[m]||0;
   // ARR siempre: × 12 (tanto UF como CLP)
   const fmtV=(v,m)=>useClp?fmtMoney(v*ufV(m)/1e6*12,m,1):f0(v*12);
-  const _getOne=(p,m)=>{
-    if(isActM(m)&&P.model.bridge?.[p]){
-      const bd=P.model.bridge[p][m]||{};
-      return{bop:bd.bop||0,ch:bd.ch||0,ds:bd.ds||0,up:bd.up||0,nw:bd.new||0,eop:bd.eop||0};
-    }
-    const eop=isActM(m)?(P.model.mrrUF[p]?.[m]||0):(S.mrrUF[p]?.[m]||0);
-    const prevM=addM(m,-1);
-    const bop=(P.model.mrrUF[p]?.[prevM]||S.mrrUF[p]?.[prevM]||0);
-    const rates=P.bridgeRates?.[p]||{ch:0,ds:0,up:0};
-    const ch=bop*rates.ch,ds=bop*rates.ds,up=bop*rates.up;
-    return{bop,ch,ds,up,nw:eop-(bop+ch+ds+up),eop};
-  };
+  const _getOne=(p,m)=>_bridgeComponents(p,m);
   const getData=m=>{
     if(prod!=='all')return _getOne(prod,m);
     let bop=0,ch=0,ds=0,up=0,nw=0,eop=0;
@@ -3872,11 +3935,11 @@ function tableBridge(){
 
 function tableMRR(){
   // Vista anual: valor Dec EOP por año + YoY (Dec/Dec)
-  const months=AMO;
+  const months=amoBridge(); // historia MRR desde 2025 + proyección
   if(!months.length){document.getElementById('t-mrr').innerHTML='';return;}
   const years=[...new Set(months.map(m=>+m.slice(0,4)))].sort((a,b)=>a-b);
   const uf=m=>P.uf[m]||0;
-  const getUF=(p,m)=>isActM(m)?(P.model.mrrUF[p]?.[m]||0):(S.mrrUF[p]?.[m]||0);
+  const getUF=(p,m)=>isHistM(m)?(P.model.mrrUF[p]?.[m]||0):(S.mrrUF[p]?.[m]||0);
   const getCLP=(p,m)=>getUF(p,m)*uf(m)/1e6;
   // Mes de cierre de cada año (Dic si hay, si no el último mes disponible)
   const closeM=yr=>{
